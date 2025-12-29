@@ -337,4 +337,137 @@ class Contribution
 
       return ['total_contribution' => number_format((float)$result['total'], 2)];
    }
+
+   /**
+    * Get contribution statistics
+    *
+    * @return array Statistics data
+    */
+   public static function getStats(): array
+   {
+      $orm = new ORM();
+
+      // Total contributions (all time)
+      $totalResult = $orm->runQuery(
+         "SELECT 
+            COALESCE(SUM(ContributionAmount), 0) AS total,
+            COUNT(*) AS count
+         FROM contribution 
+         WHERE Deleted = 0"
+      )[0];
+
+      // This month
+      $monthStart = date('Y-m-01');
+      $monthEnd = date('Y-m-t');
+      $monthResult = $orm->runQuery(
+         "SELECT 
+            COALESCE(SUM(ContributionAmount), 0) AS total,
+            COUNT(*) AS count
+         FROM contribution 
+         WHERE Deleted = 0 
+         AND ContributionDate >= :start 
+         AND ContributionDate <= :end",
+         [':start' => $monthStart, ':end' => $monthEnd]
+      )[0];
+
+      // This year
+      $yearStart = date('Y-01-01');
+      $yearEnd = date('Y-12-31');
+      $yearResult = $orm->runQuery(
+         "SELECT 
+            COALESCE(SUM(ContributionAmount), 0) AS total,
+            COUNT(*) AS count
+         FROM contribution 
+         WHERE Deleted = 0 
+         AND ContributionDate >= :start 
+         AND ContributionDate <= :end",
+         [':start' => $yearStart, ':end' => $yearEnd]
+      )[0];
+
+      // Last month
+      $lastMonthStart = date('Y-m-01', strtotime('first day of last month'));
+      $lastMonthEnd = date('Y-m-t', strtotime('last day of last month'));
+      $lastMonthResult = $orm->runQuery(
+         "SELECT COALESCE(SUM(ContributionAmount), 0) AS total
+         FROM contribution 
+         WHERE Deleted = 0 
+         AND ContributionDate >= :start 
+         AND ContributionDate <= :end",
+         [':start' => $lastMonthStart, ':end' => $lastMonthEnd]
+      )[0];
+
+      // Top contributors this year
+      $topContributors = $orm->runQuery(
+         "SELECT 
+            m.MbrFirstName,
+            m.MbrFamilyName,
+            COALESCE(SUM(c.ContributionAmount), 0) AS total
+         FROM contribution c
+         JOIN churchmember m ON c.MbrID = m.MbrID
+         WHERE c.Deleted = 0 
+         AND c.ContributionDate >= :start
+         GROUP BY c.MbrID, m.MbrFirstName, m.MbrFamilyName
+         ORDER BY total DESC
+         LIMIT 5",
+         [':start' => $yearStart]
+      );
+
+      // Contributions by type this year
+      $byType = $orm->runQuery(
+         "SELECT 
+            ct.ContributionTypeName,
+            COALESCE(SUM(c.ContributionAmount), 0) AS total,
+            COUNT(*) AS count
+         FROM contribution c
+         JOIN contributiontype ct ON c.ContributionTypeID = ct.ContributionTypeID
+         WHERE c.Deleted = 0 
+         AND c.ContributionDate >= :start
+         GROUP BY ct.ContributionTypeID, ct.ContributionTypeName
+         ORDER BY total DESC",
+         [':start' => $yearStart]
+      );
+
+      $totalAmount = (float)$totalResult['total'];
+      $totalCount = (int)$totalResult['count'];
+      $avgAmount = $totalCount > 0 ? $totalAmount / $totalCount : 0;
+
+      $monthTotal = (float)$monthResult['total'];
+      $lastMonthTotal = (float)$lastMonthResult['total'];
+      $monthGrowth = $lastMonthTotal > 0 ? (($monthTotal - $lastMonthTotal) / $lastMonthTotal) * 100 : 0;
+
+      return [
+         'total_amount' => $totalAmount,
+         'total_count' => $totalCount,
+         'average_amount' => $avgAmount,
+         'month_total' => $monthTotal,
+         'month_count' => (int)$monthResult['count'],
+         'month_growth' => round($monthGrowth, 1),
+         'year_total' => (float)$yearResult['total'],
+         'year_count' => (int)$yearResult['count'],
+         'top_contributors' => $topContributors,
+         'by_type' => $byType
+      ];
+   }
+
+   /**
+    * Get contribution types
+    *
+    * @return array List of contribution types
+    */
+   public static function getTypes(): array
+   {
+      $orm = new ORM();
+      return $orm->getAll('contributiontype');
+   }
+
+   /**
+    * Get payment options
+    *
+    * @return array List of payment options
+    */
+   public static function getPaymentOptions(): array
+   {
+      $orm = new ORM();
+      return $orm->getAll('paymentoption');
+   }
 }

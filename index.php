@@ -74,6 +74,7 @@ global $method, $path, $pathParts;
 // Master route map
 $routes = [
     'auth'            => 'AuthRoutes.php',
+    'audit'         => 'AuditRoutes.php',
     'member'          => 'MemberRoutes.php',
     'family'          => 'FamilyRoutes.php',
     'contribution'    => 'ContributionRoutes.php',
@@ -89,6 +90,7 @@ $routes = [
     'grouptype'       => 'GroupRoutes.php',
     'membershiptype'  => 'MembershipTypeRoutes.php',
     'role'            => 'RoleRoutes.php',
+    'settings'        => 'SettingsRoutes.php',
     'permission'      => 'PermissionRoutes.php',
     'volunteer'       => 'VolunteerRoutes.php',
 ];

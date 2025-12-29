@@ -74,7 +74,7 @@ class MemberRoutes extends BaseRoute
                 // Check if this is the user's own profile
                 if ($currentUserId) {
                     $orm = new ORM();
-                    $userAuth = $orm->getWhere('userauthentication', ['UserID' => $currentUserId]);
+                    $userAuth = $orm->getWhere('userauthentication', ['MbrID' => $currentUserId]);
                     if (!empty($userAuth) && $userAuth[0]['MbrID'] == $memberId) {
                         $isOwnProfile = true;
                     }
@@ -82,7 +82,7 @@ class MemberRoutes extends BaseRoute
 
                 // If not own profile, require edit_members permission
                 if (!$isOwnProfile) {
-                    self::authorize('view_dashboard');
+                    self::authorize('edit_members');
                 }
 
                 try {
@@ -107,7 +107,7 @@ class MemberRoutes extends BaseRoute
             // UPDATE MEMBER
             $method === 'PUT' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('edit_members');
+                self::authorize('view_members');
 
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
 
@@ -125,8 +125,7 @@ class MemberRoutes extends BaseRoute
                     'other_names'    => 'nullable|max:50',
                     'family_id'      => 'nullable',
                     'family_role'    => 'max:50|nullable',
-                    'branch_id'      => 'numeric|nullable',
-                    'membership_status' => 'in:Active,Inactive|nullable'
+                    'branch_id'      => 'numeric|nullable'
                 ]);
 
                 $result = Member::update($memberId, $payload);

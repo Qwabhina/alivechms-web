@@ -158,6 +158,7 @@ class Member
                 'MbrDateOfBirth'       => $data['date_of_birth'] ?? null,
                 'MbrOccupation'        => $data['occupation'] ?? 'Not Specified',
                 'MbrRegistrationDate'  => date('Y-m-d'),
+                'MbrHighestEducationLevel' => $data['education_level'] ?? 'Not Specified',
                 'MbrMembershipStatus'  => 'Active',
                 'BranchID'             => (int)($data['branch_id'] ?? 1),
                 'FamilyID'             => !empty($data['family_id']) ? (int)$data['family_id'] : null,
@@ -195,7 +196,7 @@ class Member
             // Assign default "Member" role (RoleID 6)
             $orm->insert('memberrole', [
                 'MbrID'        => $mbrId,
-                'ChurchRoleID' => 6
+                'ChurchRoleID' => $data['member_role'] ?? 6
             ]);
 
             $orm->commit();
@@ -247,6 +248,7 @@ class Member
             'MbrResidentialAddress' => $data['address'] ?? null,
             'MbrDateOfBirth'       => $data['date_of_birth'] ?? null,
             'MbrOccupation'        => $data['occupation'] ?? 'Not Specified',
+            'MbrHighestEducationLevel' => $data['education_level'] ?? 'Not Specified',
             'BranchID'             => !empty($data['branch_id']) ? (int)$data['branch_id'] : null,
             'FamilyID'             => !empty($data['family_id']) ? (int)$data['family_id'] : null,
         ];
@@ -267,7 +269,6 @@ class Member
                     $orm->insert('member_phone', [
                         'MbrID'      => $mbrId,
                         'PhoneNumber' => $phone,
-                        'PhoneType'  => 'Mobile',
                         'IsPrimary'  => $isPrimary
                     ]);
                 }

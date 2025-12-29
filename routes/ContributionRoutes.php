@@ -125,6 +125,33 @@ class ContributionRoutes extends BaseRoute
                 self::success($result);
             })(),
 
+            // GET CONTRIBUTION STATISTICS
+            $method === 'GET' && $path === 'contribution/stats' => (function () {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $result = Contribution::getStats();
+                self::success($result);
+            })(),
+
+            // GET CONTRIBUTION TYPES
+            $method === 'GET' && $path === 'contribution/types' => (function () {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $result = Contribution::getTypes();
+                self::success(['data' => $result]);
+            })(),
+
+            // GET PAYMENT OPTIONS
+            $method === 'GET' && $path === 'contribution/payment-options' => (function () {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $result = Contribution::getPaymentOptions();
+                self::success(['data' => $result]);
+            })(),
+
             // FALLBACK
             default => self::error('Contribution endpoint not found', 404),
         };

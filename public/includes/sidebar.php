@@ -104,7 +104,7 @@
                      </a>
                   </li>
                   <li class="nav-item" data-permission="view_financial_reports">
-                     <a class="nav-link nav-link-sub" href="reports.php" data-page="reports">
+                     <a class="nav-link nav-link-sub" href="financial-reports.php" data-page="financial-reports">
                         <i class="bi bi-graph-up me-2"></i>Financial Reports
                      </a>
                   </li>
