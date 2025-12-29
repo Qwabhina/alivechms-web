@@ -68,6 +68,21 @@
          const page = link.getAttribute('data-page');
          if (page === currentPage || (currentPage === 'index' && page === 'dashboard')) {
             link.classList.add('active');
+
+            // If it's a sub-menu item, expand its parent accordion
+            const parentCollapse = link.closest('.collapse');
+            if (parentCollapse) {
+               const bsCollapse = new bootstrap.Collapse(parentCollapse, {
+                  toggle: false
+               });
+               bsCollapse.show();
+
+               // Mark parent accordion link as active
+               const parentLink = document.querySelector(`[href="#${parentCollapse.id}"]`);
+               if (parentLink) {
+                  parentLink.classList.remove('collapsed');
+               }
+            }
          }
       });
 

@@ -111,11 +111,11 @@ body {
    color: var(--sidebar-text);
    padding: 0.75rem 1rem;
    border-radius: var(--border-radius);
-      transition: var(--transition);
+   transition: var(--transition);
       display: flex;
       align-items: center;
    text-decoration: none;
-      font-size: 0.9rem;
+   font-size: 0.9rem;
 }
 
 .nav-link i {
@@ -133,8 +133,41 @@ body {
    background: var(--sidebar-active);
    color: #ffffff;
    font-weight: 500;
-   }
+}
 
+/* Accordion toggle links */
+.nav-link[data-bs-toggle="collapse"] {
+   cursor: pointer;
+}
+
+.nav-link[data-bs-toggle="collapse"] .bi-chevron-down {
+   transition: transform 0.2s ease;
+   font-size: 0.8rem;
+}
+
+.nav-link[data-bs-toggle="collapse"]:not(.collapsed) .bi-chevron-down {
+   transform: rotate(180deg);
+}
+
+/* Sub-menu items */
+.nav-link-sub {
+   padding: 0.5rem 1rem;
+   font-size: 0.85rem;
+}
+
+.nav-link-sub i {
+   width: 20px;
+   font-size: 0.9rem;
+}
+
+.nav-link-sub:hover {
+   background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-link-sub.active {
+   background: rgba(59, 130, 246, 0.2);
+   border-left: 3px solid var(--sidebar-active);
+}
 /* ========== MAIN CONTENT ========== */
 .main-content {
    margin-left: var(--sidebar-width);
@@ -644,56 +677,57 @@ body {
       transform: translateX(-100%);
    }
 
-                                                                                                .sidebar.show {
-                                                                                                   transform: translateX(0);
-                                                                                                }
+            .sidebar.show {
+               transform: translateX(0);
+            }
 
-                                                                                                .main-content {
-                                                                                                   margin-left: 0;
-                                                                                                }
+            .main-content {
+               margin-left: 0;
+            }
 
-                                                                                                .sidebar-overlay {
-                                                                                                   position: fixed;
-                                                                                                   top: 0;
-                                                                                                   left: 0;
-                                                                                                   right: 0;
-                                                                                                   bottom: 0;
-                                                                                                   background: rgba(0, 0, 0, 0.5);
-                                                                                                   z-index: 998;
-                                                                                                   display: none;
-                                                                                                }
+            .sidebar-overlay {
+               position: fixed;
+               top: 0;
+               left: 0;
+               right: 0;
+               bottom: 0;
+               background: rgba(0, 0, 0, 0.5);
+               z-index: 998;
+               display: none;
+            }
 
-                                                                                                .sidebar-overlay.show {
-                                                                                                   display: block;
-                                                                                                }
-.stepper {
-   flex-direction: column;
-   gap: 1rem;
-}
+            .sidebar-overlay.show {
+               display: block;
+            }
 
-.stepper::before {
-   display: none;
-}
+            .stepper {
+               flex-direction: column;
+               gap: 1rem;
+            }
 
-.stepper-step {
-   flex-direction: row;
-   justify-content: flex-start;
-   gap: 1rem;
-}
+            .stepper::before {
+               display: none;
+            }
 
-.stepper-step .step-number {
-   margin-bottom: 0;
-}
+            .stepper-step {
+               flex-direction: row;
+               justify-content: flex-start;
+               gap: 1rem;
+            }
 
-/* Grid.js responsive */
-.gridjs-search-input {
-   max-width: 100%;
-}
+            .stepper-step .step-number {
+               margin-bottom: 0;
+            }
 
-.gridjs-pagination {
-   flex-direction: column;
-   text-align: center;
-}
+            /* Grid.js responsive */
+            .gridjs-search-input {
+               max-width: 100%;
+            }
+
+            .gridjs-pagination {
+               flex-direction: column;
+               text-align: center;
+            }
 }
 
 /* ========== UTILITIES ========== */

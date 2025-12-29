@@ -177,7 +177,6 @@ class Member
                     $orm->insert('member_phone', [
                         'MbrID'      => $mbrId,
                         'PhoneNumber' => $phone,
-                        'PhoneType'  => 'Mobile',
                         'IsPrimary'  => $isPrimary
                     ]);
                 }

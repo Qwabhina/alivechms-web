@@ -326,14 +326,14 @@ require_once '../includes/sidebar.php';
             value: stats.inactive || 0,
             change: 'Marked inactive',
             icon: 'person-dash',
-            color: 'warning'
+            color: 'danger'
          },
          {
             title: 'New This Month',
             value: stats.newThisMonth || 0,
             change: 'Registered this month',
             icon: 'calendar-plus',
-            color: 'info'
+            color: 'warning'
          }
       ];
 
@@ -737,6 +737,7 @@ require_once '../includes/sidebar.php';
       }
 
       profilePictureFile = file;
+      console.log('Profile picture file stored:', file);
       const reader = new FileReader();
       reader.onload = (e) => {
          const preview = document.getElementById('profilePreview');
@@ -915,6 +916,8 @@ require_once '../includes/sidebar.php';
             payload.password = document.getElementById('password').value;
          }
 
+         console.log('Payload being sent:', payload);
+
          Alerts.loading('Saving member...');
 
          let result;
@@ -924,14 +927,21 @@ require_once '../includes/sidebar.php';
             result = await api.post('member/create', payload);
          }
 
+         console.log('Member save result:', result);
+
          const newMemberId = result?.mbr_id || currentMemberId;
+         console.log('Member ID for photo upload:', newMemberId);
+
          if (profilePictureFile && newMemberId) {
             try {
+               console.log('Uploading profile picture:', profilePictureFile);
                const formData = new FormData();
                formData.append('profile_picture', profilePictureFile);
-               await api.upload(`member/upload-photo/${newMemberId}`, formData);
+               const uploadResult = await api.upload(`member/upload-photo/${newMemberId}`, formData);
+               console.log('Photo upload result:', uploadResult);
             } catch (uploadError) {
                console.error('Photo upload error:', uploadError);
+               Alerts.warning('Member saved but photo upload failed: ' + uploadError.message);
             }
          }
 
@@ -956,6 +966,7 @@ require_once '../includes/sidebar.php';
 
       try {
          const member = await api.get(`member/view/${memberId}`);
+         console.log('Member data retrieved:', member);
 
          const photoHtml = member.MbrProfilePicture ?
             `<img src="/${member.MbrProfilePicture}" class="rounded-circle border border-3" style="width:100px;height:100px;object-fit:cover;">` :
@@ -965,6 +976,8 @@ require_once '../includes/sidebar.php';
 
          const statusClass = member.MbrMembershipStatus === 'Active' ? 'success' : 'secondary';
          const phones = member.PhoneNumbers?.join(', ') || member.PrimaryPhone || '-';
+         console.log('Phone numbers for display:', phones);
+         console.log('Address for display:', member.MbrResidentialAddress);
 
          document.getElementById('viewMemberContent').innerHTML = `
          <!-- Profile Header -->

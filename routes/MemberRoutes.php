@@ -41,6 +41,13 @@ class MemberRoutes extends BaseRoute
                     'username'       => 'nullable|max:50',
                     'password'       => 'nullable',
                     'gender'         => 'in:Male,Female,Other|nullable',
+                    'date_of_birth'  => 'nullable',
+                    'address'        => 'nullable',
+                    'phone_numbers'  => 'nullable',
+                    'occupation'     => 'nullable|max:100',
+                    'marital_status' => 'nullable|max:50',
+                    'education_level' => 'nullable|max:100',
+                    'other_names'    => 'nullable|max:50',
                     'family_id'      => 'nullable',
                     'family_role'    => 'max:50|nullable',
                     'branch_id'      => 'numeric|nullable'
@@ -57,9 +64,26 @@ class MemberRoutes extends BaseRoute
             // UPLOAD PROFILE PICTURE
             $method === 'POST' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'upload-photo' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('edit_members');
 
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
+
+                // Allow users to upload their own photo OR require edit_members permission for others
+                $currentUserId = self::getCurrentUserId();
+                $isOwnProfile = false;
+
+                // Check if this is the user's own profile
+                if ($currentUserId) {
+                    $orm = new ORM();
+                    $userAuth = $orm->getWhere('userauthentication', ['UserID' => $currentUserId]);
+                    if (!empty($userAuth) && $userAuth[0]['MbrID'] == $memberId) {
+                        $isOwnProfile = true;
+                    }
+                }
+
+                // If not own profile, require edit_members permission
+                if (!$isOwnProfile) {
+                    self::authorize('view_dashboard');
+                }
 
                 try {
                     $result = Member::uploadProfilePicture($memberId);
@@ -92,7 +116,14 @@ class MemberRoutes extends BaseRoute
                     'family_name'    => 'max:50|nullable',
                     'email_address'  => 'email|nullable',
                     'gender'         => 'in:Male,Female,Other|nullable',
-                    'family_id'      => 'nullable|numeric',
+                    'date_of_birth'  => 'nullable',
+                    'address'        => 'nullable',
+                    'phone_numbers'  => 'nullable',
+                    'occupation'     => 'nullable|max:100',
+                    'marital_status' => 'nullable|max:50',
+                    'education_level' => 'nullable|max:100',
+                    'other_names'    => 'nullable|max:50',
+                    'family_id'      => 'nullable',
                     'family_role'    => 'max:50|nullable',
                     'branch_id'      => 'numeric|nullable',
                     'membership_status' => 'in:Active,Inactive|nullable'
