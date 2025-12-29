@@ -21,8 +21,8 @@ if (php_sapi_name() === 'cli') {
 }
 
 // Production error handling
-ini_set('display_errors', '0');
-ini_set('display_startup_errors', '0');
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
 date_default_timezone_set('Africa/Accra');
@@ -39,6 +39,9 @@ require_once __DIR__ . '/core/Database.php';
 require_once __DIR__ . '/core/ORM.php';
 require_once __DIR__ . '/core/Auth.php';
 require_once __DIR__ . '/core/Helpers.php';
+require_once __DIR__ . '/core/BaseRoute.php';
+require_once __DIR__ . '/core/Validator.php';
+require_once __DIR__ . '/core/RateLimiter.php';
 
 // Security headers
 header('Content-Type: application/json; charset=utf-8');
@@ -52,7 +55,7 @@ $path    = preg_replace('#/{2,}#', '/', $path); // Remove double slashes
 // Block path traversal
 if (str_contains($path, '..') || str_contains($path, "\0")) {
     Helpers::logError("Path traversal blocked: $rawPath");
-    Helpers::sendFeedback('Invalid request path', 400);
+    Helpers::sendError('Invalid request path', 400);
 }
 
 if ($path === '') {
@@ -64,6 +67,9 @@ $pathParts = $path !== '' ? explode('/', $path) : [];
 $section   = $pathParts[0] ?? '';
 $method    = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $token     = Auth::getBearerToken();
+
+// Make route variables available to route files
+global $method, $path, $pathParts;
 
 // Master route map
 $routes = [

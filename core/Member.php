@@ -18,6 +18,95 @@ declare(strict_types=1);
 
 class Member
 {
+    private const UPLOAD_DIR = __DIR__ . '/../uploads/members/';
+    private const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    private const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+    /**
+     * Upload profile picture for a member
+     *
+     * @param int $mbrId Member ID
+     * @return array ['status' => 'success', 'path' => string]
+     * @throws Exception On upload failure
+     */
+    public static function uploadProfilePicture(int $mbrId): array
+    {
+        $orm = new ORM();
+
+        // Verify member exists
+        $member = $orm->getWhere('churchmember', ['MbrID' => $mbrId, 'Deleted' => 0]);
+        if (empty($member)) {
+            throw new Exception('Member not found');
+        }
+
+        // Check if file was uploaded
+        if (!isset($_FILES['profile_picture']) || $_FILES['profile_picture']['error'] !== UPLOAD_ERR_OK) {
+            $errorMessages = [
+                UPLOAD_ERR_INI_SIZE => 'File exceeds server limit',
+                UPLOAD_ERR_FORM_SIZE => 'File exceeds form limit',
+                UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
+                UPLOAD_ERR_NO_FILE => 'No file was uploaded',
+                UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder',
+                UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk',
+            ];
+            $error = $_FILES['profile_picture']['error'] ?? UPLOAD_ERR_NO_FILE;
+            throw new Exception($errorMessages[$error] ?? 'Unknown upload error');
+        }
+
+        $file = $_FILES['profile_picture'];
+
+        // Validate file type
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->file($file['tmp_name']);
+        if (!in_array($mimeType, self::ALLOWED_TYPES)) {
+            throw new Exception('Invalid file type. Allowed: JPG, PNG, GIF, WebP');
+        }
+
+        // Validate file size
+        if ($file['size'] > self::MAX_FILE_SIZE) {
+            throw new Exception('File too large. Maximum size: 5MB');
+        }
+
+        // Create upload directory if not exists
+        if (!is_dir(self::UPLOAD_DIR)) {
+            mkdir(self::UPLOAD_DIR, 0755, true);
+        }
+
+        // Generate unique filename
+        $extension = match ($mimeType) {
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+            default => 'jpg'
+        };
+        $filename = 'member_' . $mbrId . '_' . time() . '.' . $extension;
+        $filepath = self::UPLOAD_DIR . $filename;
+        $relativePath = 'uploads/members/' . $filename;
+
+        // Delete old profile picture if exists
+        $oldPicture = $member[0]['MbrProfilePicture'] ?? null;
+        if ($oldPicture && file_exists(__DIR__ . '/../' . $oldPicture)) {
+            unlink(__DIR__ . '/../' . $oldPicture);
+        }
+
+        // Move uploaded file
+        if (!move_uploaded_file($file['tmp_name'], $filepath)) {
+            throw new Exception('Failed to save uploaded file');
+        }
+
+        // Update database
+        $orm->update('churchmember', ['MbrProfilePicture' => $relativePath], ['MbrID' => $mbrId]);
+
+        Helpers::logError("Profile picture uploaded for MbrID $mbrId: $relativePath");
+
+        return [
+            'status' => 'success',
+            'path' => $relativePath,
+            'url' => '/' . $relativePath
+        ];
+    }
+
     /**
      * Register a new church member with authentication credentials
      *
@@ -33,17 +122,26 @@ class Member
             'first_name'     => 'required|max:50',
             'family_name'    => 'required|max:50',
             'email_address'  => 'required|email',
-            'username'       => 'required|max:50',
-            'password'       => 'required',
             'gender'         => 'in:Male,Female,Other|nullable',
             'branch_id'      => 'numeric|nullable',
         ]);
 
-        // Uniqueness checks
-        if (!empty($orm->getWhere('userauthentication', ['Username' => $data['username']]))) {
-            Helpers::sendFeedback('Username already exists', 400);
+        // Validate username/password only if provided
+        $createAuth = !empty($data['username']) && !empty($data['password']);
+
+        if ($createAuth) {
+            $passwordCheck = Helpers::validatePasswordStrength($data['password']);
+            if (!$passwordCheck['valid']) {
+                Helpers::sendError('Password does not meet requirements', 400, ['password' => $passwordCheck['errors']]);
+            }
+
+            // Uniqueness check for username
+            if (!empty($orm->getWhere('userauthentication', ['Username' => $data['username']]))) {
+                Helpers::sendFeedback('Username already exists', 400);
+            }
         }
 
+        // Email uniqueness check
         if (!empty($orm->getWhere('churchmember', ['MbrEmailAddress' => $data['email_address']]))) {
             Helpers::sendFeedback('Email address already in use', 400);
         }
@@ -85,13 +183,15 @@ class Member
                 }
             }
 
-            // Create authentication record
-            $orm->insert('userauthentication', [
-                'MbrID'        => $mbrId,
-                'Username'     => $data['username'],
-                'PasswordHash' => password_hash($data['password'], PASSWORD_DEFAULT),
-                'CreatedAt'    => date('Y-m-d H:i:s')
-            ]);
+            // Create authentication record only if username/password provided
+            if ($createAuth) {
+                $orm->insert('userauthentication', [
+                    'MbrID'        => $mbrId,
+                    'Username'     => $data['username'],
+                    'PasswordHash' => password_hash($data['password'], PASSWORD_DEFAULT),
+                    'CreatedAt'    => date('Y-m-d H:i:s')
+                ]);
+            }
 
             // Assign default "Member" role (RoleID 6)
             $orm->insert('memberrole', [
@@ -101,7 +201,7 @@ class Member
 
             $orm->commit();
 
-            Helpers::logError("New member registered: MbrID $mbrId ({$data['username']})");
+            Helpers::logError("New member registered: MbrID $mbrId" . ($createAuth ? " ({$data['username']})" : ""));
             return ['status' => 'success', 'mbr_id' => $mbrId];
         } catch (Exception $e) {
             $orm->rollBack();
@@ -212,30 +312,63 @@ class Member
     {
         $orm = new ORM();
 
-        $result = $orm->selectWithJoin(
+        // Get member basic info
+        $member = $orm->selectWithJoin(
             baseTable: 'churchmember c',
             joins: [
-                ['table' => 'member_phone p', 'on' => 'c.MbrID = p.MbrID', 'type' => 'LEFT'],
-                ['table' => 'family f',       'on' => 'c.FamilyID = f.FamilyID', 'type' => 'LEFT']
+                ['table' => 'family f', 'on' => 'c.FamilyID = f.FamilyID', 'type' => 'LEFT']
             ],
-            fields: [
-                'c.*',
-                "GROUP_CONCAT(DISTINCT p.PhoneNumber ORDER BY p.IsPrimary DESC SEPARATOR ', ') AS PhoneNumbers",
-                'f.FamilyName'
-            ],
+            fields: ['c.*', 'f.FamilyName'],
             conditions: ['c.MbrID' => ':id', 'c.Deleted' => 0],
-            params: [':id' => $mbrId],
-            groupBy: ['c.MbrID']
+            params: [':id' => $mbrId]
         );
 
-        if (empty($result)) {
+        if (empty($member)) {
             Helpers::sendFeedback('Member not found', 404);
         }
 
-        $member = $result[0];
-        $member['PhoneNumbers'] = $member['PhoneNumbers'] ? explode(', ', $member['PhoneNumbers']) : [];
+        $memberData = $member[0];
 
-        return $member;
+        // Get phone numbers separately
+        $phones = $orm->getWhere('member_phone', ['MbrID' => $mbrId]);
+        $memberData['phones'] = $phones;
+
+        // Get phone numbers as array for backward compatibility
+        $phoneNumbers = array_column($phones, 'PhoneNumber');
+        $memberData['PhoneNumbers'] = $phoneNumbers;
+        $memberData['PrimaryPhone'] = !empty($phoneNumbers) ? $phoneNumbers[0] : null;
+
+        return $memberData;
+    }
+
+    /**
+     * Get recent active members (last 10)
+     *
+     * @return array Recent members
+     */
+    public static function getRecent(): array
+    {
+        $qb = new QueryBuilder();
+        return $qb->table('churchmember c')
+            ->select([
+                'c.MbrID',
+                'c.MbrFirstName',
+                'c.MbrFamilyName',
+                'c.MbrEmailAddress',
+                'c.MbrRegistrationDate',
+                "GROUP_CONCAT(DISTINCT p.PhoneNumber) AS PhoneNumbers",
+                'u.Username',
+                'u.LastLoginAt'
+            ])
+            ->leftJoin('member_phone p', 'c.MbrID', '=', 'p.MbrID')
+            ->leftJoin('userauthentication u', 'c.MbrID', '=', 'u.MbrID')
+            ->where('c.MbrMembershipStatus', 'Active')
+            ->where('c.Deleted', 0)
+            ->groupBy('c.MbrID')
+            ->orderBy('c.MbrRegistrationDate', 'DESC')
+            ->limit(10)
+            ->cache(600, ['members_list', 'recent_members']) // Cache for 10 mins
+            ->get();
     }
 
     /**
@@ -245,46 +378,94 @@ class Member
      * @param int $limit Items per page
      * @return array Paginated result
      */
-    public static function getAll(int $page = 1, int $limit = 10): array
+    public static function getAll(int $page = 1, int $limit = 10, array $filters = []): array
     {
-        $orm    = new ORM();
+        $orm = new ORM();
         $offset = ($page - 1) * $limit;
 
-        $members = $orm->selectWithJoin(
-            baseTable: 'churchmember c',
-            joins: [
-                ['table' => 'member_phone p', 'on' => 'c.MbrID = p.MbrID', 'type' => 'LEFT'],
-                ['table' => 'family f',       'on' => 'c.FamilyID = f.FamilyID', 'type' => 'LEFT']
-            ],
-            fields: [
-                'c.*',
-                // 'c.MbrFirstName',
-                // 'c.MbrFamilyName',
-                // 'c.MbrEmailAddress',
-                // 'c.MbrMembershipStatus',
-                // 'c.MbrRegistrationDate',
-                "GROUP_CONCAT(DISTINCT p.PhoneNumber ORDER BY p.IsPrimary DESC SEPARATOR ', ') AS PhoneNumbers",
-                'f.FamilyName'
-            ],
-            conditions: ['c.MbrMembershipStatus' => ':status', 'c.Deleted' => 0],
-            params: [':status' => 'Active'],
-            groupBy: ['c.MbrID'],
-            orderBy: ['c.MbrRegistrationDate' => 'DESC'],
-            limit: $limit,
-            offset: $offset
+        // Build WHERE conditions
+        $whereConditions = ['c.Deleted = 0'];
+        $params = [];
+
+        // Apply status filter
+        if (!empty($filters['status'])) {
+            $whereConditions[] = 'c.MbrMembershipStatus = :status';
+            $params[':status'] = $filters['status'];
+        } else {
+            $whereConditions[] = 'c.MbrMembershipStatus = :status';
+            $params[':status'] = 'Active';
+        }
+
+        // Apply family_id filter
+        if (!empty($filters['family_id'])) {
+            $whereConditions[] = 'c.FamilyID = :family_id';
+            $params[':family_id'] = (int)$filters['family_id'];
+        }
+
+        // Apply date filters
+        if (!empty($filters['date_from'])) {
+            $whereConditions[] = 'c.MbrRegistrationDate >= :date_from';
+            $params[':date_from'] = $filters['date_from'];
+        }
+
+        if (!empty($filters['date_to'])) {
+            $whereConditions[] = 'c.MbrRegistrationDate <= :date_to';
+            $params[':date_to'] = $filters['date_to'];
+        }
+
+        // Apply search filter (searches name, email, phone)
+        if (!empty($filters['search'])) {
+            $searchTerm = '%' . $filters['search'] . '%';
+            $whereConditions[] = '(c.MbrFirstName LIKE :search OR c.MbrFamilyName LIKE :search2 OR c.MbrOtherNames LIKE :search3 OR c.MbrEmailAddress LIKE :search4)';
+            $params[':search'] = $searchTerm;
+            $params[':search2'] = $searchTerm;
+            $params[':search3'] = $searchTerm;
+            $params[':search4'] = $searchTerm;
+        }
+
+        $whereClause = implode(' AND ', $whereConditions);
+
+        // Get members with pagination
+        $members = $orm->runQuery(
+            "SELECT c.*, f.FamilyName
+         FROM `churchmember` c
+         LEFT JOIN `family` f ON c.FamilyID = f.FamilyID
+         WHERE $whereClause
+         ORDER BY c.MbrRegistrationDate DESC
+         LIMIT :limit OFFSET :offset",
+            array_merge($params, [
+                ':limit' => $limit,
+                ':offset' => $offset
+            ])
         );
 
-        $total = $orm->runQuery(
-            "SELECT COUNT(*) AS total FROM churchmember WHERE Deleted = 0 AND MbrMembershipStatus = 'Active'"
-        )[0]['total'];
+        // Get total count
+        $totalResult = $orm->runQuery(
+            "SELECT COUNT(DISTINCT c.MbrID) AS total 
+         FROM `churchmember` c
+         WHERE $whereClause",
+            $params
+        );
+
+        $total = (int)($totalResult[0]['total'] ?? 0);
+
+        // Process phone numbers for display
+        foreach ($members as &$member) {
+            // Get primary phone
+            $phones = $orm->getWhere('member_phone', ['MbrID' => $member['MbrID']]);
+            $member['phones'] = $phones;
+            $phoneNumbers = array_column($phones, 'PhoneNumber');
+            $member['PhoneNumbers'] = $phoneNumbers;
+            $member['PrimaryPhone'] = !empty($phoneNumbers) ? $phoneNumbers[0] : null;
+        }
 
         return [
             'data' => $members,
             'pagination' => [
-                'page'   => $page,
-                'limit'  => $limit,
-                'total'  => (int)$total,
-                'pages'  => (int)ceil($total / $limit)
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int)ceil($total / $limit)
             ]
         ];
     }

@@ -16,17 +16,54 @@
  * All route classes should extend this class.
  *
  * @package  AliveChMS\Core
- * @version  2.0.0
+ * @version  1.0.0
  * @author   Benjamin Ebo Yankson
- * @since    2025-December
+ * @since    2025-November
  */
 
 declare(strict_types=1);
+
+if (!class_exists('Auth')) {
+   require_once __DIR__ . '/Auth.php';
+}
+if (!class_exists('RateLimiter')) {
+   require_once __DIR__ . '/RateLimiter.php';
+}
+if (!class_exists('Validator')) {
+   require_once __DIR__ . '/Validator.php';
+}
+if (!class_exists('Helpers')) {
+   require_once __DIR__ . '/Helpers.php';
+}
+if (!class_exists('ORM')) {
+   require_once __DIR__ . '/ORM.php';
+}
+
+if (!class_exists('Database')) {
+   require_once __DIR__ . '/Database.php';
+}
+if (!class_exists('Cache')) {
+   require_once __DIR__ . '/Cache.php';
+}
 
 abstract class BaseRoute
 {
    protected static ?array $decodedToken = null;
    protected static ?int   $currentUserId = null;
+
+   /**
+    * Get route variables from global scope
+    * Ensures consistency across all route files
+    */
+   protected static function getRouteVars(): array
+   {
+      global $method, $path, $pathParts;
+      return [
+         'method' => $method ?? $_SERVER['REQUEST_METHOD'] ?? 'GET',
+         'path' => $path ?? '',
+         'pathParts' => $pathParts ?? []
+      ];
+   }
 
    /**
     * Authenticate request and decode JWT token
@@ -45,15 +82,16 @@ abstract class BaseRoute
          return false;
       }
 
-      self::$decodedToken = Auth::verify($token);
+      $decoded = Auth::verify($token);
 
-      if (self::$decodedToken === false) {
+      if ($decoded === false) {
          if ($required) {
             Helpers::sendError('Unauthorized: Invalid or expired token', 401);
          }
          return false;
       }
 
+      self::$decodedToken = $decoded;
       self::$currentUserId = (int)(self::$decodedToken['user_id'] ?? 0);
 
       return true;
@@ -67,8 +105,15 @@ abstract class BaseRoute
     */
    protected static function authorize(string $permission): void
    {
-      if (!Auth::checkPermission($permission)) {
-         Helpers::sendError('Forbidden: Insufficient permissions', 403);
+      if (self::$currentUserId === null) {
+         self::authenticate();
+      }
+
+      try {
+         Auth::checkPermission($permission);
+      } catch (Exception $e) {
+         Helpers::logError("Authorization failed for user " . self::$currentUserId . ": " . $e->getMessage());
+         self::error('Forbidden: Insufficient permissions', 403);
       }
    }
 
@@ -91,11 +136,11 @@ abstract class BaseRoute
       }
 
       if (!empty($rules)) {
-         try {
-            Helpers::validateInput($payload, $rules);
-         } catch (Exception $e) {
-            Helpers::sendError($e->getMessage(), 400);
+         $validator = Validator::make($payload, $rules);
+         if ($validator->fails()) {
+            Helpers::sendError('Validation failed', 422, $validator->errors());
          }
+         return $validator->validated();
       }
 
       return $payload;

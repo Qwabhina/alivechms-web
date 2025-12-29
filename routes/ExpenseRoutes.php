@@ -22,112 +22,98 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Expense.php';
 
-// ---------------------------------------------------------------------
-// AUTHENTICATION & AUTHORIZATION
-// ---------------------------------------------------------------------
-$token = Auth::getBearerToken();
-if (!$token || Auth::verify($token) === false) {
-   Helpers::sendFeedback('Unauthorized: Valid token required', 401);
+class ExpenseRoutes extends BaseRoute
+{
+   public static function handle(): void
+   {
+      // Get route variables from global scope
+      global $method, $path, $pathParts;
+
+      self::rateLimit(maxAttempts: 60, windowSeconds: 60);
+
+      match (true) {
+         // CREATE EXPENSE REQUEST
+         $method === 'POST' && $path === 'expense/create' => (function () {
+            self::authenticate();
+            self::authorize('create_expense');
+
+            $payload = self::getPayload();
+
+            $result = Expense::create($payload);
+            self::success($result, 'Expense created', 201);
+         })(),
+
+         // VIEW SINGLE EXPENSE
+         $method === 'GET' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('view_expenses');
+
+            $expenseId = self::getIdFromPath($pathParts, 2, 'Expense ID');
+
+            $expense = Expense::get($expenseId);
+            self::success($expense);
+         })(),
+
+         // LIST ALL EXPENSES (Paginated + Filtered)
+         $method === 'GET' && $path === 'expense/all' => (function () {
+            self::authenticate();
+            self::authorize('view_expenses');
+
+            [$page, $limit] = self::getPagination(10, 100);
+
+            $filters = self::getFilters([
+               'fiscal_year_id',
+               'branch_id',
+               'category_id',
+               'status',
+               'start_date',
+               'end_date'
+            ]);
+
+            $result = Expense::getAll($page, $limit, $filters);
+            self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+         })(),
+
+         // REVIEW EXPENSE (Approve/Reject)
+         $method === 'POST' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'review' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('approve_expenses');
+
+            $expenseId = self::getIdFromPath($pathParts, 2, 'Expense ID');
+
+            $payload = self::getPayload([
+               'action' => 'required|in:approve,reject',
+               'remarks' => 'nullable|max:500'
+            ]);
+
+            $result = Expense::review(
+               $expenseId,
+               $payload['action'],
+               $payload['remarks'] ?? null
+            );
+            self::success($result, 'Expense reviewed');
+         })(),
+
+         // CANCEL PENDING EXPENSE
+         $method === 'POST' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'cancel' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('cancel_expenses');
+
+            $expenseId = self::getIdFromPath($pathParts, 2, 'Expense ID');
+
+            $payload = self::getPayload([
+               'reason' => 'required|max:500'
+            ]);
+
+            $result = Expense::cancel($expenseId, $payload['reason']);
+            self::success($result, 'Expense cancelled');
+         })(),
+
+         // FALLBACK
+         default => self::error('Expense endpoint not found', 404),
+      };
+   }
 }
 
-// ---------------------------------------------------------------------
-// ROUTE DISPATCHER
-// ---------------------------------------------------------------------
-match (true) {
-
-   // CREATE EXPENSE REQUEST
-   $method === 'POST' && $path === 'expense/create' => (function () use ($token) {
-      Auth::checkPermission($token, 'create_expense');
-
-      $payload = json_decode(file_get_contents('php://input'), true);
-      if (!is_array($payload)) {
-         Helpers::sendFeedback('Invalid JSON payload', 400);
-      }
-
-      $result = Expense::create($payload);
-      echo json_encode($result);
-   })(),
-
-   // VIEW SINGLE EXPENSE
-   $method === 'GET' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($token, $pathParts) {
-      Auth::checkPermission($token, 'view_expenses');
-
-      $expenseId = $pathParts[2];
-      if (!is_numeric($expenseId)) {
-         Helpers::sendFeedback('Valid Expense ID required', 400);
-      }
-
-      $expense = Expense::get((int)$expenseId);
-      echo json_encode($expense);
-   })(),
-
-   // LIST ALL EXPENSES (Paginated + Filtered)
-   $method === 'GET' && $path === 'expense/all' => (function () use ($token) {
-      Auth::checkPermission($token, 'view_expenses');
-
-      $page  = max(1, (int)($_GET['page'] ?? 1));
-      $limit = max(1, min(100, (int)($_GET['limit'] ?? 10)));
-
-      $filters = [];
-      foreach (
-         [
-            'fiscal_year_id',
-            'branch_id',
-            'category_id',
-            'status',
-            'start_date',
-            'end_date'
-         ] as $key
-      ) {
-         if (isset($_GET[$key]) && $_GET[$key] !== '') {
-            $filters[$key] = $_GET[$key];
-         }
-      }
-
-      $result = Expense::getAll($page, $limit, $filters);
-      echo json_encode($result);
-   })(),
-
-   // REVIEW EXPENSE (Approve/Reject)
-   $method === 'POST' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'review' && isset($pathParts[2]) => (function () use ($token, $pathParts) {
-      Auth::checkPermission($token, 'approve_expenses');
-
-      $expenseId = $pathParts[2];
-      if (!is_numeric($expenseId)) {
-         Helpers::sendFeedback('Valid Expense ID required', 400);
-      }
-
-      $payload = json_decode(file_get_contents('php://input'), true);
-      if (!is_array($payload) || !in_array($payload['action'] ?? '', ['approve', 'reject'], true)) {
-         Helpers::sendFeedback('Valid "action" (approve|reject) required', 400);
-      }
-
-      $result = Expense::review(
-         (int)$expenseId,
-         $payload['action'],
-         $payload['remarks'] ?? null
-      );
-      echo json_encode($result);
-   })(),
-
-   // CANCEL PENDING EXPENSE
-   $method === 'POST' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'cancel' && isset($pathParts[2]) => (function () use ($token, $pathParts) {
-      Auth::checkPermission($token, 'cancel_expenses');
-
-      $expenseId = $pathParts[2];
-      if (!is_numeric($expenseId)) {
-         Helpers::sendFeedback('Valid Expense ID required', 400);
-      }
-
-      $payload = json_decode(file_get_contents('php://input'), true);
-      if (!is_array($payload) || empty(trim($payload['reason'] ?? ''))) {
-         Helpers::sendFeedback('Cancellation reason is required', 400);
-      }
-
-      $result = Expense::cancel((int)$expenseId, trim($payload['reason']));
-      echo json_encode($result);
-   })(),
-
-   // FALLBACK
-   default => Helpers::sendFeedback('Expense endpoint not found', 404),
-};
+// Dispatch
+ExpenseRoutes::handle();

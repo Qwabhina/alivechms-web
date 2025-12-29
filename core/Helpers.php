@@ -61,7 +61,7 @@ class Helpers
             'timestamp' => date('c')
         ];
 
-        if ($message !== null || $message !== '') {
+        if ($message !== null && $message !== '') {
             $response['message'] = $message;
         }
 
@@ -460,6 +460,43 @@ class Helpers
             default:
                 return $data;
         }
+    }
+
+    /**
+     * Validate password strength
+     * 
+     * @param string $password Password to validate
+     * @param int $minLength Minimum length (default 8)
+     * @return array ['valid' => bool, 'errors' => array]
+     */
+    public static function validatePasswordStrength(string $password, int $minLength = 8): array
+    {
+        $errors = [];
+
+        if (strlen($password) < $minLength) {
+            $errors[] = "Password must be at least $minLength characters";
+        }
+
+        if (!preg_match('/[A-Z]/', $password)) {
+            $errors[] = "Password must contain at least one uppercase letter";
+        }
+
+        if (!preg_match('/[a-z]/', $password)) {
+            $errors[] = "Password must contain at least one lowercase letter";
+        }
+
+        if (!preg_match('/[0-9]/', $password)) {
+            $errors[] = "Password must contain at least one number";
+        }
+
+        if (!preg_match('/[^A-Za-z0-9]/', $password)) {
+            $errors[] = "Password must contain at least one special character";
+        }
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors
+        ];
     }
 
     /**

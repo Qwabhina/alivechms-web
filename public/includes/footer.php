@@ -1,20 +1,28 @@
 </main>
 
-<!-- jQuery (for DataTables) -->
+<!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- DataTables -->
-<script src="https://cdn.datatables.net/2.0.0/js/dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/2.0.0/js/dataTables.bootstrap5.min.js"></script>
+<!-- Grid.js -->
+<script src="https://cdn.jsdelivr.net/npm/gridjs/dist/gridjs.umd.js"></script>
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
+<!-- Choices.js -->
+<script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
+
 <!-- Flatpickr -->
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+
+<!-- FullCalendar -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+
+<!-- Dropzone -->
+<script src="https://cdn.jsdelivr.net/npm/dropzone@5.9.3/dist/min/dropzone.min.js"></script>
 
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.4/dist/sweetalert2.all.min.js"></script>
@@ -25,22 +33,33 @@
 <script src="../assets/js/core/api.js"></script>
 <script src="../assets/js/core/auth.js"></script>
 <script src="../assets/js/core/alerts.js"></script>
+<script src="../assets/js/core/components.js"></script>
 
 <!-- Layout Script -->
 <script>
-   // Initialize layout
    document.addEventListener('DOMContentLoaded', () => {
       // Check authentication
-      if (!Auth.requireAuth()) {
-         return;
-      }
+      if (!Auth.requireAuth()) return;
 
       // Load user info
       const user = Auth.getUser();
       if (user) {
-         document.getElementById('userName').textContent = Auth.getUserName();
-         document.getElementById('userRole').textContent = Auth.getUserRole();
-         document.getElementById('userAvatar').textContent = Auth.getUserInitials();
+         const userName = Auth.getUserName();
+         const userRole = Auth.getUserRole();
+         const userInitials = Auth.getUserInitials();
+
+         // Desktop header
+         document.getElementById('userName').textContent = userName;
+         document.getElementById('userRole').textContent = userRole;
+         document.getElementById('userAvatar').textContent = userInitials;
+
+         // Mobile sidebar
+         const sidebarUserName = document.getElementById('sidebarUserName');
+         const sidebarUserRole = document.getElementById('sidebarUserRole');
+         const sidebarUserAvatar = document.getElementById('sidebarUserAvatar');
+         if (sidebarUserName) sidebarUserName.textContent = userName;
+         if (sidebarUserRole) sidebarUserRole.textContent = userRole;
+         if (sidebarUserAvatar) sidebarUserAvatar.textContent = userInitials;
       }
 
       // Set active nav item
@@ -55,7 +74,7 @@
       // Hide menu items based on permissions
       document.querySelectorAll('[data-permission]').forEach(item => {
          const permission = item.getAttribute('data-permission');
-         if (!Auth.hasPermission(Config.PERMISSIONS[permission.toUpperCase()])) {
+         if (permission && !Auth.hasPermission(permission)) {
             item.style.display = 'none';
          }
       });
@@ -65,46 +84,40 @@
       const sidebar = document.getElementById('sidebar');
       const sidebarOverlay = document.getElementById('sidebarOverlay');
 
-      if (sidebarToggle) {
+      if (sidebarToggle && sidebar) {
          sidebarToggle.addEventListener('click', () => {
             sidebar.classList.toggle('show');
             sidebarOverlay.classList.toggle('show');
          });
 
-         sidebarOverlay.addEventListener('click', () => {
+         sidebarOverlay?.addEventListener('click', () => {
             sidebar.classList.remove('show');
             sidebarOverlay.classList.remove('show');
          });
       }
 
-      // Logout
-      document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+      // Logout handler
+      const handleLogout = async (e) => {
          e.preventDefault();
-
          const confirmed = await Alerts.confirm({
             title: 'Logout',
             text: 'Are you sure you want to logout?',
             icon: 'question',
             confirmButtonText: 'Yes, logout'
          });
-
          if (confirmed) {
-            Alerts.loading('Logging out...', 'Please wait');
+            Alerts.loading('Logging out...');
             await Auth.logout();
          }
-      });
+      };
 
-      // Global search (optional)
-      const globalSearch = document.getElementById('globalSearch');
-      if (globalSearch) {
-         globalSearch.addEventListener('input', Utils.debounce((e) => {
-            const query = e.target.value;
-            if (query.length >= 3) {
-               // Implement global search
-               console.log('Search:', query);
-            }
-         }, 500));
-      }
+      document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
+      document.getElementById('sidebarLogoutBtn')?.addEventListener('click', handleLogout);
+
+      // Sidebar notifications button
+      document.getElementById('sidebarNotificationsBtn')?.addEventListener('click', () => {
+         Alerts.info('No new notifications');
+      });
    });
 </script>
 </body>

@@ -24,32 +24,35 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Dashboard.php';
 
-// ---------------------------------------------------------------------
-// AUTHENTICATION & AUTHORIZATION
-// ---------------------------------------------------------------------
-$token = Auth::getBearerToken();
-if (!$token || Auth::verify($token) === false) {
-    Helpers::sendFeedback('Unauthorized: Valid token required', 401);
+class DashboardRoutes extends BaseRoute
+{
+    public static function handle(): void
+    {
+        // Get route variables from global scope
+        global $method, $path, $pathParts;
+
+        self::rateLimit(maxAttempts: 60, windowSeconds: 60);
+
+        match (true) {
+            // DASHBOARD OVERVIEW
+            $method === 'GET' && $path === 'dashboard/overview' => (function () {
+                self::authenticate();
+                self::authorize('view_dashboard');
+
+                try {
+                    $overview = Dashboard::getOverview();
+                    self::success($overview);
+                } catch (Exception $e) {
+                    Helpers::logError("Dashboard generation failed: " . $e->getMessage());
+                    self::error('Failed to generate dashboard', 500);
+                }
+            })(),
+
+            // FALLBACK
+            default => self::error('Dashboard endpoint not found', 404),
+        };
+    }
 }
 
-// ---------------------------------------------------------------------
-// ROUTE DISPATCHER
-// ---------------------------------------------------------------------
-match (true) {
-
-    // DASHBOARD OVERVIEW
-    $method === 'GET' && $path === 'dashboard/overview' => (function () {
-        Auth::checkPermission('view_dashboard');
-
-        try {
-            $overview = Dashboard::getOverview();
-            echo json_encode($overview);
-        } catch (Exception $e) {
-            Helpers::logError("Dashboard generation failed: " . $e->getMessage());
-            Helpers::sendFeedback('Failed to generate dashboard', 500);
-        }
-    })(),
-
-    // FALLBACK
-    default => Helpers::sendFeedback('Dashboard endpoint not found', 404),
-};
+// Dispatch
+DashboardRoutes::handle();

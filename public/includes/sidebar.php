@@ -1,6 +1,32 @@
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
    <nav class="sidebar-nav">
+      <!-- Mobile-only: User section -->
+      <div class="d-lg-none sidebar-mobile-header">
+         <div class="d-flex align-items-center mb-3">
+            <div class="user-avatar me-2" id="sidebarUserAvatar">?</div>
+            <div class="flex-grow-1 text-truncate">
+               <div class="fw-semibold text-white small" id="sidebarUserName">Loading...</div>
+               <small class="text-white-50" id="sidebarUserRole">User</small>
+            </div>
+         </div>
+         <div class="input-group input-group-sm mb-3">
+            <span class="input-group-text bg-transparent border-secondary text-white-50">
+               <i class="bi bi-search"></i>
+            </span>
+            <input type="text" class="form-control bg-transparent border-secondary text-white" placeholder="Search..." id="sidebarSearch">
+         </div>
+         <div class="d-flex gap-2 mb-3">
+            <button class="btn btn-sm btn-outline-light flex-grow-1" id="sidebarNotificationsBtn">
+               <i class="bi bi-bell me-1"></i>Notifications
+            </button>
+            <a href="profile.php" class="btn btn-sm btn-outline-light">
+               <i class="bi bi-person"></i>
+            </a>
+         </div>
+         <hr class="border-secondary my-2">
+      </div>
+
       <ul class="nav flex-column">
          <!-- Dashboard -->
          <li class="nav-item">
@@ -68,6 +94,14 @@
             <a class="nav-link" href="settings.php" data-page="settings">
                <i class="bi bi-gear me-2"></i>
                <span>Settings</span>
+            </a>
+         </li>
+
+         <!-- Mobile-only: Logout -->
+         <li class="nav-item d-lg-none">
+            <a class="nav-link text-danger" href="#" id="sidebarLogoutBtn">
+               <i class="bi bi-box-arrow-right me-2"></i>
+               <span>Logout</span>
             </a>
          </li>
       </ul>

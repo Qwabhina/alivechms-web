@@ -86,6 +86,14 @@ class API {
             }
             
             Config.log(`API Response: ${config.method || 'GET'} ${url}`, data);
+            
+            // Extract data from standard response format
+            // Backend returns: { status, message, data, timestamp }
+            // We return just the data for cleaner frontend code
+            if (data && typeof data === 'object' && 'data' in data && data.status === 'success') {
+                return data.data;
+            }
+            
             return data;
             
         } catch (error) {

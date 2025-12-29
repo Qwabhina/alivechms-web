@@ -19,138 +19,127 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Member.php';
 
-// ---------------------------------------------------------------------
-// PUBLIC ENDPOINT (Registration)
-// ---------------------------------------------------------------------
-if ($method === 'POST' && $path === 'member/create') {
-    $payload = json_decode(file_get_contents('php://input'), true);
-    if (!is_array($payload)) {
-        Helpers::sendError('Invalid JSON payload', 400);
-    }
+class MemberRoutes extends BaseRoute
+{
+    public static function handle(): void
+    {
+        // Get route variables from global scope
+        global $method, $path, $pathParts;
 
-    try {
-        $result = Member::register($payload);
-        echo json_encode($result);
-    } catch (Exception $e) {
-        Helpers::sendError($e->getMessage(), 400);
+        self::rateLimit(maxAttempts: 50, windowSeconds: 60);
+
+        match (true) {
+            // PUBLIC: CREATE/REGISTER
+            $method === 'POST' && $path === 'member/create' => (function () {
+                // No auth required for registration
+                self::authenticate(false);
+
+                $payload = self::getPayload([
+                    'first_name'     => 'required|max:50',
+                    'family_name'    => 'required|max:50',
+                    'email_address'  => 'required|email',
+                    'username'       => 'nullable|max:50',
+                    'password'       => 'nullable',
+                    'gender'         => 'in:Male,Female,Other|nullable',
+                    'family_id'      => 'nullable',
+                    'family_role'    => 'max:50|nullable',
+                    'branch_id'      => 'numeric|nullable'
+                ]);
+
+                try {
+                    $result = Member::register($payload);
+                    self::success($result, 'Member registered', 201);
+                } catch (Exception $e) {
+                    self::error($e->getMessage(), 400);
+                }
+            })(),
+
+            // UPLOAD PROFILE PICTURE
+            $method === 'POST' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'upload-photo' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('edit_members');
+
+                $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
+
+                try {
+                    $result = Member::uploadProfilePicture($memberId);
+                    self::success($result, 'Profile picture uploaded');
+                } catch (Exception $e) {
+                    self::error($e->getMessage(), 400);
+                }
+            })(),
+
+            // VIEW SINGLE MEMBER
+            $method === 'GET' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('view_members');
+
+                $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
+
+                $member = Member::get($memberId);
+                self::success($member);
+            })(),
+
+            // UPDATE MEMBER
+            $method === 'PUT' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('edit_members');
+
+                $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
+
+                $payload = self::getPayload([
+                    'first_name'     => 'max:50|nullable',
+                    'family_name'    => 'max:50|nullable',
+                    'email_address'  => 'email|nullable',
+                    'gender'         => 'in:Male,Female,Other|nullable',
+                    'family_id'      => 'nullable|numeric',
+                    'family_role'    => 'max:50|nullable',
+                    'branch_id'      => 'numeric|nullable',
+                    'membership_status' => 'in:Active,Inactive|nullable'
+                ]);
+
+                $result = Member::update($memberId, $payload);
+                self::success($result, 'Member updated');
+            })(),
+
+            // SOFT DELETE MEMBER
+            $method === 'DELETE' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('delete_members');
+
+                $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
+
+                $result = Member::delete($memberId);
+                self::success($result, 'Member deleted');
+            })(),
+
+            // LIST ALL MEMBERS (PAGINATED)
+            $method === 'GET' && $path === 'member/all' => (function () {
+                self::authenticate();
+                self::authorize('view_members');
+
+                [$page, $limit] = self::getPagination(25, 100);
+
+                $filters = self::getFilters(['status', 'family_id', 'date_from', 'date_to', 'search']);
+
+                $result = Member::getAll($page, $limit, $filters);
+                self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+            })(),
+
+            // RECENT MEMBERS (LAST 10)
+            $method === 'GET' && $path === 'member/recent' => (function () {
+                self::authenticate();
+                self::authorize('view_members');
+
+                $members = Member::getRecent();
+                self::success(['data' => $members]);
+            })(),
+
+            // FALLBACK
+            default => self::error('Member endpoint not found', 404),
+        };
     }
-    exit;
 }
 
-// ---------------------------------------------------------------------
-// AUTHENTICATION & AUTHORIZATION (All other endpoints)
-// ---------------------------------------------------------------------
-$token = Auth::getBearerToken();
-if (!$token || Auth::verify($token) === false) Helpers::sendError('Unauthorized: Valid token required', 401);
-
-// ---------------------------------------------------------------------
-// ROUTE DISPATCHER (Authenticated)
-// ---------------------------------------------------------------------
-match (true) {
-
-    // =================================================================
-    // UPDATE MEMBER
-    // =================================================================
-    $method === 'PUT' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
-        Auth::checkPermission('edit_members');
-
-        $memberId = $pathParts[2];
-        if (!is_numeric($memberId)) {
-            Helpers::sendError('Valid Member ID required', 400);
-        }
-
-        $payload = json_decode(file_get_contents('php://input'), true);
-        if (!is_array($payload)) {
-            Helpers::sendError('Invalid JSON payload', 400);
-        }
-
-        $result = Member::update((int)$memberId, $payload);
-        echo json_encode($result);
-    })(),
-
-    // =================================================================
-    // SOFT DELETE MEMBER
-    // =================================================================
-    $method === 'DELETE' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
-        Auth::checkPermission('delete_members');
-
-        $memberId = $pathParts[2];
-        if (!is_numeric($memberId)) {
-            Helpers::sendError('Valid Member ID required', 400);
-        }
-
-        $result = Member::delete((int)$memberId);
-        echo json_encode($result);
-    })(),
-
-    // =================================================================
-    // VIEW SINGLE MEMBER
-    // =================================================================
-    $method === 'GET' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
-        Auth::checkPermission('view_members');
-
-        $memberId = $pathParts[2];
-        if (!is_numeric($memberId)) {
-            Helpers::sendError('Valid Member ID required', 400);
-        }
-
-        try {
-            $member = Member::get((int)$memberId);
-            echo json_encode($member);
-        } catch (Exception $e) {
-            Helpers::logError("Member retrieval error: " . $e->getMessage());
-            Helpers::sendError('Member not found', 404);
-        }
-    })(),
-
-    // =================================================================
-    // LIST ALL MEMBERS (Paginated)
-    // =================================================================
-    $method === 'GET' && $path === 'member/all' => (function () {
-        Auth::checkPermission('view_members');
-
-        $page  = max(1, (int)($_GET['page'] ?? 1));
-        $limit = max(1, min(100, (int)($_GET['limit'] ?? 10)));
-
-        $result = Member::getAll($page, $limit);
-        echo json_encode($result);
-    })(),
-
-    // =================================================================
-    // RECENT MEMBERS (Dashboard Widget)
-    // =================================================================
-    $method === 'GET' && $path === 'member/recent' => (function () use ($token) {
-        Auth::checkPermission('view_members');
-
-        $orm = new ORM();
-        $members = $orm->selectWithJoin(
-            baseTable: 'churchmember c',
-            joins: [
-                ['table' => 'member_phone p',       'on' => 'c.MbrID = p.MbrID', 'type' => 'LEFT'],
-                ['table' => 'userauthentication u', 'on' => 'c.MbrID = u.MbrID', 'type' => 'LEFT']
-            ],
-            fields: [
-                'c.MbrID',
-                'c.MbrFirstName',
-                'c.MbrFamilyName',
-                'c.MbrEmailAddress',
-                'c.MbrRegistrationDate',
-                "GROUP_CONCAT(DISTINCT p.PhoneNumber) AS PhoneNumbers",
-                'u.Username',
-                'u.LastLoginAt'
-            ],
-            conditions: ['c.MbrMembershipStatus' => ':status', 'c.Deleted' => 0],
-            params: [':status' => 'Active'],
-            groupBy: ['c.MbrID'],
-            orderBy: ['c.MbrRegistrationDate' => 'DESC'],
-            limit: 10
-        );
-
-        echo json_encode(['data' => $members]);
-    })(),
-
-    // =================================================================
-    // FALLBACK
-    // =================================================================
-    default => Helpers::sendError('Member endpoint not found', 404),
-};
+// Dispatch
+MemberRoutes::handle();

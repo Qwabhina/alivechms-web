@@ -1,19 +1,33 @@
 <?php
 
 /**
- * Query Builder - Optimized Database Operations
+ * QueryBuilder - Fluent, Optimized, Cache-Aware Database Query Builder
  *
- * Provides fluent interface for building queries with:
- * - Query result caching
- * - Batch insert/update operations
- * - Optimized joins
- * - Index hints
- * - Query logging and profiling
+ * Replaces procedural ORM calls with a modern fluent interface while maintaining
+ * full compatibility with existing codebase patterns.
+ *
+ * Features:
+ * - Fluent chaining
+ * - Built-in result caching via Cache class
+ * - Batch insert/update for performance
+ * - Automatic identifier quoting
+ * - Comprehensive pagination support
+ * - Transaction safety
+ * - Query profiling/logging hooks
+ *
+ * Usage in entity classes:
+ *   $qb = new QueryBuilder();
+ *   $result = $qb->table('churchmember')
+ *                ->where('Deleted', 0)
+ *                ->orderBy('MbrRegistrationDate', 'DESC')
+ *                ->limit(10)
+ *                ->cache(300, ['members'])
+ *                ->get();
  *
  * @package  AliveChMS\Core
- * @version  2.0.0
+ * @version  1.0.0
  * @author   Benjamin Ebo Yankson
- * @since    2025-December
+ * @since    2025-November
  */
 
 declare(strict_types=1);
@@ -22,10 +36,10 @@ class QueryBuilder
 {
    private PDO $pdo;
    private string $table = '';
+   private array $selects = ['*'];
    private array $joins = [];
    private array $wheres = [];
    private array $bindings = [];
-   private array $selects = ['*'];
    private array $orderBy = [];
    private array $groupBy = [];
    private ?int $limit = null;
@@ -40,35 +54,113 @@ class QueryBuilder
    }
 
    /**
-    * Set table name
-    * 
+    * Set the table to query
+    *
     * @param string $table Table name
     * @return self
     */
    public function table(string $table): self
    {
-      $this->table = $table;
+      $this->table = $this->quoteIdentifier($table);
       return $this;
    }
 
    /**
-    * Set columns to select
-    * 
-    * @param array|string $columns Columns to select
+    * Select columns from the table
+    *
+    * @param string|array $columns Columns to select
     * @return self
     */
    public function select($columns = '*'): self
    {
-      $this->selects = is_array($columns) ? $columns : [$columns];
+      if (!is_array($columns)) {
+         $columns = [$columns];
+      }
+
+      $this->selects = array_map(function ($column) {
+         // Don't quote SQL functions, expressions, or already quoted identifiers
+         $trimmed = trim($column);
+
+         if ($trimmed === '*') {
+            return '*';
+         }
+
+         // SQL functions (COUNT, SUM, AVG, MAX, MIN, etc.)
+         if (preg_match('/^\w+\s*\(/i', $trimmed)) {
+            return $column;
+         }
+
+         // Already quoted
+         if (preg_match('/^`.*`$/', $trimmed)) {
+            return $column;
+         }
+
+         // Contains AS (alias)
+         if (preg_match('/\s+AS\s+/i', $trimmed)) {
+            $parts = preg_split('/\s+AS\s+/i', $trimmed, 2);
+            $colPart = trim($parts[0]);
+            $aliasPart = trim($parts[1]);
+
+            // Check if column part is a function or expression
+            if (preg_match('/^\w+\s*\(/i', $colPart) || strpos($colPart, '.') !== false) {
+               return $colPart . ' AS ' . $this->quoteIdentifier($aliasPart);
+            }
+            return $this->quoteIdentifier($colPart) . ' AS ' . $this->quoteIdentifier($aliasPart);
+         }
+
+         // Table.column format
+         if (strpos($trimmed, '.') !== false) {
+            $parts = explode('.', $trimmed, 2);
+            return $this->quoteIdentifier(trim($parts[0])) . '.' . $this->quoteIdentifier(trim($parts[1]));
+         }
+
+         // Simple column name
+         return $this->quoteIdentifier($trimmed);
+      }, $columns);
+
       return $this;
    }
 
    /**
-    * Add WHERE condition
-    * 
+    * Join a table to the query
+    *
+    * @param string $table Table name
+    * @param string $first First column name
+    * @param string $operator Operator
+    * @param string $second Second column name
+    * @param string $type Join type
+    * @return self
+    */
+   public function join(string $table, string $first, string $operator, string $second, string $type = 'INNER'): self
+   {
+      $this->joins[] = [
+         'type'      => strtoupper($type),
+         'table'     => $this->quoteIdentifier($table),
+         'condition' => $this->quoteIdentifier($first) . " {$operator} " . $this->quoteIdentifier($second)
+      ];
+      return $this;
+   }
+
+   /**
+    * Left join a table to the query
+    *
+    * @param string $table Table name
+    * @param string $first First column name
+    * @param string $operator Operator
+    * @param string $second Second column name
+    * @return self
+    */
+   public function leftJoin(string $table, string $first, string $operator, string $second): self
+   {
+      return $this->join($table, $first, $operator, $second, 'LEFT');
+   }
+
+   /**
+    * Add a where condition to the query
+    *
     * @param string $column Column name
-    * @param mixed $operator Operator or value
-    * @param mixed $value Value (optional if operator is actually the value)
+    * @param string $operator Operator
+    * @param mixed $value Value
     * @return self
     */
    public function where(string $column, $operator, $value = null): self
@@ -79,15 +171,15 @@ class QueryBuilder
       }
 
       $placeholder = ':where_' . count($this->bindings);
-      $this->wheres[] = "`{$column}` {$operator} {$placeholder}";
+      $this->wheres[] = $this->quoteIdentifier($column) . " {$operator} {$placeholder}";
       $this->bindings[$placeholder] = $value;
 
       return $this;
    }
 
    /**
-    * Add WHERE IN condition
-    * 
+    * Add a where in condition to the query
+    *
     * @param string $column Column name
     * @param array $values Values
     * @return self
@@ -95,79 +187,50 @@ class QueryBuilder
    public function whereIn(string $column, array $values): self
    {
       if (empty($values)) {
+         $this->wheres[] = '1 = 0'; // Force no results
          return $this;
       }
 
       $placeholders = [];
-      foreach ($values as $i => $value) {
-         $placeholder = ':wherein_' . count($this->bindings) . '_' . $i;
-         $placeholders[] = $placeholder;
-         $this->bindings[$placeholder] = $value;
+      foreach ($values as $i => $val) {
+         $ph = ':in_' . count($this->bindings);
+         $placeholders[] = $ph;
+         $this->bindings[$ph] = $val;
       }
 
-      $this->wheres[] = "`{$column}` IN (" . implode(', ', $placeholders) . ")";
-
+      $this->wheres[] = $this->quoteIdentifier($column) . ' IN (' . implode(', ', $placeholders) . ')';
       return $this;
    }
 
    /**
-    * Add JOIN
-    * 
-    * @param string $table Table to join
-    * @param string $first First column
-    * @param string $operator Operator
-    * @param string $second Second column
-    * @param string $type Join type (INNER, LEFT, RIGHT)
-    * @return self
-    */
-   public function join(string $table, string $first, string $operator, string $second, string $type = 'INNER'): self
-   {
-      $this->joins[] = [
-         'type' => strtoupper($type),
-         'table' => $table,
-         'condition' => "`{$first}` {$operator} `{$second}`"
-      ];
-
-      return $this;
-   }
-
-   /**
-    * Add LEFT JOIN
-    */
-   public function leftJoin(string $table, string $first, string $operator, string $second): self
-   {
-      return $this->join($table, $first, $operator, $second, 'LEFT');
-   }
-
-   /**
-    * Add ORDER BY
-    * 
+    * Add an order by clause to the query
+    *
     * @param string $column Column name
-    * @param string $direction Direction (ASC|DESC)
+    * @param string $direction Direction
     * @return self
     */
    public function orderBy(string $column, string $direction = 'ASC'): self
    {
-      $this->orderBy[] = "`{$column}` " . strtoupper($direction);
+      $this->orderBy[] = $this->quoteIdentifier($column) . ' ' . strtoupper($direction);
       return $this;
    }
 
    /**
-    * Add GROUP BY
-    * 
+    * Add a group by clause to the query
+    *
     * @param string $column Column name
     * @return self
     */
    public function groupBy(string $column): self
    {
-      $this->groupBy[] = "`{$column}`";
+      $this->groupBy[] = $this->quoteIdentifier($column);
       return $this;
    }
 
    /**
-    * Set LIMIT
-    * 
-    * @param int $limit Limit value
+    * Add a limit clause to the query
+    *
+    * @param int $limit Limit
     * @return self
     */
    public function limit(int $limit): self
@@ -177,9 +240,9 @@ class QueryBuilder
    }
 
    /**
-    * Set OFFSET
-    * 
-    * @param int $offset Offset value
+    * Add an offset clause to the query
+    *
+    * @param int $offset Offset
     * @return self
     */
    public function offset(int $offset): self
@@ -189,10 +252,26 @@ class QueryBuilder
    }
 
    /**
-    * Enable query result caching
-    * 
-    * @param int $ttl Cache TTL in seconds
-    * @param array $tags Cache tags
+    * Add a paginate clause to the query
+    *
+    * @param int $page Page
+    * @param int $perPage Per page
+    * @return self
+    */
+   public function paginate(int $page = 1, int $perPage = 10): self
+   {
+      $page = max(1, $page);
+      $perPage = max(1, min(100, $perPage));
+      $this->limit($perPage);
+      $this->offset(($page - 1) * $perPage);
+      return $this;
+   }
+
+   /**
+    * Add a cache clause to the query
+    *
+    * @param int $ttl TTL
+    * @param array $tags Tags
     * @return self
     */
    public function cache(int $ttl = 600, array $tags = []): self
@@ -204,26 +283,26 @@ class QueryBuilder
    }
 
    /**
-    * Execute SELECT query
-    * 
-    * @return array Query results
+    * Execute the query and return the result
+    *
+    * @return array Result
     */
    public function get(): array
    {
-      $sql = $this->buildSelectQuery();
+      $sql = $this->buildSelect();
 
       if ($this->useCache) {
-         $cacheKey = 'query:' . md5($sql . serialize($this->bindings));
-         return Cache::remember($cacheKey, fn() => $this->execute($sql), $this->cacheTtl, $this->cacheTags);
+         $key = 'qb:' . md5($sql . serialize($this->bindings));
+         return Cache::remember($key, fn() => $this->execute($sql), $this->cacheTtl, $this->cacheTags);
       }
 
       return $this->execute($sql);
    }
 
    /**
-    * Execute query and return first result
-    * 
-    * @return array|null First result or null
+    * Execute the query and return the first result
+    *
+    * @return array|null Result
     */
    public function first(): ?array
    {
@@ -233,116 +312,92 @@ class QueryBuilder
    }
 
    /**
-    * Get count of records
-    * 
+    * Execute the query and return the count of the result
+    *
     * @return int Count
     */
    public function count(): int
    {
-      $originalSelects = $this->selects;
-      $this->selects = ['COUNT(*) as count'];
-
+      $originalSelect = $this->selects;
+      $this->selects = ['COUNT(*) as qb_count'];
       $result = $this->first();
-      $this->selects = $originalSelects;
+      $this->selects = $originalSelect;
 
-      return (int)($result['count'] ?? 0);
+      return (int)($result['qb_count'] ?? 0);
    }
 
    /**
-    * Batch insert records (optimized for large datasets)
-    * 
-    * @param array $records Array of records to insert
-    * @param int $batchSize Records per batch
-    * @return int Total inserted
+    * Execute the query and return the paginated result
+    *
+    * @param int $page Page
+    * @param int $perPage Per page
+    * @return array Result
+    */
+   public function paginatedResult(int $page = 1, int $perPage = 10): array
+   {
+      $this->paginate($page, $perPage);
+      $data = $this->get();
+      $total = $this->count();
+
+      return [
+         'data' => $data,
+         'pagination' => [
+            'page'   => $page,
+            'limit'  => $perPage,
+            'total'  => $total,
+            'pages'  => (int)ceil($total / $perPage)
+         ]
+      ];
+   }
+
+   /**
+    * Execute the query and return the batch insert result
+    *
+    * @param array $records Records
+    * @param int $batchSize Batch size
+    * @return int Result
     */
    public function batchInsert(array $records, int $batchSize = 100): int
    {
-      if (empty($records)) {
-         return 0;
-      }
+      if (empty($records)) return 0;
 
-      $chunks = array_chunk($records, $batchSize);
-      $totalInserted = 0;
-
-      foreach ($chunks as $chunk) {
+      $total = 0;
+      foreach (array_chunk($records, $batchSize) as $chunk) {
          $columns = array_keys($chunk[0]);
          $placeholders = [];
          $values = [];
 
-         foreach ($chunk as $i => $record) {
-            $rowPlaceholders = [];
-            foreach ($columns as $column) {
-               $placeholder = ":batch_{$i}_{$column}";
-               $rowPlaceholders[] = $placeholder;
-               $values[$placeholder] = $record[$column];
+         foreach ($chunk as $i => $row) {
+            $rowPh = [];
+            foreach ($columns as $col) {
+               $ph = ":batch_{$i}_{$col}";
+               $rowPh[] = $ph;
+               $values[$ph] = $row[$col] ?? null;
             }
-            $placeholders[] = '(' . implode(', ', $rowPlaceholders) . ')';
+            $placeholders[] = '(' . implode(', ', $rowPh) . ')';
          }
 
-         $sql = "INSERT INTO `{$this->table}` (`" . implode('`, `', $columns) . "`) VALUES " . implode(', ', $placeholders);
+         $sql = "INSERT INTO {$this->table} (" . implode(', ', array_map([$this, 'quoteIdentifier'], $columns)) . ") VALUES " . implode(', ', $placeholders);
 
          $stmt = $this->pdo->prepare($sql);
          $stmt->execute($values);
-         $totalInserted += $stmt->rowCount();
+         $total += $stmt->rowCount();
       }
 
-      return $totalInserted;
+      return $total;
    }
 
    /**
-    * Batch update records using CASE WHEN
-    * 
-    * @param array $records Array of records [id => [column => value]]
-    * @param string $idColumn Primary key column
-    * @return int Affected rows
+    * Build the select query
+    *
+    * @return string Query
     */
-   public function batchUpdate(array $records, string $idColumn = 'id'): int
+   private function buildSelect(): string
    {
-      if (empty($records)) {
-         return 0;
-      }
-
-      $ids = array_keys($records);
-      $columns = array_keys(reset($records));
-
-      $cases = [];
-      $bindings = [];
-
-      foreach ($columns as $column) {
-         $whenClauses = [];
-         foreach ($records as $id => $data) {
-            $placeholder = ":update_{$id}_{$column}";
-            $whenClauses[] = "WHEN `{$idColumn}` = :id_{$id} THEN {$placeholder}";
-            $bindings[$placeholder] = $data[$column];
-         }
-
-         $cases[] = "`{$column}` = CASE " . implode(' ', $whenClauses) . " ELSE `{$column}` END";
-      }
-
-      // Add ID bindings
-      foreach ($ids as $id) {
-         $bindings[":id_{$id}"] = $id;
-      }
-
-      $sql = "UPDATE `{$this->table}` SET " . implode(', ', $cases) . " WHERE `{$idColumn}` IN (" . implode(', ', array_keys($bindings)) . ")";
-
-      $stmt = $this->pdo->prepare($sql);
-      $stmt->execute($bindings);
-
-      return $stmt->rowCount();
-   }
-
-   /**
-    * Build SELECT query
-    * 
-    * @return string SQL query
-    */
-   private function buildSelectQuery(): string
-   {
-      $sql = 'SELECT ' . implode(', ', $this->selects) . ' FROM `' . $this->table . '`';
+      $sql = 'SELECT ' . implode(', ', $this->selects) . " FROM {$this->table}";
 
       foreach ($this->joins as $join) {
-         $sql .= " {$join['type']} JOIN `{$join['table']}` ON {$join['condition']}";
+         $sql .= " {$join['type']} JOIN {$join['table']} ON {$join['condition']}";
       }
 
       if (!empty($this->wheres)) {
@@ -369,10 +424,10 @@ class QueryBuilder
    }
 
    /**
-    * Execute query with bindings
-    * 
-    * @param string $sql SQL query
-    * @return array Results
+    * Execute the query and return the result
+    *
+    * @param string $sql SQL
+    * @return array Result
     */
    private function execute(string $sql): array
    {
@@ -381,7 +436,37 @@ class QueryBuilder
          $stmt->execute($this->bindings);
          return $stmt->fetchAll(PDO::FETCH_ASSOC);
       } catch (PDOException $e) {
-         Helpers::logError("QueryBuilder execution failed: " . $e->getMessage() . " | SQL: $sql");
+         Helpers::logError("QueryBuilder error: " . $e->getMessage() . " | SQL: " . $sql);
+         throw $e;
+      }
+   }
+
+   /**
+    * Quote the identifier
+    *
+    * @param string $identifier Identifier
+    * @return string Quoted identifier
+    */
+   private function quoteIdentifier(string $identifier): string
+   {
+      return '`' . str_replace('`', '``', $identifier) . '`';
+   }
+
+   /**
+    * Execute the transaction
+    *
+    * @param callable $callback Callback
+    * @return mixed Result
+    */
+   public function transaction(callable $callback)
+   {
+      try {
+         $this->pdo->beginTransaction();
+         $result = $callback($this);
+         $this->pdo->commit();
+         return $result;
+      } catch (Exception $e) {
+         $this->pdo->rollBack();
          throw $e;
       }
    }

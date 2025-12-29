@@ -23,138 +23,113 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Contribution.php';
 
-// ---------------------------------------------------------------------
-// AUTHENTICATION & AUTHORIZATION
-// ---------------------------------------------------------------------
-$token = Auth::getBearerToken();
-if (!$token || Auth::verify($token) === false) {
-    Helpers::sendFeedback('Unauthorized: Valid token required', 401);
+class ContributionRoutes extends BaseRoute
+{
+    public static function handle(): void
+    {
+        // Get route variables from global scope
+        global $method, $path, $pathParts;
+
+        self::rateLimit(maxAttempts: 60, windowSeconds: 60);
+
+        match (true) {
+            // CREATE CONTRIBUTION
+            $method === 'POST' && $path === 'contribution/create' => (function () {
+                self::authenticate();
+                self::authorize('create_contribution');
+
+                $payload = self::getPayload();
+
+                $result = Contribution::create($payload);
+                self::success($result, 'Contribution created', 201);
+            })(),
+
+            // UPDATE CONTRIBUTION
+            $method === 'PUT' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('edit_contribution');
+
+                $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
+                $payload = self::getPayload();
+
+                $result = Contribution::update($contributionId, $payload);
+                self::success($result, 'Contribution updated');
+            })(),
+
+            // SOFT DELETE CONTRIBUTION
+            $method === 'DELETE' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('delete_contribution');
+
+                $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
+
+                $result = Contribution::delete($contributionId);
+                self::success($result, 'Contribution deleted');
+            })(),
+
+            // RESTORE SOFT-DELETED CONTRIBUTION
+            $method === 'POST' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'restore' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('delete_contribution');
+
+                $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
+
+                $result = Contribution::restore($contributionId);
+                self::success($result, 'Contribution restored');
+            })(),
+
+            // VIEW SINGLE CONTRIBUTION
+            $method === 'GET' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
+
+                $result = Contribution::get($contributionId);
+                self::success($result);
+            })(),
+
+            // LIST ALL CONTRIBUTIONS (Paginated + Filtered)
+            $method === 'GET' && $path === 'contribution/all' => (function () {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                [$page, $limit] = self::getPagination(10, 100);
+
+                $filters = self::getFilters([
+                    'contribution_type_id',
+                    'member_id',
+                    'fiscal_year_id',
+                    'start_date',
+                    'end_date'
+                ]);
+
+                $result = Contribution::getAll($page, $limit, $filters);
+                self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+            })(),
+
+            // TOTAL CONTRIBUTIONS (Reporting)
+            $method === 'GET' && $path === 'contribution/total' => (function () {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $filters = self::getFilters([
+                    'contribution_type_id',
+                    'member_id',
+                    'fiscal_year_id',
+                    'start_date',
+                    'end_date'
+                ]);
+
+                $result = Contribution::getTotal($filters);
+                self::success($result);
+            })(),
+
+            // FALLBACK
+            default => self::error('Contribution endpoint not found', 404),
+        };
+    }
 }
 
-// ---------------------------------------------------------------------
-// ROUTE DISPATCHER
-// ---------------------------------------------------------------------
-match (true) {
-
-    // CREATE CONTRIBUTION
-    $method === 'POST' && $path === 'contribution/create' => (function () use ($token) {
-        Auth::checkPermission($token, 'create_contribution');
-
-        $payload = json_decode(file_get_contents('php://input'), true);
-        if (!is_array($payload)) {
-            Helpers::sendFeedback('Invalid JSON payload', 400);
-        }
-
-        $result = Contribution::create($payload);
-        echo json_encode($result);
-    })(),
-
-    // UPDATE CONTRIBUTION
-    $method === 'PUT' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($token, $pathParts) {
-        Auth::checkPermission($token, 'edit_contribution');
-
-        $contributionId = $pathParts[2];
-        if (!is_numeric($contributionId)) {
-            Helpers::sendFeedback('Valid Contribution ID required', 400);
-        }
-
-        $payload = json_decode(file_get_contents('php://input'), true);
-        if (!is_array($payload)) {
-            Helpers::sendFeedback('Invalid JSON payload', 400);
-        }
-
-        $result = Contribution::update((int)$contributionId, $payload);
-        echo json_encode($result);
-    })(),
-
-    // SOFT DELETE CONTRIBUTION
-    $method === 'DELETE' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($token, $pathParts) {
-        Auth::checkPermission($token, 'delete_contribution');
-
-        $contributionId = $pathParts[2];
-        if (!is_numeric($contributionId)) {
-            Helpers::sendFeedback('Valid Contribution ID required', 400);
-        }
-
-        $result = Contribution::delete((int)$contributionId);
-        echo json_encode($result);
-    })(),
-
-    // RESTORE SOFT-DELETED CONTRIBUTION
-    $method === 'POST' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'restore' && isset($pathParts[2]) => (function () use ($token, $pathParts) {
-        Auth::checkPermission($token, 'delete_contribution');
-
-        $contributionId = $pathParts[2];
-        if (!is_numeric($contributionId)) {
-            Helpers::sendFeedback('Valid Contribution ID required', 400);
-        }
-
-        $result = Contribution::restore((int)$contributionId);
-        echo json_encode($result);
-    })(),
-
-    // VIEW SINGLE CONTRIBUTION
-    $method === 'GET' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($token, $pathParts) {
-        Auth::checkPermission($token, 'view_contribution');
-
-        $contributionId = $pathParts[2];
-        if (!is_numeric($contributionId)) {
-            Helpers::sendFeedback('Valid Contribution ID required', 400);
-        }
-
-        $result = Contribution::get((int)$contributionId);
-        echo json_encode($result);
-    })(),
-
-    // LIST ALL CONTRIBUTIONS (Paginated + Filtered)
-    $method === 'GET' && $path === 'contribution/all' => (function () use ($token) {
-        Auth::checkPermission($token, 'view_contribution');
-
-        $page  = max(1, (int)($_GET['page'] ?? 1));
-        $limit = max(1, min(100, (int)($_GET['limit'] ?? 10)));
-
-        $filters = [];
-        foreach (
-            [
-                'contribution_type_id',
-                'member_id',
-                'fiscal_year_id',
-                'start_date',
-                'end_date'
-            ] as $key
-        ) {
-            if (isset($_GET[$key]) && $_GET[$key] !== '') {
-                $filters[$key] = $_GET[$key];
-            }
-        }
-
-        $result = Contribution::getAll($page, $limit, $filters);
-        echo json_encode($result);
-    })(),
-
-    // TOTAL CONTRIBUTIONS (Reporting)
-    $method === 'GET' && $path === 'contribution/total' => (function () use ($token) {
-        Auth::checkPermission($token, 'view_contribution');
-
-        $filters = [];
-        foreach (
-            [
-                'contribution_type_id',
-                'member_id',
-                'fiscal_year_id',
-                'start_date',
-                'end_date'
-            ] as $key
-        ) {
-            if (isset($_GET[$key]) && $_GET[$key] !== '') {
-                $filters[$key] = $_GET[$key];
-            }
-        }
-
-        $result = Contribution::getTotal($filters);
-        echo json_encode($result);
-    })(),
-
-    // FALLBACK
-    default => Helpers::sendFeedback('Contribution endpoint not found', 404),
-};
+// Dispatch
+ContributionRoutes::handle();
