@@ -276,6 +276,9 @@ require_once '../includes/sidebar.php';
    document.addEventListener('DOMContentLoaded', async () => {
       if (!Auth.requireAuth()) return;
 
+      // Wait for settings to load
+      await Config.waitForSettings();
+
       // Set currency symbol in form label
       const currencySymbol = Config.getSetting('currency_symbol', 'GH₵');
       document.getElementById('currencySymbol').textContent = currencySymbol;
@@ -300,7 +303,7 @@ require_once '../includes/sidebar.php';
          resizableColumns: false,
          pagination: true,
          paginationMode: "remote",
-         paginationSize: 25,
+         paginationSize: Config.getSetting('items_per_page', 10),
          paginationSizeSelector: [10, 25, 50, 100],
          ajaxURL: `${Config.API_BASE_URL}/contribution/all`,
          ajaxConfig: {

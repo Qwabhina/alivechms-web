@@ -12,6 +12,10 @@
 
    document.addEventListener('DOMContentLoaded', async () => {
       if (!Auth.requireAuth()) return;
+      
+      // Wait for settings to load before initializing
+      await Config.waitForSettings();
+      
       await initPage();
    });
 
@@ -115,7 +119,7 @@
          resizableColumns: false,
          pagination: true,
          paginationMode: "remote",
-         paginationSize: 25,
+         paginationSize: Config.getSetting('items_per_page', 10),
          paginationSizeSelector: [10, 25, 50, 100],
          ajaxURL: `${Config.API_BASE_URL}/member/all`,
          ajaxConfig: {
@@ -132,9 +136,7 @@
                   photo: m.MbrProfilePicture,
                   name: `${m.MbrFirstName} ${m.MbrFamilyName}`,
                   gender: m.MbrGender || '-',
-                  phone: m.PrimaryPhone || '-',
-                  email: m.MbrEmailAddress || '-',
-                  status: m.MbrMembershipStatus || 'Active',
+                  registrationDate: m.MbrRegistrationDate || '-',
                   id: m.MbrID
                }))
             };
@@ -150,7 +152,7 @@
             {
                title: "Photo",
                field: "photo",
-               width: 60,
+               width: 70,
                headerSort: false,
                download: false,
                responsive: 0,
@@ -164,22 +166,9 @@
                   return `<div class="member-photo-placeholder">${initials}</div>`;
                }
             },
-            {title: "Name", field: "name", widthGrow: 2, responsive: 0, download: true},
+            {title: "Full Name", field: "name", widthGrow: 3, responsive: 0, download: true},
             {title: "Gender", field: "gender", widthGrow: 1, responsive: 2, download: true},
-            {title: "Phone", field: "phone", widthGrow: 1.5, responsive: 1, download: true},
-            {title: "Email", field: "email", widthGrow: 2, responsive: 1, download: true},
-            {
-               title: "Status",
-               field: "status",
-               widthGrow: 1,
-               responsive: 2,
-               download: false,
-               formatter: function(cell) {
-                  const status = cell.getValue();
-                  const cls = status === 'Active' ? 'success' : 'secondary';
-                  return `<span class="badge bg-${cls}">${status}</span>`;
-               }
-            },
+            {title: "Registration Date", field: "registrationDate", widthGrow: 2, responsive: 1, download: true},
             {
                title: "Actions",
                field: "id",
@@ -673,8 +662,6 @@ async function saveMember() {
 
          const statusClass = member.MbrMembershipStatus === 'Active' ? 'success' : 'secondary';
          const phones = member.PhoneNumbers?.join(', ') || member.PrimaryPhone || '-';
-         console.log('Phone numbers for display:', phones);
-         console.log('Address for display:', member.MbrResidentialAddress);
 
          // Calculate age if DOB exists
          let ageDisplay = '-';
@@ -731,30 +718,47 @@ async function saveMember() {
          <!-- Tabs -->
          <ul class="nav nav-tabs px-3 pt-3 border-0" role="tablist" style="background:#f8f9fa;">
             <li class="nav-item">
-               <button class="nav-link active fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-personal">
-                  <i class="bi bi-person me-1"></i>Personal
+               <button class="nav-link active fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-bio">
+                  <i class="bi bi-person-badge me-1"></i>Bio Data
                </button>
             </li>
             <li class="nav-item">
                <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-contact">
-                  <i class="bi bi-telephone me-1"></i>Contact
+                  <i class="bi bi-telephone me-1"></i>Contact Info
                </button>
             </li>
             <li class="nav-item">
-               <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-church">
-                  <i class="bi bi-building me-1"></i>Church Info
+               <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-family">
+                  <i class="bi bi-house-heart me-1"></i>Family Data
+               </button>
+            </li>
+            <li class="nav-item">
+               <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-milestones">
+                  <i class="bi bi-trophy me-1"></i>Milestones
                </button>
             </li>
          </ul>
          
          <div class="tab-content p-4">
-            <!-- Personal Tab -->
-            <div class="tab-pane fade show active" id="tab-personal">
+            <!-- Bio Data Tab -->
+            <div class="tab-pane fade show active" id="tab-bio">
                <div class="row g-4">
                   <div class="col-md-6">
                      <div class="d-flex align-items-start">
                         <div class="bg-primary bg-opacity-10 rounded p-2 me-3">
-                           <i class="bi bi-gender-ambiguous text-primary fs-5"></i>
+                           <i class="bi bi-person text-primary fs-5"></i>
+                        </div>
+                        <div>
+                           <div class="text-muted small mb-1">Full Name</div>
+                           <div class="fw-semibold">${member.MbrFirstName} ${member.MbrFamilyName}</div>
+                           ${member.MbrOtherNames ? `<small class="text-muted">${member.MbrOtherNames}</small>` : ''}
+                        </div>
+                     </div>
+                  </div>
+                  <div class="col-md-6">
+                     <div class="d-flex align-items-start">
+                        <div class="bg-info bg-opacity-10 rounded p-2 me-3">
+                           <i class="bi bi-gender-ambiguous text-info fs-5"></i>
                         </div>
                         <div>
                            <div class="text-muted small mb-1">Gender</div>
@@ -764,8 +768,8 @@ async function saveMember() {
                   </div>
                   <div class="col-md-6">
                      <div class="d-flex align-items-start">
-                        <div class="bg-info bg-opacity-10 rounded p-2 me-3">
-                           <i class="bi bi-cake2 text-info fs-5"></i>
+                        <div class="bg-success bg-opacity-10 rounded p-2 me-3">
+                           <i class="bi bi-cake2 text-success fs-5"></i>
                         </div>
                         <div>
                            <div class="text-muted small mb-1">Date of Birth</div>
@@ -776,8 +780,8 @@ async function saveMember() {
                   </div>
                   <div class="col-md-6">
                      <div class="d-flex align-items-start">
-                        <div class="bg-success bg-opacity-10 rounded p-2 me-3">
-                           <i class="bi bi-heart text-success fs-5"></i>
+                        <div class="bg-warning bg-opacity-10 rounded p-2 me-3">
+                           <i class="bi bi-heart text-warning fs-5"></i>
                         </div>
                         <div>
                            <div class="text-muted small mb-1">Marital Status</div>
@@ -787,8 +791,8 @@ async function saveMember() {
                   </div>
                   <div class="col-md-6">
                      <div class="d-flex align-items-start">
-                        <div class="bg-warning bg-opacity-10 rounded p-2 me-3">
-                           <i class="bi bi-briefcase text-warning fs-5"></i>
+                        <div class="bg-danger bg-opacity-10 rounded p-2 me-3">
+                           <i class="bi bi-briefcase text-danger fs-5"></i>
                         </div>
                         <div>
                            <div class="text-muted small mb-1">Occupation</div>
@@ -796,7 +800,7 @@ async function saveMember() {
                         </div>
                      </div>
                   </div>
-                  <div class="col-12">
+                  <div class="col-md-6">
                      <div class="d-flex align-items-start">
                         <div class="bg-secondary bg-opacity-10 rounded p-2 me-3">
                            <i class="bi bi-mortarboard text-secondary fs-5"></i>
@@ -807,10 +811,21 @@ async function saveMember() {
                         </div>
                      </div>
                   </div>
+                  <div class="col-12">
+                     <div class="d-flex align-items-start">
+                        <div class="bg-primary bg-opacity-10 rounded p-2 me-3">
+                           <i class="bi bi-calendar-check text-primary fs-5"></i>
+                        </div>
+                        <div>
+                           <div class="text-muted small mb-1">Registration Date</div>
+                           <div class="fw-semibold">${member.MbrRegistrationDate || '-'}</div>
+                        </div>
+                     </div>
+                  </div>
                </div>
             </div>
             
-            <!-- Contact Tab -->
+            <!-- Contact Info Tab -->
             <div class="tab-pane fade" id="tab-contact">
                <div class="row g-4">
                   <div class="col-12">
@@ -863,48 +878,56 @@ async function saveMember() {
                </div>
             </div>
             
-            <!-- Church Info Tab -->
-            <div class="tab-pane fade" id="tab-church">
+            <!-- Family Data Tab -->
+            <div class="tab-pane fade" id="tab-family">
                <div class="row g-4">
-                  <div class="col-md-6">
-                     <div class="card border-0 bg-light h-100">
+                  <div class="col-12">
+                     <div class="card border-0 bg-light">
                         <div class="card-body">
-                           <div class="text-muted small mb-2">
-                              <i class="bi bi-hash me-1"></i>Member ID
+                           <div class="d-flex align-items-start">
+                              <div class="bg-primary bg-opacity-10 rounded p-2 me-3">
+                                 <i class="bi bi-house-heart text-primary fs-5"></i>
+                              </div>
+                              <div class="flex-grow-1">
+                                 <div class="text-muted small mb-1">Family Name</div>
+                                 <div class="fw-semibold fs-5">${member.FamilyName || 'No family assigned'}</div>
+                              </div>
                            </div>
-                           <div class="fw-bold fs-4 text-primary">#${member.MbrID}</div>
                         </div>
                      </div>
                   </div>
-                  <div class="col-md-6">
-                     <div class="card border-0 bg-light h-100">
-                        <div class="card-body">
-                           <div class="text-muted small mb-2">
-                              <i class="bi bi-calendar-check me-1"></i>Registration Date
-                           </div>
-                           <div class="fw-semibold">${member.MbrRegistrationDate || '-'}</div>
-                        </div>
+                  ${member.FamilyID ? `
+                  <div class="col-12">
+                     <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        This member belongs to the <strong>${member.FamilyName}</strong> family.
+                        <a href="families.php?id=${member.FamilyID}" class="alert-link ms-2">View Family Details</a>
                      </div>
                   </div>
-                  <div class="col-md-6">
-                     <div class="card border-0 bg-light h-100">
-                        <div class="card-body">
-                           <div class="text-muted small mb-2">
-                              <i class="bi bi-house-heart me-1"></i>Family
-                           </div>
-                           <div class="fw-semibold">${member.FamilyName || 'No family assigned'}</div>
-                        </div>
+                  ` : `
+                  <div class="col-12">
+                     <div class="alert alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        This member is not assigned to any family yet.
                      </div>
                   </div>
-                  <div class="col-md-6">
-                     <div class="card border-0 bg-light h-100">
-                        <div class="card-body">
-                           <div class="text-muted small mb-2">
-                              <i class="bi bi-circle-fill me-1 text-${statusClass}" style="font-size:0.5rem;"></i>Membership Status
-                           </div>
-                           <span class="badge bg-${statusClass} px-3 py-2">${member.MbrMembershipStatus}</span>
-                        </div>
+                  `}
+               </div>
+            </div>
+            
+            <!-- Milestones Tab -->
+            <div class="tab-pane fade" id="tab-milestones">
+               <div class="row g-4">
+                  <div class="col-12">
+                     <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Member milestones and achievements will be displayed here.
                      </div>
+                  </div>
+                  <div class="col-12 text-center text-muted py-4">
+                     <i class="bi bi-trophy fs-1 opacity-25"></i>
+                     <p class="mt-2">No milestones recorded yet</p>
+                     <small>Milestones such as baptism, confirmation, and other significant events will appear here.</small>
                   </div>
                </div>
             </div>

@@ -95,19 +95,25 @@ require_once '../includes/sidebar.php';
          <h5 class="mb-0"><i class="bi bi-house-heart me-2"></i>All Families</h5>
       </div>
       <div class="card-body">
-         <div class="d-flex justify-content-end mb-3 gap-2">
-            <button class="btn btn-success btn-sm" onclick="familiesGrid.download('xlsx', 'families.xlsx')">
-               <i class="bi bi-file-earmark-excel me-1"></i>Excel
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="familiesGrid.download('pdf', 'families.pdf', {orientation:'portrait', title:'Families List'})">
-               <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="familiesGrid.print()">
-               <i class="bi bi-printer me-1"></i>Print
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="familiesGrid.setData()">
-               <i class="bi bi-arrow-clockwise"></i>
-            </button>
+         <div class="d-flex justify-content-between mb-3 gap-2">
+            <div class="input-group" style="max-width: 300px;">
+               <span class="input-group-text"><i class="bi bi-search"></i></span>
+               <input type="text" class="form-control" id="familySearch" placeholder="Search families...">
+            </div>
+            <div class="d-flex gap-2">
+               <button class="btn btn-success btn-sm" onclick="familiesGrid.download('xlsx', 'families.xlsx')">
+                  <i class="bi bi-file-earmark-excel me-1"></i>Excel
+               </button>
+               <button class="btn btn-danger btn-sm" onclick="familiesGrid.download('pdf', 'families.pdf', {orientation:'portrait', title:'Families List'})">
+                  <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+               </button>
+               <button class="btn btn-primary btn-sm" onclick="familiesGrid.print()">
+                  <i class="bi bi-printer me-1"></i>Print
+               </button>
+               <button class="btn btn-secondary btn-sm" onclick="familiesGrid.setData()">
+                  <i class="bi bi-arrow-clockwise"></i>
+               </button>
+            </div>
          </div>
          <div class="table-responsive">
             <div id="familiesGrid"></div>
@@ -181,6 +187,10 @@ require_once '../includes/sidebar.php';
 
    document.addEventListener('DOMContentLoaded', async () => {
       if (!Auth.requireAuth()) return;
+
+      // Wait for settings to load
+      await Config.waitForSettings();
+
       await initPage();
    });
 
@@ -198,7 +208,7 @@ require_once '../includes/sidebar.php';
          resizableColumns: false,
          pagination: true,
          paginationMode: "remote",
-         paginationSize: 25,
+         paginationSize: Config.getSetting('items_per_page', 10),
          paginationSizeSelector: [10, 25, 50, 100],
          ajaxURL: `${Config.API_BASE_URL}/family/all`,
          ajaxConfig: {
@@ -317,7 +327,8 @@ require_once '../includes/sidebar.php';
          headOfHouseholdChoices = new Choices(select, {
             searchEnabled: true,
             searchPlaceholderValue: 'Search members...',
-            itemSelectText: ''
+            itemSelectText: '',
+            allowHTML: true
          });
       } catch (error) {
          console.error('Load members error:', error);
@@ -376,11 +387,17 @@ require_once '../includes/sidebar.php';
          return;
       }
 
+      const headId = document.getElementById('headOfHousehold').value;
+
       const payload = {
          family_name: familyName,
-         head_of_household_id: document.getElementById('headOfHousehold').value || null,
          branch_id: 1
       };
+
+      // Only add head_id if it has a value
+      if (headId && headId !== '') {
+         payload.head_id = parseInt(headId);
+      }
 
       try {
          Alerts.loading('Saving family...');
@@ -408,8 +425,7 @@ require_once '../includes/sidebar.php';
 
       try {
          const family = await api.get(`family/view/${familyId}`);
-         const members = await api.get(`member/all?family_id=${familyId}&limit=100`);
-         const membersList = members?.data?.data || members?.data || [];
+         const membersList = family.members || [];
 
          document.getElementById('viewFamilyContent').innerHTML = `
             <div class="mb-4">
@@ -433,7 +449,7 @@ require_once '../includes/sidebar.php';
                         <div class="d-flex align-items-center">
                            <div class="me-3">
                               ${m.MbrProfilePicture ? 
-                                 `<img src="/${m.MbrProfilePicture}" class="rounded-circle" style="width:40px;height:40px;object-fit:cover;">` :
+                                 `<img src="/public/${m.MbrProfilePicture}" class="rounded-circle" style="width:40px;height:40px;object-fit:cover;">` :
                                  `<div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:40px;height:40px;font-size:0.8rem;">
                                     ${m.MbrFirstName[0]}${m.MbrFamilyName[0]}
                                  </div>`
@@ -456,6 +472,9 @@ require_once '../includes/sidebar.php';
             <div class="text-center text-danger py-5">
                <i class="bi bi-exclamation-circle fs-1"></i>
                <p class="mt-2">Failed to load family details</p>
+               <button class="btn btn-outline-danger btn-sm" onclick="viewFamily(${familyId})">
+                  <i class="bi bi-arrow-clockwise me-1"></i>Retry
+               </button>
             </div>
          `;
       }

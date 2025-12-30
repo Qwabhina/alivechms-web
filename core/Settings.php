@@ -266,7 +266,7 @@ class Settings
          ['key' => 'sms_sender_id', 'value' => 'AliveChurch', 'type' => 'string', 'category' => 'sms', 'description' => 'SMS sender ID'],
 
          // System Settings
-         ['key' => 'items_per_page', 'value' => 25, 'type' => 'number', 'category' => 'system', 'description' => 'Default items per page'],
+         ['key' => 'items_per_page', 'value' => 10, 'type' => 'number', 'category' => 'system', 'description' => 'Default items per page in tables'],
          ['key' => 'session_timeout', 'value' => 3600, 'type' => 'number', 'category' => 'system', 'description' => 'Session timeout in seconds'],
          ['key' => 'maintenance_mode', 'value' => 0, 'type' => 'boolean', 'category' => 'system', 'description' => 'Enable maintenance mode'],
          ['key' => 'enable_audit_log', 'value' => 1, 'type' => 'boolean', 'category' => 'system', 'description' => 'Enable audit logging'],

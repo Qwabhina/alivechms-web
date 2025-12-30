@@ -153,6 +153,10 @@ require_once '../includes/sidebar.php';
 
    document.addEventListener('DOMContentLoaded', async () => {
       if (!Auth.requireAuth()) return;
+
+      // Wait for settings to load
+      await Config.waitForSettings();
+
       await initPage();
    });
 
@@ -170,19 +174,21 @@ require_once '../includes/sidebar.php';
          resizableColumns: false,
          pagination: true,
          paginationMode: "remote",
-         paginationSize: 25,
+         paginationSize: Config.getSetting('items_per_page', 10),
          paginationSizeSelector: [10, 25, 50, 100],
          ajaxURL: `${Config.API_BASE_URL}/member/all`,
          ajaxConfig: {
-            headers: { 'Authorization': `Bearer ${Auth.getToken()}` }
+            headers: {
+               'Authorization': `Bearer ${Auth.getToken()}`
+            }
          },
          ajaxResponse: function(url, params, response) {
             const data = response?.data?.data || response?.data || [];
             const pagination = response?.data?.pagination || {};
-            
+
             // Filter only members with Username (users with login access)
             const users = data.filter(m => m.Username);
-            
+
             return {
                last_page: pagination.pages || 1,
                data: users.map(u => ({
@@ -201,11 +207,34 @@ require_once '../includes/sidebar.php';
             if (params.size) queryParams.push(`limit=${params.size}`);
             return queryParams.length ? `${url}?${queryParams.join('&')}` : url;
          },
-         columns: [
-            { title: "Name", field: "name", widthGrow: 2, responsive: 0, download: true },
-            { title: "Username", field: "username", widthGrow: 1.5, responsive: 0, download: true },
-            { title: "Email", field: "email", widthGrow: 2, responsive: 1, download: true },
-            { title: "Role", field: "role", widthGrow: 1.5, responsive: 1, download: true },
+         columns: [{
+               title: "Name",
+               field: "name",
+               widthGrow: 2,
+               responsive: 0,
+               download: true
+            },
+            {
+               title: "Username",
+               field: "username",
+               widthGrow: 1.5,
+               responsive: 0,
+               download: true
+            },
+            {
+               title: "Email",
+               field: "email",
+               widthGrow: 2,
+               responsive: 1,
+               download: true
+            },
+            {
+               title: "Role",
+               field: "role",
+               widthGrow: 1.5,
+               responsive: 1,
+               download: true
+            },
             {
                title: "Status",
                field: "status",

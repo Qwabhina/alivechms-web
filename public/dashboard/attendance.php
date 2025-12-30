@@ -110,6 +110,9 @@ require_once '../includes/sidebar.php';
    document.addEventListener('DOMContentLoaded', async () => {
       if (!Auth.requireAuth()) return;
 
+      // Wait for settings to load
+      await Config.waitForSettings();
+
       const urlParams = new URLSearchParams(window.location.search);
       currentEventId = urlParams.get('event_id');
 
@@ -165,8 +168,8 @@ require_once '../includes/sidebar.php';
             responsiveLayout: "collapse",
             resizableColumns: false,
             pagination: true,
-            paginationSize: 50,
-            paginationSizeSelector: [25, 50, 100, 200],
+            paginationSize: Config.getSetting('items_per_page', 10),
+            paginationSizeSelector: [10, 25, 50, 100],
             data: members.map(m => ({
                member_id: m.MbrID,
                name: `${m.MbrFirstName} ${m.MbrFamilyName}`,

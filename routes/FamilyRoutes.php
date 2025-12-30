@@ -41,7 +41,7 @@ class FamilyRoutes extends BaseRoute
 
                 $payload = self::getPayload([
                     'family_name' => 'required|max:100',
-                    'head_id'     => 'required|numeric',
+                    'head_id'     => 'numeric|nullable',
                     'branch_id'   => 'required|numeric',
                     'address'     => 'max:255|nullable',
                     'phone'       => 'max:20|nullable',

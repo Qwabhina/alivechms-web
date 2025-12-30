@@ -41,6 +41,7 @@ class SettingsHelper
          'time_format' => 'H:i',
          'timezone' => 'Africa/Accra',
          'language' => 'en',
+         'items_per_page' => 10,
       ];
 
       return self::$defaults;
@@ -328,6 +329,6 @@ class SettingsHelper
     */
    public static function getItemsPerPage(): int
    {
-      return (int)self::get('records_per_page', 25);
+      return (int)self::get('items_per_page', 10);
    }
 }

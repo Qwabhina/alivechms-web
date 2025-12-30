@@ -22,6 +22,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/QueryBuilder.php';
+
 class Family
 {
     /**
@@ -38,18 +40,18 @@ class Family
 
         Helpers::validateInput($data, [
             'family_name' => 'required|max:100',
-            'head_id'     => 'required|numeric',
+            'head_id'     => 'numeric|nullable',
             'branch_id'   => 'required|numeric',
             'address'     => 'max:255|nullable',
             'phone'       => 'max:20|nullable',
             'email'       => 'email|nullable'
         ]);
 
-        $headId = (int)$data['head_id'];
+        $headId = !empty($data['head_id']) ? (int)$data['head_id'] : null;
         $branchId = (int)$data['branch_id'];
 
-        // Validate head member
-        if (!$orm->exists('churchmember', ['MbrID' => $headId])) {
+        // Validate head member if provided
+        if ($headId && !$orm->exists('churchmember', ['MbrID' => $headId])) {
             Helpers::sendError('Head of household not found', 400);
         }
 
@@ -63,14 +65,16 @@ class Family
                 'CreatedAt'         => date('Y-m-d H:i:s')
             ])['id'];
 
-            // Assign head to family
-            $orm->update('churchmember', [
-                'FamilyID'   => $familyId
-            ], ['MbrID' => $headId]);
+            // Assign head to family if provided
+            if ($headId) {
+                $orm->update('churchmember', [
+                    'FamilyID'   => $familyId
+                ], ['MbrID' => $headId]);
+            }
 
             $orm->commit();
 
-            Helpers::logError("New family created: ID $familyId, Head: $headId");
+            Helpers::logError("New family created: ID $familyId" . ($headId ? ", Head: $headId" : ""));
             return ['status' => 'success', 'family_id' => $familyId];
         } catch (Exception $e) {
             $orm->rollBack();
@@ -152,36 +156,44 @@ class Family
      */
     public static function get(int $familyId): array
     {
-        $qb = new QueryBuilder();
-        $family = $qb->table('family f')
-            ->select([
-                'f.FamilyID',
-                'f.FamilyName',
-                'f.HeadOfHouseholdID',
-                'f.BranchID',
-                'f.CreatedAt'
-            ])
-            ->where('f.FamilyID', $familyId)
-            ->cache(300, ['family_' . $familyId])
-            ->first();
+        $orm = new ORM();
 
-        if (!$family) {
+        // Get family with head name
+        $family = $orm->runQuery(
+            "SELECT 
+                f.FamilyID,
+                f.FamilyName,
+                f.HeadOfHouseholdID,
+                f.BranchID,
+                f.CreatedAt,
+                CONCAT(m.MbrFirstName, ' ', m.MbrFamilyName) AS HeadOfHouseholdName
+             FROM family f
+             LEFT JOIN churchmember m ON f.HeadOfHouseholdID = m.MbrID
+             WHERE f.FamilyID = :family_id",
+            [':family_id' => $familyId]
+        );
+
+        if (empty($family)) {
             Helpers::sendError('Family not found', 404);
         }
 
-        $family['members'] = $qb->table('churchmember m')
-            ->select([
-                'm.MbrID',
-                'm.MbrFirstName',
-                'm.MbrFamilyName',
-                'm.MbrEmailAddress'
-            ])
-            ->where('m.FamilyID', $familyId)
-            ->where('m.Deleted', 0)
-            ->cache(300, ['family_' . $familyId, 'members'])
-            ->get();
+        $familyData = $family[0];
 
-        return $family;
+        // Get family members
+        $familyData['members'] = $orm->runQuery(
+            "SELECT 
+                m.MbrID,
+                m.MbrFirstName,
+                m.MbrFamilyName,
+                m.MbrEmailAddress,
+                m.MbrProfilePicture
+             FROM churchmember m
+             WHERE m.FamilyID = :family_id AND m.Deleted = 0
+             ORDER BY m.MbrFirstName, m.MbrFamilyName",
+            [':family_id' => $familyId]
+        );
+
+        return $familyData;
     }
 
     /**
@@ -211,8 +223,15 @@ class Family
 
         // Get families - use direct values for LIMIT/OFFSET (PDO doesn't bind well in LIMIT)
         $families = $orm->runQuery(
-            "SELECT f.FamilyID, f.FamilyName, f.CreatedAt
+            "SELECT 
+                f.FamilyID, 
+                f.FamilyName, 
+                f.HeadOfHouseholdID,
+                f.CreatedAt,
+                CONCAT(m.MbrFirstName, ' ', m.MbrFamilyName) AS HeadOfHouseholdName,
+                (SELECT COUNT(*) FROM churchmember WHERE FamilyID = f.FamilyID AND Deleted = 0) AS MemberCount
              FROM `family` f
+             LEFT JOIN churchmember m ON f.HeadOfHouseholdID = m.MbrID
              WHERE {$whereClause}
              ORDER BY f.FamilyName ASC
              LIMIT {$limit} OFFSET {$offset}",

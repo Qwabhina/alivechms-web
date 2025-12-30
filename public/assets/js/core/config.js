@@ -27,7 +27,7 @@ const Config = {
         time_format: 'H:i',
         timezone: 'Africa/Accra',
         language: 'en',
-        items_per_page: 25
+        items_per_page: 10
     },
     
     // Pagination
@@ -217,19 +217,40 @@ const Config = {
                     document.title = document.title.replace('AliveChMS', this.SETTINGS.church_name);
                 }
                 
+                // Mark settings as loaded
+                this._settingsLoaded = true;
+                
                 // Dispatch event for other components
                 window.dispatchEvent(new CustomEvent('settingsLoaded', { detail: this.SETTINGS }));
             } else {
                 this.warn('Settings endpoint returned non-OK status:', response.status);
+                this._settingsLoaded = true; // Mark as loaded even if failed (use defaults)
             }
         } catch (error) {
             this.warn('Failed to load settings, using defaults:', error);
+            this._settingsLoaded = true; // Mark as loaded even if failed (use defaults)
         }
+    },
+    
+    // Wait for settings to be loaded
+    waitForSettings: function() {
+        return new Promise((resolve) => {
+            if (this._settingsLoaded) {
+                resolve();
+            } else {
+                window.addEventListener('settingsLoaded', () => resolve(), { once: true });
+            }
+        });
     },
     
     // Get setting value
     getSetting: function(key, defaultValue = null) {
         return this.SETTINGS[key] !== undefined ? this.SETTINGS[key] : defaultValue;
+    },
+    
+    // Get pagination size (helper for tables)
+    getPaginationSize: function() {
+        return this.getSetting('items_per_page', 10);
     },
     
     // Format currency
