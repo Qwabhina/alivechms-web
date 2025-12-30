@@ -17,6 +17,19 @@ const Config = {
     USER_KEY: 'alive_user',
     TOKEN_EXPIRY_BUFFER: 5 * 60 * 1000, // Refresh 5 minutes before expiry
     
+    // Dynamic Settings (loaded from server)
+    SETTINGS: {
+        church_name: 'AliveChMS Church',
+        church_motto: 'Faith, Hope, and Love',
+        currency_symbol: 'GH₵',
+        currency_code: 'GHS',
+        date_format: 'Y-m-d',
+        time_format: 'H:i',
+        timezone: 'Africa/Accra',
+        language: 'en',
+        items_per_page: 25
+    },
+    
     // Pagination
     DEFAULT_PAGE_SIZE: 10,
     PAGE_SIZE_OPTIONS: [10, 25, 50, 100],
@@ -183,14 +196,62 @@ const Config = {
         if (this.DEBUG) {
             console.warn('[AliveChMS Warning]', ...args);
         }
+    },
+    
+    // Load settings from server
+    loadSettings: async function() {
+        try {
+            const response = await fetch(`${this.API_BASE_URL}/public/settings`);
+            if (response.ok) {
+                const data = await response.json();
+                // Update settings
+                if (data.data) {
+                    Object.assign(this.SETTINGS, data.data);
+                } else if (data) {
+                    Object.assign(this.SETTINGS, data);
+                }
+                this.log('Settings loaded:', this.SETTINGS);
+                
+                // Update page title if on dashboard
+                if (document.title.includes('AliveChMS')) {
+                    document.title = document.title.replace('AliveChMS', this.SETTINGS.church_name);
+                }
+                
+                // Dispatch event for other components
+                window.dispatchEvent(new CustomEvent('settingsLoaded', { detail: this.SETTINGS }));
+            } else {
+                this.warn('Settings endpoint returned non-OK status:', response.status);
+            }
+        } catch (error) {
+            this.warn('Failed to load settings, using defaults:', error);
+        }
+    },
+    
+    // Get setting value
+    getSetting: function(key, defaultValue = null) {
+        return this.SETTINGS[key] !== undefined ? this.SETTINGS[key] : defaultValue;
+    },
+    
+    // Format currency
+    formatCurrency: function(amount) {
+        const formatted = parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+        return `${this.SETTINGS.currency_symbol} ${formatted}`;
     }
 };
 
-// Freeze config to prevent modifications
-Object.freeze(Config);
+// Freeze config to prevent modifications (except SETTINGS which is dynamic)
 Object.freeze(Config.PERMISSIONS);
 Object.freeze(Config.STATUS);
 Object.freeze(Config.CHART_COLORS);
+
+// Load settings on page load
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => Config.loadSettings());
+    } else {
+        Config.loadSettings();
+    }
+}
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {

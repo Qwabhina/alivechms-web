@@ -42,6 +42,8 @@ require_once __DIR__ . '/core/Helpers.php';
 require_once __DIR__ . '/core/BaseRoute.php';
 require_once __DIR__ . '/core/Validator.php';
 require_once __DIR__ . '/core/RateLimiter.php';
+require_once __DIR__ . '/core/Settings.php';
+require_once __DIR__ . '/core/SettingsHelper.php';
 
 // Security headers
 header('Content-Type: application/json; charset=utf-8');
@@ -74,7 +76,7 @@ global $method, $path, $pathParts;
 // Master route map
 $routes = [
     'auth'            => 'AuthRoutes.php',
-    'audit'         => 'AuditRoutes.php',
+    'audit'           => 'AuditRoutes.php',
     'member'          => 'MemberRoutes.php',
     'family'          => 'FamilyRoutes.php',
     'contribution'    => 'ContributionRoutes.php',
@@ -93,6 +95,7 @@ $routes = [
     'settings'        => 'SettingsRoutes.php',
     'permission'      => 'PermissionRoutes.php',
     'volunteer'       => 'VolunteerRoutes.php',
+    'public'          => 'PublicRoutes.php',
 ];
 
 if (!isset($routes[$section])) {

@@ -269,7 +269,7 @@ class Contribution
             'c.ContributionID',
             'c.ContributionAmount',
             'c.ContributionDate',
-            'c.Description',
+            'c.ContributionDescription',
             'm.MbrFirstName',
             'm.MbrFamilyName',
             'ct.ContributionTypeName',

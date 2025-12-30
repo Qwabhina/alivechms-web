@@ -40,6 +40,32 @@
 
 <!-- Layout Script -->
 <script>
+   // Global currency formatter using settings
+   window.formatCurrency = function(amount) {
+      if (amount === null || amount === undefined) return '-';
+      const num = parseFloat(amount);
+      if (isNaN(num)) return '-';
+
+      const formatted = num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+      const symbol = Config.getSetting('currency_symbol', 'GH₵');
+
+      return `${symbol} ${formatted}`;
+   };
+
+   // Alternative using toLocaleString
+   window.formatCurrencyLocale = function(amount) {
+      if (amount === null || amount === undefined) return '-';
+      const num = parseFloat(amount);
+      if (isNaN(num)) return '-';
+
+      const formatted = num.toLocaleString('en-US', {
+         minimumFractionDigits: 2
+      });
+      const symbol = Config.getSetting('currency_symbol', 'GH₵');
+
+      return `${symbol} ${formatted}`;
+   };
+
    document.addEventListener('DOMContentLoaded', () => {
       // Check authentication
       if (!Auth.requireAuth()) return;

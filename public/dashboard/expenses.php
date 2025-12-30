@@ -29,7 +29,7 @@ require_once '../includes/sidebar.php';
                <div class="d-flex justify-content-between align-items-start mb-3">
                   <div>
                      <p class="text-muted mb-1">Total Expenses</p>
-                     <h3 class="mb-0" id="totalExpenses">GH₵ 0.00</h3>
+                     <h3 class="mb-0" id="totalExpenses">-</h3>
                      <small class="text-muted"><span id="expenseCount">0</span> expenses</small>
                   </div>
                   <div class="stat-icon bg-primary text-white text-opacity-50 rounded-circle p-3">
@@ -45,7 +45,7 @@ require_once '../includes/sidebar.php';
                <div class="d-flex justify-content-between align-items-start mb-3">
                   <div>
                      <p class="text-muted mb-1">Pending</p>
-                     <h3 class="mb-0" id="pendingAmount">GH₵ 0.00</h3>
+                     <h3 class="mb-0" id="pendingAmount">-</h3>
                      <small class="text-muted"><span id="pendingCount">0</span> requests</small>
                   </div>
                   <div class="stat-icon bg-warning text-white text-opacity-50 rounded-circle p-3">
@@ -61,7 +61,7 @@ require_once '../includes/sidebar.php';
                <div class="d-flex justify-content-between align-items-start mb-3">
                   <div>
                      <p class="text-muted mb-1">Approved</p>
-                     <h3 class="mb-0" id="approvedAmount">GH₵ 0.00</h3>
+                     <h3 class="mb-0" id="approvedAmount">-</h3>
                      <small class="text-muted"><span id="approvedCount">0</span> expenses</small>
                   </div>
                   <div class="stat-icon bg-success text-white text-opacity-50 rounded-circle p-3">
@@ -77,7 +77,7 @@ require_once '../includes/sidebar.php';
                <div class="d-flex justify-content-between align-items-start mb-3">
                   <div>
                      <p class="text-muted mb-1">This Month</p>
-                     <h3 class="mb-0" id="monthAmount">GH₵ 0.00</h3>
+                     <h3 class="mb-0" id="monthAmount">-</h3>
                      <small class="text-muted"><span id="monthCount">0</span> expenses</small>
                   </div>
                   <div class="stat-icon bg-info text-white text-opacity-50 rounded-circle p-3">
@@ -172,7 +172,7 @@ require_once '../includes/sidebar.php';
                   <input type="text" class="form-control" id="title" required maxlength="150">
                </div>
                <div class="mb-3">
-                  <label class="form-label">Amount (GH₵) <span class="text-danger">*</span></label>
+                  <label class="form-label">Amount (<span id="currencySymbol"></span>) <span class="text-danger">*</span></label>
                   <input type="number" class="form-control" id="amount" step="0.01" min="0.01" required>
                </div>
                <div class="mb-3">
@@ -218,6 +218,11 @@ require_once '../includes/sidebar.php';
 
    document.addEventListener('DOMContentLoaded', async () => {
       if (!Auth.requireAuth()) return;
+
+      // Set currency symbol in form label
+      const currencySymbol = Config.getSetting('currency_symbol', 'GH₵');
+      document.getElementById('currencySymbol').textContent = currencySymbol;
+
       await initPage();
    });
 
@@ -279,7 +284,7 @@ require_once '../includes/sidebar.php';
                widthGrow: 1.5,
                responsive: 0,
                download: true,
-               formatter: cell => `GH₵ ${parseFloat(cell.getValue()).toFixed(2)}`
+               formatter: cell => formatCurrency(parseFloat(cell.getValue()))
             },
             {
                title: "Date",
@@ -382,13 +387,13 @@ require_once '../includes/sidebar.php';
             }
          });
 
-         document.getElementById('totalExpenses').textContent = `GH₵ ${totalAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+         document.getElementById('totalExpenses').textContent = formatCurrencyLocale(totalAmount);
          document.getElementById('expenseCount').textContent = totalCount;
-         document.getElementById('pendingAmount').textContent = `GH₵ ${pendingAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+         document.getElementById('pendingAmount').textContent = formatCurrencyLocale(pendingAmount);
          document.getElementById('pendingCount').textContent = pendingCount;
-         document.getElementById('approvedAmount').textContent = `GH₵ ${approvedAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+         document.getElementById('approvedAmount').textContent = formatCurrencyLocale(approvedAmount);
          document.getElementById('approvedCount').textContent = approvedCount;
-         document.getElementById('monthAmount').textContent = `GH₵ ${monthAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+         document.getElementById('monthAmount').textContent = formatCurrencyLocale(monthAmount);
          document.getElementById('monthCount').textContent = monthCount;
       } catch (error) {
          console.error('Load stats error:', error);

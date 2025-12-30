@@ -29,7 +29,7 @@ require_once '../includes/sidebar.php';
                <div class="d-flex justify-content-between align-items-start mb-3">
                   <div>
                      <p class="text-muted mb-1">Total Pledges</p>
-                     <h3 class="mb-0" id="totalPledges">GH₵ 0.00</h3>
+                     <h3 class="mb-0" id="totalPledges">-</h3>
                      <small class="text-muted"><span id="pledgeCount">0</span> pledges</small>
                   </div>
                   <div class="stat-icon bg-primary text-white text-opacity-50 rounded-circle p-3">
@@ -45,7 +45,7 @@ require_once '../includes/sidebar.php';
                <div class="d-flex justify-content-between align-items-start mb-3">
                   <div>
                      <p class="text-muted mb-1">Fulfilled</p>
-                     <h3 class="mb-0" id="fulfilledAmount">GH₵ 0.00</h3>
+                     <h3 class="mb-0" id="fulfilledAmount">-</h3>
                      <small class="text-muted"><span id="fulfilledCount">0</span> pledges</small>
                   </div>
                   <div class="stat-icon bg-success text-white text-opacity-50 rounded-circle p-3">
@@ -61,7 +61,7 @@ require_once '../includes/sidebar.php';
                <div class="d-flex justify-content-between align-items-start mb-3">
                   <div>
                      <p class="text-muted mb-1">Active</p>
-                     <h3 class="mb-0" id="activeAmount">GH₵ 0.00</h3>
+                     <h3 class="mb-0" id="activeAmount">-</h3>
                      <small class="text-muted"><span id="activeCount">0</span> pledges</small>
                   </div>
                   <div class="stat-icon bg-warning text-white text-opacity-50 rounded-circle p-3">
@@ -77,7 +77,7 @@ require_once '../includes/sidebar.php';
                <div class="d-flex justify-content-between align-items-start mb-3">
                   <div>
                      <p class="text-muted mb-1">Outstanding</p>
-                     <h3 class="mb-0" id="outstandingAmount">GH₵ 0.00</h3>
+                     <h3 class="mb-0" id="outstandingAmount">-</h3>
                      <small class="text-muted">Balance remaining</small>
                   </div>
                   <div class="stat-icon bg-info text-white text-opacity-50 rounded-circle p-3">
@@ -141,7 +141,7 @@ require_once '../includes/sidebar.php';
                   </select>
                </div>
                <div class="mb-3">
-                  <label class="form-label">Amount (GH₵) <span class="text-danger">*</span></label>
+                  <label class="form-label">Amount (<span id="currencySymbol"></span>) <span class="text-danger">*</span></label>
                   <input type="number" class="form-control" id="amount" step="0.01" min="0.01" required>
                </div>
                <div class="mb-3">
@@ -180,6 +180,11 @@ require_once '../includes/sidebar.php';
 
    document.addEventListener('DOMContentLoaded', async () => {
       if (!Auth.requireAuth()) return;
+
+      // Set currency symbol in form label
+      const currencySymbol = Config.getSetting('currency_symbol', 'GH₵');
+      document.getElementById('currencySymbol').textContent = currencySymbol;
+
       await initPage();
    });
 
@@ -248,7 +253,7 @@ require_once '../includes/sidebar.php';
                widthGrow: 1.5,
                responsive: 0,
                download: true,
-               formatter: cell => `GH₵ ${parseFloat(cell.getValue()).toFixed(2)}`
+               formatter: cell => formatCurrency(parseFloat(cell.getValue()))
             },
             {
                title: "Pledge Date",
@@ -338,13 +343,13 @@ require_once '../includes/sidebar.php';
             }
          });
 
-         document.getElementById('totalPledges').textContent = `GH₵ ${totalAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+         document.getElementById('totalPledges').textContent = formatCurrencyLocale(totalAmount);
          document.getElementById('pledgeCount').textContent = totalCount;
-         document.getElementById('fulfilledAmount').textContent = `GH₵ ${fulfilledAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+         document.getElementById('fulfilledAmount').textContent = formatCurrencyLocale(fulfilledAmount);
          document.getElementById('fulfilledCount').textContent = fulfilledCount;
-         document.getElementById('activeAmount').textContent = `GH₵ ${activeAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+         document.getElementById('activeAmount').textContent = formatCurrencyLocale(activeAmount);
          document.getElementById('activeCount').textContent = activeCount;
-         document.getElementById('outstandingAmount').textContent = `GH₵ ${outstandingAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+         document.getElementById('outstandingAmount').textContent = formatCurrencyLocale(outstandingAmount);
       } catch (error) {
          console.error('Load stats error:', error);
       }

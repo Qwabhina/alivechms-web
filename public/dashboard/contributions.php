@@ -29,7 +29,7 @@ require_once '../includes/sidebar.php';
                <div class="d-flex justify-content-between align-items-start mb-3">
                   <div>
                      <p class="text-muted mb-1">Total Contributions</p>
-                     <h3 class="mb-0" id="totalAmount">GH₵ 0.00</h3>
+                     <h3 class="mb-0" id="totalAmount">-</h3>
                      <small class="text-muted"><span id="totalCount">0</span> records</small>
                   </div>
                   <div class="stat-icon bg-primary text-white text-opacity-50 rounded-circle p-3">
@@ -45,7 +45,7 @@ require_once '../includes/sidebar.php';
                <div class="d-flex justify-content-between align-items-start mb-3">
                   <div>
                      <p class="text-muted mb-1">This Month</p>
-                     <h3 class="mb-0" id="monthAmount">GH₵ 0.00</h3>
+                     <h3 class="mb-0" id="monthAmount">-</h3>
                      <small class="text-muted">
                         <span id="monthGrowth" class="badge bg-success">+0%</span> vs last month
                      </small>
@@ -63,7 +63,7 @@ require_once '../includes/sidebar.php';
                <div class="d-flex justify-content-between align-items-start mb-3">
                   <div>
                      <p class="text-muted mb-1">This Year</p>
-                     <h3 class="mb-0" id="yearAmount">GH₵ 0.00</h3>
+                     <h3 class="mb-0" id="yearAmount">-</h3>
                      <small class="text-muted"><span id="yearCount">0</span> contributions</small>
                   </div>
                   <div class="stat-icon bg-info text-white text-opacity-50 rounded-circle p-3">
@@ -79,7 +79,7 @@ require_once '../includes/sidebar.php';
                <div class="d-flex justify-content-between align-items-start mb-3">
                   <div>
                      <p class="text-muted mb-1">Average</p>
-                     <h3 class="mb-0" id="avgAmount">GH₵ 0.00</h3>
+                     <h3 class="mb-0" id="avgAmount">-</h3>
                      <small class="text-muted">Per contribution</small>
                   </div>
                   <div class="stat-icon bg-warning text-white text-opacity-50 rounded-circle p-3">
@@ -203,7 +203,7 @@ require_once '../includes/sidebar.php';
                   </select>
                </div>
                <div class="mb-3">
-                  <label class="form-label">Amount (GH₵) <span class="text-danger">*</span></label>
+                  <label class="form-label">Amount (<span id="currencySymbol"></span>) <span class="text-danger">*</span></label>
                   <input type="number" class="form-control" id="amount" step="0.01" min="0.01" required>
                </div>
                <div class="mb-3">
@@ -275,6 +275,11 @@ require_once '../includes/sidebar.php';
 
    document.addEventListener('DOMContentLoaded', async () => {
       if (!Auth.requireAuth()) return;
+
+      // Set currency symbol in form label
+      const currencySymbol = Config.getSetting('currency_symbol', 'GH₵');
+      document.getElementById('currencySymbol').textContent = currencySymbol;
+
       await initPage();
    });
 
@@ -338,7 +343,7 @@ require_once '../includes/sidebar.php';
                responsive: 0,
                download: true,
                formatter: function(cell) {
-                  return `GH₵ ${parseFloat(cell.getValue()).toFixed(2)}`;
+                  return formatCurrency(parseFloat(cell.getValue()));
                }
             },
             {
@@ -398,12 +403,12 @@ require_once '../includes/sidebar.php';
          const stats = await api.get('contribution/stats');
 
          // Update stat cards
-         document.getElementById('totalAmount').textContent = `GH₵ ${stats.total_amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+         document.getElementById('totalAmount').textContent = formatCurrencyLocale(stats.total_amount);
          document.getElementById('totalCount').textContent = stats.total_count.toLocaleString();
-         document.getElementById('monthAmount').textContent = `GH₵ ${stats.month_total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-         document.getElementById('yearAmount').textContent = `GH₵ ${stats.year_total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+         document.getElementById('monthAmount').textContent = formatCurrencyLocale(stats.month_total);
+         document.getElementById('yearAmount').textContent = formatCurrencyLocale(stats.year_total);
          document.getElementById('yearCount').textContent = stats.year_count.toLocaleString();
-         document.getElementById('avgAmount').textContent = `GH₵ ${stats.average_amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+         document.getElementById('avgAmount').textContent = formatCurrencyLocale(stats.average_amount);
 
          // Update growth badge
          const growthBadge = document.getElementById('monthGrowth');
@@ -431,7 +436,7 @@ require_once '../includes/sidebar.php';
                        `<span class="text-muted">${index + 1}</span>`}
                   </td>
                   <td>${contributor.MbrFirstName} ${contributor.MbrFamilyName}</td>
-                  <td class="text-end fw-semibold">GH₵ ${parseFloat(contributor.total).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                  <td class="text-end fw-semibold">${formatCurrencyLocale(parseFloat(contributor.total))}</td>
                </tr>
             `).join('');
          } else {
@@ -637,7 +642,7 @@ require_once '../includes/sidebar.php';
             </div>
             <div class="mb-3">
                <div class="text-muted small">Amount</div>
-               <div class="fw-semibold text-success fs-4">GH₵ ${parseFloat(contribution.ContributionAmount).toFixed(2)}</div>
+               <div class="fw-semibold text-success fs-4">${formatCurrency(parseFloat(contribution.ContributionAmount))}</div>
             </div>
             <div class="row mb-3">
                <div class="col-6">

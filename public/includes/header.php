@@ -1,11 +1,53 @@
+<?php
+// Load settings helper with error handling
+try {
+   // Load composer autoloader if not already loaded
+   if (!class_exists('Dotenv\Dotenv')) {
+      require_once __DIR__ . '/../../vendor/autoload.php';
+   }
+
+   // Load environment if not already loaded
+   if (!isset($_ENV['DB_HOST'])) {
+      $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
+      $dotenv->load();
+   }
+
+   // Load required classes if not already loaded
+   if (!class_exists('Database')) {
+      require_once __DIR__ . '/../../core/Database.php';
+   }
+   if (!class_exists('ORM')) {
+      require_once __DIR__ . '/../../core/ORM.php';
+   }
+   if (!class_exists('Helpers')) {
+      require_once __DIR__ . '/../../core/Helpers.php';
+   }
+   if (!class_exists('Settings')) {
+      require_once __DIR__ . '/../../core/Settings.php';
+   }
+   if (!class_exists('SettingsHelper')) {
+      require_once __DIR__ . '/../../core/SettingsHelper.php';
+   }
+
+   $churchName = SettingsHelper::getChurchName();
+   $language = SettingsHelper::getLanguage();
+} catch (Exception $e) {
+   // Fallback if settings can't be loaded
+   error_log("Header settings load error: " . $e->getMessage());
+   $churchName = 'AliveChMS Church';
+   $language = 'en';
+}
+
+$pageTitle = $pageTitle ?? 'Dashboard';
+?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= htmlspecialchars($language) ?>">
 
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <meta name="description" content="AliveChMS - Modern Church Management System">
-   <title><?= $pageTitle ?? 'Dashboard' ?> - AliveChMS</title>
+   <meta name="description" content="<?= htmlspecialchars($churchName) ?> - Modern Church Management System">
+   <title><?= htmlspecialchars($pageTitle) ?> - <?= htmlspecialchars($churchName) ?></title>
 
    <!-- Bootstrap CSS -->
    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -45,12 +87,25 @@
                <i class="bi bi-list fs-4"></i>
             </button>
 
-            <!-- Brand -->
-            <a class="navbar-brand" href="./">
-               <i class="bi bi-church me-2"></i>
-               AliveChMS
+            <!-- Brand - Desktop -->
+            <a class="navbar-brand d-none d-md-flex" href="./">
+               <?php if (isset($churchName) && SettingsHelper::hasChurchLogo()): ?>
+                  <img src="<?= SettingsHelper::getChurchLogoUrl() ?>" alt="<?= htmlspecialchars($churchName) ?>" style="height: 32px; margin-right: 8px;">
+               <?php else: ?>
+                  <i class="bi bi-church me-2"></i>
+               <?php endif; ?>
+               <?= htmlspecialchars($churchName) ?>
             </a>
          </div>
+
+         <!-- Brand - Mobile (Centered) -->
+         <a class="navbar-brand d-md-none position-absolute start-50 translate-middle-x" href="./">
+            <?php if (isset($churchName) && SettingsHelper::hasChurchLogo()): ?>
+               <img src="<?= SettingsHelper::getChurchLogoUrl() ?>" alt="<?= htmlspecialchars($churchName) ?>" style="height: 32px;">
+            <?php else: ?>
+               <i class="bi bi-church"></i>
+            <?php endif; ?>
+         </a>
 
          <div class="d-flex align-items-center gap-3">
             <!-- Search (hidden on mobile) -->

@@ -72,6 +72,38 @@ require_once '../includes/sidebar.php';
             <!-- General Settings -->
             <div class="tab-pane fade show active" id="general" role="tabpanel">
                <h5 class="mb-3">Church Information</h5>
+
+               <!-- Logo Upload Section -->
+               <div class="card mb-4 bg-light">
+                  <div class="card-body">
+                     <h6 class="card-title">Church Logo</h6>
+                     <p class="text-muted small">Upload your church logo (JPG, PNG, GIF, SVG, WebP - Max 2MB)</p>
+
+                     <div class="row align-items-center">
+                        <div class="col-md-3 text-center">
+                           <div id="logoPreview" class="mb-3">
+                              <img id="currentLogo" src="" alt="Church Logo" style="max-width: 150px; max-height: 150px; display: none;" class="img-thumbnail">
+                              <div id="noLogo" class="text-muted">
+                                 <i class="bi bi-image fs-1"></i>
+                                 <p class="small mb-0">No logo uploaded</p>
+                              </div>
+                           </div>
+                        </div>
+                        <div class="col-md-9">
+                           <div class="mb-3">
+                              <input type="file" class="form-control" id="logoInput" accept="image/*">
+                           </div>
+                           <button type="button" class="btn btn-primary btn-sm" id="uploadLogoBtn">
+                              <i class="bi bi-upload me-1"></i>Upload Logo
+                           </button>
+                           <button type="button" class="btn btn-outline-danger btn-sm" id="removeLogoBtn" style="display: none;">
+                              <i class="bi bi-trash me-1"></i>Remove Logo
+                           </button>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
                <div id="generalSettings"></div>
             </div>
 
@@ -136,6 +168,16 @@ require_once '../includes/sidebar.php';
          Alerts.loading('Loading settings...');
          const response = await api.get('settings/category');
          settingsByCategory = response?.data || {};
+
+         // Load current logo
+         const publicSettings = await api.get('public/settings');
+         if (publicSettings?.church_logo) {
+            const img = document.getElementById('currentLogo');
+            img.src = publicSettings.church_logo;
+            img.style.display = 'block';
+            document.getElementById('noLogo').style.display = 'none';
+            document.getElementById('removeLogoBtn').style.display = 'inline-block';
+         }
 
          // Render each category
          renderCategorySettings('general', 'generalSettings');
@@ -291,6 +333,115 @@ require_once '../includes/sidebar.php';
 
    function initEventListeners() {
       document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+      document.getElementById('uploadLogoBtn').addEventListener('click', uploadLogo);
+      document.getElementById('removeLogoBtn').addEventListener('click', removeLogo);
+      document.getElementById('logoInput').addEventListener('change', previewLogo);
+   }
+
+   function previewLogo(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+         Alerts.error('Please select an image file');
+         return;
+      }
+
+      // Validate file size (2MB)
+      if (file.size > 2 * 1024 * 1024) {
+         Alerts.error('Image must be less than 2MB');
+         return;
+      }
+
+      // Preview image
+      const reader = new FileReader();
+      reader.onload = (e) => {
+         const img = document.getElementById('currentLogo');
+         img.src = e.target.result;
+         img.style.display = 'block';
+         document.getElementById('noLogo').style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+   }
+
+   async function uploadLogo() {
+      const fileInput = document.getElementById('logoInput');
+      const file = fileInput.files[0];
+
+      if (!file) {
+         Alerts.warning('Please select a logo file first');
+         return;
+      }
+
+      try {
+         Alerts.loading('Uploading logo...');
+
+         const formData = new FormData();
+         formData.append('logo', file);
+
+         const result = await api.upload('settings/upload-logo', formData);
+
+         Alerts.closeLoading();
+         Alerts.success('Logo uploaded successfully');
+
+         // Update preview
+         const img = document.getElementById('currentLogo');
+         img.src = result.url;
+         img.style.display = 'block';
+         document.getElementById('noLogo').style.display = 'none';
+         document.getElementById('removeLogoBtn').style.display = 'inline-block';
+
+         // Clear file input
+         fileInput.value = '';
+
+         // Reload page to update header
+         setTimeout(() => location.reload(), 1500);
+      } catch (error) {
+         Alerts.closeLoading();
+         console.error('Upload logo error:', error);
+         Alerts.handleApiError(error);
+      }
+   }
+
+   async function removeLogo() {
+      const confirmed = await Alerts.confirm({
+         title: 'Remove Logo',
+         text: 'Are you sure you want to remove the church logo?',
+         icon: 'warning',
+         confirmButtonText: 'Yes, remove it'
+      });
+
+      if (!confirmed) return;
+
+      try {
+         Alerts.loading('Removing logo...');
+
+         // Update setting to empty
+         await api.post('settings/update', {
+            settings: [{
+               key: 'church_logo',
+               value: '',
+               type: 'string',
+               category: 'general'
+            }]
+         });
+
+         Alerts.closeLoading();
+         Alerts.success('Logo removed successfully');
+
+         // Update preview
+         document.getElementById('currentLogo').style.display = 'none';
+         document.getElementById('noLogo').style.display = 'block';
+         document.getElementById('removeLogoBtn').style.display = 'none';
+
+         // Reload page to update header
+         setTimeout(() => location.reload(), 1500);
+      } catch (error) {
+         Alerts.closeLoading();
+         console.error('Remove logo error:', error);
+         Alerts.handleApiError(error);
+      }
    }
 
    async function saveSettings() {

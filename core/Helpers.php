@@ -523,9 +523,9 @@ class Helpers
         error_log($logMessage, 3, $logFile);
 
         // Also log to PHP error log in production
-        if ($_ENV['APP_ENV'] === 'production') {
-            error_log($logMessage);
-        }
+        // if ($_ENV['APP_ENV'] === 'production') {
+        //     error_log($logMessage);
+        // }
     }
 
     /**

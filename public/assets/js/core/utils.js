@@ -45,14 +45,18 @@ const Utils = {
     /**
      * Format currency
      * @param {number} amount - Amount to format
-     * @param {string} currency - Currency code
+     * @param {boolean} includeSymbol - Include currency symbol
      * @returns {string} Formatted currency
      */
-    formatCurrency(amount, currency = Config.CURRENCY) {
+    formatCurrency(amount, includeSymbol = true) {
         if (amount === null || amount === undefined) return '-';
         const num = parseFloat(amount);
         if (isNaN(num)) return '-';
-        return `${Config.CURRENCY_SYMBOL}${num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`;
+        
+        const formatted = num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+        const symbol = Config.getSetting('currency_symbol', 'GH₵');
+        
+        return includeSymbol ? `${symbol} ${formatted}` : formatted;
     },
     
     /**

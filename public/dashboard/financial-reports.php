@@ -137,9 +137,10 @@ require_once '../includes/sidebar.php';
       transition: all 0.3s ease;
       border: 2px solid transparent;
    }
+
    .report-card:hover {
       transform: translateY(-5px);
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
       border-color: var(--bs-primary);
    }
 </style>
@@ -235,7 +236,10 @@ require_once '../includes/sidebar.php';
 
       contributions.forEach(c => {
          const type = c.ContributionTypeName;
-         if (!byType[type]) byType[type] = { count: 0, total: 0 };
+         if (!byType[type]) byType[type] = {
+            count: 0,
+            total: 0
+         };
          byType[type].count++;
          byType[type].total += parseFloat(c.ContributionAmount);
       });
@@ -243,7 +247,7 @@ require_once '../includes/sidebar.php';
       let html = `
          <div class="mb-4">
             <h4>Summary</h4>
-            <p><strong>Total Contributions:</strong> GH₵ ${total.toLocaleString('en-US', {minimumFractionDigits: 2})}</p>
+            <p><strong>Total Contributions:</strong> ${formatCurrencyLocale(total)}</p>
             <p><strong>Number of Contributions:</strong> ${contributions.length}</p>
          </div>
          <div class="mb-4">
@@ -264,7 +268,7 @@ require_once '../includes/sidebar.php';
             <tr>
                <td>${type}</td>
                <td class="text-end">${data.count}</td>
-               <td class="text-end">GH₵ ${data.total.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+               <td class="text-end">${formatCurrencyLocale(data.total)}</td>
             </tr>
          `;
       }
@@ -292,7 +296,7 @@ require_once '../includes/sidebar.php';
       return `
          <div class="mb-4">
             <h4>Summary</h4>
-            <p><strong>Total Pledges:</strong> GH₵ ${total.toLocaleString('en-US', {minimumFractionDigits: 2})}</p>
+            <p><strong>Total Pledges:</strong> ${formatCurrencyLocale(total)}</p>
             <p><strong>Total Count:</strong> ${pledges.length}</p>
             <p><strong>Fulfilled:</strong> ${fulfilled}</p>
             <p><strong>Active:</strong> ${active}</p>
@@ -317,9 +321,9 @@ require_once '../includes/sidebar.php';
       return `
          <div class="mb-4">
             <h4>Summary</h4>
-            <p><strong>Total Expenses:</strong> GH₵ ${total.toLocaleString('en-US', {minimumFractionDigits: 2})}</p>
+            <p><strong>Total Expenses:</strong> ${formatCurrencyLocale(total)}</p>
             <p><strong>Total Count:</strong> ${expenses.length}</p>
-            <p><strong>Approved:</strong> ${approved.length} (GH₵ ${approvedTotal.toLocaleString('en-US', {minimumFractionDigits: 2})})</p>
+            <p><strong>Approved:</strong> ${approved.length} (${formatCurrencyLocale(approvedTotal)})</p>
             <p><strong>Pending:</strong> ${expenses.filter(e => e.ExpenseStatus === 'Pending Approval').length}</p>
          </div>
       `;
@@ -338,7 +342,7 @@ require_once '../includes/sidebar.php';
       return `
          <div class="mb-4">
             <h4>Summary</h4>
-            <p><strong>Total Budgets:</strong> GH₵ ${total.toLocaleString('en-US', {minimumFractionDigits: 2})}</p>
+            <p><strong>Total Budgets:</strong> ${formatCurrencyLocale(total)}</p>
             <p><strong>Total Count:</strong> ${budgets.length}</p>
             <p><strong>Approved:</strong> ${approved.length}</p>
          </div>
@@ -365,7 +369,7 @@ require_once '../includes/sidebar.php';
                <div class="card bg-success bg-opacity-25">
                   <div class="card-body">
                      <h6 class="text-muted">Total Contributions</h6>
-                     <h3>GH₵ ${stats.total_amount.toLocaleString('en-US', {minimumFractionDigits: 2})}</h3>
+                     <h3>${formatCurrencyLocale(stats.total_amount)}</h3>
                   </div>
                </div>
             </div>
@@ -373,7 +377,7 @@ require_once '../includes/sidebar.php';
                <div class="card bg-warning bg-opacity-25">
                   <div class="card-body">
                      <h6 class="text-muted">Total Pledges</h6>
-                     <h3>GH₵ ${totalPledges.toLocaleString('en-US', {minimumFractionDigits: 2})}</h3>
+                     <h3>${formatCurrencyLocale(totalPledges)}</h3>
                   </div>
                </div>
             </div>
@@ -381,7 +385,7 @@ require_once '../includes/sidebar.php';
                <div class="card bg-danger bg-opacity-25">
                   <div class="card-body">
                      <h6 class="text-muted">Total Expenses</h6>
-                     <h3>GH₵ ${totalExpenses.toLocaleString('en-US', {minimumFractionDigits: 2})}</h3>
+                     <h3>${formatCurrencyLocale(totalExpenses)}</h3>
                   </div>
                </div>
             </div>
@@ -389,7 +393,7 @@ require_once '../includes/sidebar.php';
          <div class="card bg-primary bg-opacity-25 mt-3">
             <div class="card-body">
                <h6 class="text-muted">Net Position</h6>
-               <h3>GH₵ ${(stats.total_amount - totalExpenses).toLocaleString('en-US', {minimumFractionDigits: 2})}</h3>
+               <h3>${formatCurrencyLocale(stats.total_amount - totalExpenses)}</h3>
             </div>
          </div>
       `;

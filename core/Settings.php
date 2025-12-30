@@ -7,12 +7,16 @@
  * Supports string, number, boolean, json, and array types.
  *
  * @package  AliveChMS\Core
- * @version  2.0.0
+ * @version  1.0.0
  * @author   Benjamin Ebo Yankson
- * @since    2025-December
+ * @since    2025-November
  */
 
 declare(strict_types=1);
+
+require_once __DIR__ . '/ORM.php';
+require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/Helpers.php';
 
 class Settings
 {
@@ -230,10 +234,12 @@ class Settings
       $defaults = [
          // General Settings
          ['key' => 'church_name', 'value' => 'Alive Church', 'type' => 'string', 'category' => 'general', 'description' => 'Church name'],
+         ['key' => 'church_motto', 'value' => 'Faith, Hope, and Love', 'type' => 'string', 'category' => 'general', 'description' => 'Church motto or tagline'],
          ['key' => 'church_email', 'value' => 'info@alivechurch.org', 'type' => 'string', 'category' => 'general', 'description' => 'Church email address'],
          ['key' => 'church_phone', 'value' => '+233 000 000 000', 'type' => 'string', 'category' => 'general', 'description' => 'Church phone number'],
          ['key' => 'church_address', 'value' => 'Accra, Ghana', 'type' => 'string', 'category' => 'general', 'description' => 'Church physical address'],
          ['key' => 'church_website', 'value' => 'https://alivechurch.org', 'type' => 'string', 'category' => 'general', 'description' => 'Church website URL'],
+         ['key' => 'church_logo', 'value' => '', 'type' => 'string', 'category' => 'general', 'description' => 'Church logo path (relative to public folder)'],
 
          // Regional Settings
          ['key' => 'currency_symbol', 'value' => 'GH₵', 'type' => 'string', 'category' => 'regional', 'description' => 'Currency symbol'],

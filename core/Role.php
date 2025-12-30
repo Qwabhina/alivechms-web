@@ -117,7 +117,7 @@ class Role
       }
 
       // Check if role is assigned to any member
-      $assigned = $orm->getWhere('churchmember', ['ChurchRoleID' => $roleId]);
+      $assigned = $orm->getWhere('memberrole', ['ChurchRoleID' => $roleId]);
       if (!empty($assigned)) {
          Helpers::sendFeedback('Cannot delete role assigned to one or more members', 400);
       }

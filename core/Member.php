@@ -160,6 +160,7 @@ class Member
                 'MbrRegistrationDate'  => date('Y-m-d'),
                 'MbrHighestEducationLevel' => $data['education_level'] ?? 'Not Specified',
                 'MbrMembershipStatus'  => 'Active',
+                'MbrProfilePicture'    => $data['profile_picture'] ?? null,
                 'BranchID'             => (int)($data['branch_id'] ?? 1),
                 'FamilyID'             => !empty($data['family_id']) ? (int)$data['family_id'] : null,
                 'Deleted'              => 0
@@ -252,6 +253,33 @@ class Member
             'BranchID'             => !empty($data['branch_id']) ? (int)$data['branch_id'] : null,
             'FamilyID'             => !empty($data['family_id']) ? (int)$data['family_id'] : null,
         ];
+
+        // Handle profile picture update or removal
+        if (array_key_exists('profile_picture', $data)) {
+            // Get current member data to delete old picture if needed
+            $currentMember = $orm->getWhere('churchmember', ['MbrID' => $mbrId]);
+            $oldPicture = $currentMember[0]['MbrProfilePicture'] ?? null;
+
+            if ($data['profile_picture'] === null) {
+                // Remove profile picture
+                $updateData['MbrProfilePicture'] = null;
+
+                // Delete old file if exists
+                if ($oldPicture && file_exists(__DIR__ . '/../public/' . $oldPicture)) {
+                    unlink(__DIR__ . '/../public/' . $oldPicture);
+                    Helpers::logError("Deleted old profile picture for MbrID $mbrId: $oldPicture");
+                }
+            } elseif ($data['profile_picture'] !== $oldPicture) {
+                // New picture uploaded
+                $updateData['MbrProfilePicture'] = $data['profile_picture'];
+
+                // Delete old file if exists
+                if ($oldPicture && file_exists(__DIR__ . '/../public/' . $oldPicture)) {
+                    unlink(__DIR__ . '/../public/' . $oldPicture);
+                    Helpers::logError("Replaced profile picture for MbrID $mbrId");
+                }
+            }
+        }
 
         $orm->beginTransaction();
         try {

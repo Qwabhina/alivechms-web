@@ -64,7 +64,85 @@ class SettingsRoutes extends BaseRoute
             }
 
             $result = Settings::updateBulk($payload['settings']);
+
+            // Clear settings cache
+            if (class_exists('SettingsHelper')) {
+               SettingsHelper::clearCache();
+            }
+
             self::success($result, 'Settings updated successfully');
+         })(),
+
+         // UPLOAD CHURCH LOGO
+         $method === 'POST' && $path === 'settings/upload-logo' => (function () {
+            self::authenticate();
+            self::authorize('manage_settings');
+
+            // Check if file was uploaded
+            if (!isset($_FILES['logo']) || $_FILES['logo']['error'] !== UPLOAD_ERR_OK) {
+               self::error('No file uploaded or upload error occurred', 400);
+            }
+
+            $file = $_FILES['logo'];
+
+            // Validate file type
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $mimeType = $finfo->file($file['tmp_name']);
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'];
+
+            if (!in_array($mimeType, $allowedTypes)) {
+               self::error('Invalid file type. Allowed: JPG, PNG, GIF, SVG, WebP', 400);
+            }
+
+            // Validate file size (max 2MB)
+            if ($file['size'] > 2 * 1024 * 1024) {
+               self::error('File too large. Maximum size: 2MB', 400);
+            }
+
+            // Create upload directory if not exists
+            $uploadDir = __DIR__ . '/../public/uploads/logos/';
+            if (!is_dir($uploadDir)) {
+               mkdir($uploadDir, 0755, true);
+            }
+
+            // Generate unique filename
+            $extension = match ($mimeType) {
+               'image/jpeg' => 'jpg',
+               'image/png' => 'png',
+               'image/gif' => 'gif',
+               'image/svg+xml' => 'svg',
+               'image/webp' => 'webp',
+               default => 'jpg'
+            };
+            $filename = 'church_logo_' . time() . '.' . $extension;
+            $filepath = $uploadDir . $filename;
+            $relativePath = 'uploads/logos/' . $filename;
+
+            // Delete old logo if exists
+            $oldLogo = Settings::get('church_logo');
+            if ($oldLogo && file_exists(__DIR__ . '/../public/' . $oldLogo)) {
+               unlink(__DIR__ . '/../public/' . $oldLogo);
+            }
+
+            // Move uploaded file
+            if (!move_uploaded_file($file['tmp_name'], $filepath)) {
+               self::error('Failed to save uploaded file', 500);
+            }
+
+            // Update setting
+            Settings::set('church_logo', $relativePath, 'string', 'general', 'Church logo path');
+
+            // Clear settings cache
+            if (class_exists('SettingsHelper')) {
+               SettingsHelper::clearCache();
+            }
+
+            Helpers::logError("Church logo uploaded: $relativePath");
+
+            self::success([
+               'path' => $relativePath,
+               'url' => '/public/' . $relativePath
+            ], 'Logo uploaded successfully');
          })(),
 
          // INITIALIZE DEFAULT SETTINGS

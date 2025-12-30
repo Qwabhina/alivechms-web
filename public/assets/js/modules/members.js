@@ -158,7 +158,7 @@
                   const photo = cell.getValue();
                   const name = cell.getRow().getData().name;
                   if (photo) {
-                     return `<img src="/${photo}" class="member-photo" alt="${name}">`;
+                     return `<img src="/public/${photo}" class="member-photo" alt="${name}">`;
                   }
                   const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
                   return `<div class="member-photo-placeholder">${initials}</div>`;
@@ -387,6 +387,11 @@
          document.getElementById('profilePreview').classList.add('d-none');
          document.getElementById('uploadPlaceholder').classList.remove('d-none');
          document.getElementById('removePhotoBtn').classList.add('d-none');
+         
+         // Mark for removal in edit mode
+         if (isEditMode) {
+            document.getElementById('profilePreview').setAttribute('data-removed', 'true');
+         }
       });
 
       // Phone number management
@@ -485,6 +490,7 @@
       document.getElementById('memberForm').reset();
       document.getElementById('memberId').value = '';
       document.getElementById('profilePreview').classList.add('d-none');
+      document.getElementById('profilePreview').removeAttribute('data-removed');
       document.getElementById('uploadPlaceholder').classList.remove('d-none');
       document.getElementById('removePhotoBtn').classList.add('d-none');
       document.getElementById('loginFields').classList.add('d-none');
@@ -540,7 +546,7 @@
 
          if (member.MbrProfilePicture) {
             const preview = document.getElementById('profilePreview');
-            preview.src = `/${member.MbrProfilePicture}`;
+            preview.src = `/public/${member.MbrProfilePicture}`;
             preview.classList.remove('d-none');
             document.getElementById('uploadPlaceholder').classList.add('d-none');
             document.getElementById('removePhotoBtn').classList.remove('d-none');
@@ -568,79 +574,87 @@
       }
    }
 
-   async function saveMember() {
-      if (!validateCurrentStep()) return;
+   // FIXED saveMember() function - combines data and file in single request
 
-      try {
-         const phones = [];
-         document.querySelectorAll('.phone-input').forEach(input => {
-            const val = input.value.trim();
-            if (val) phones.push(val);
-         });
+async function saveMember() {
+   if (!validateCurrentStep()) return;
 
-         const payload = {
-            first_name: document.getElementById('firstName').value.trim(),
-            family_name: document.getElementById('familyName').value.trim(),
-            other_names: document.getElementById('otherNames').value.trim() || null,
-            gender: document.getElementById('gender').value,
-            date_of_birth: document.getElementById('dateOfBirth').value || null,
-            email_address: document.getElementById('email').value.trim(),
-            address: document.getElementById('address').value.trim() || null,
-            phone_numbers: phones,
-            occupation: document.getElementById('occupation').value.trim() || null,
-            marital_status: document.getElementById('maritalStatus').value || null,
-            education_level: document.getElementById('educationLevel').value.trim() || null,
-            family_id: document.getElementById('familySelect').value || null,
-            branch_id: 1
-         };
+   try {
+      // Collect phone numbers
+      const phones = [];
+      document.querySelectorAll('.phone-input').forEach(input => {
+         const val = input.value.trim();
+         if (val) phones.push(val);
+      });
 
-         if (!isEditMode && document.getElementById('enableLogin').checked) {
-            payload.username = document.getElementById('username').value.trim();
-            payload.password = document.getElementById('password').value;
-         }
-
-         console.log('Payload being sent:', payload);
-
-         Alerts.loading('Saving member...');
-
-         let result;
-         if (isEditMode) {
-            result = await api.put(`member/update/${currentMemberId}`, payload);
-         } else {
-            result = await api.post('member/create', payload);
-         }
-
-         console.log('Member save result:', result);
-
-         const newMemberId = result?.mbr_id || currentMemberId;
-         console.log('Member ID for photo upload:', newMemberId);
-
-         if (profilePictureFile && newMemberId) {
-            try {
-               console.log('Uploading profile picture:', profilePictureFile);
-               const formData = new FormData();
-               formData.append('profile_picture', profilePictureFile);
-               const uploadResult = await api.upload(`member/upload-photo/${newMemberId}`, formData);
-               console.log('Photo upload result:', uploadResult);
-            } catch (uploadError) {
-               console.error('Photo upload error:', uploadError);
-               Alerts.warning('Member saved but photo upload failed: ' + uploadError.message);
-            }
-         }
-
-         Alerts.closeLoading();
-         Alerts.success(isEditMode ? 'Member updated successfully' : 'Member created successfully');
-
-         bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
-         membersGrid.setData();
-         loadStats();
-
-      } catch (error) {
-         Alerts.closeLoading();
-         console.error('Save member error:', error);
-         Alerts.handleApiError(error);
+      // Create FormData for multipart/form-data request (supports file upload)
+      const formData = new FormData();
+      
+      // Add all member data to FormData
+      formData.append('first_name', document.getElementById('firstName').value.trim());
+      formData.append('family_name', document.getElementById('familyName').value.trim());
+      formData.append('other_names', document.getElementById('otherNames').value.trim() || '');
+      formData.append('gender', document.getElementById('gender').value);
+      formData.append('date_of_birth', document.getElementById('dateOfBirth').value || '');
+      formData.append('email_address', document.getElementById('email').value.trim());
+      formData.append('address', document.getElementById('address').value.trim() || '');
+      formData.append('occupation', document.getElementById('occupation').value.trim() || '');
+      formData.append('marital_status', document.getElementById('maritalStatus').value || '');
+      formData.append('education_level', document.getElementById('educationLevel').value.trim() || '');
+      formData.append('family_id', document.getElementById('familySelect').value || '');
+      formData.append('branch_id', '1');
+      
+      // Add phone numbers as JSON array
+      formData.append('phone_numbers', JSON.stringify(phones));
+      
+      // Add login credentials if enabled
+      if (!isEditMode && document.getElementById('enableLogin').checked) {
+         formData.append('username', document.getElementById('username').value.trim());
+         formData.append('password', document.getElementById('password').value);
       }
+      
+      // Add profile picture if selected
+      if (profilePictureFile) {
+         formData.append('profile_picture', profilePictureFile);
+         console.log('Profile picture added to FormData:', profilePictureFile.name);
+      } else if (isEditMode && document.getElementById('profilePreview').getAttribute('data-removed') === 'true') {
+         // User explicitly removed the photo in edit mode
+         formData.append('remove_profile_picture', 'true');
+         console.log('Profile picture marked for removal');
+      }
+      
+      // Add member ID for updates
+      if (isEditMode) {
+         formData.append('member_id', currentMemberId);
+      }
+
+      console.log('FormData prepared with', Array.from(formData.keys()).length, 'fields');
+
+      Alerts.loading('Saving member...');
+
+      // Single API call with all data
+      let result;
+      if (isEditMode) {
+         result = await api.upload(`member/update/${currentMemberId}`, formData);
+      } else {
+         result = await api.upload('member/create', formData);
+      }
+
+      console.log('Member save result:', result);
+
+      Alerts.closeLoading();
+      Alerts.success(isEditMode ? 'Member updated successfully' : 'Member created successfully');
+
+      bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
+      membersGrid.setData(); // Reload table data
+      loadStats();
+
+   } catch (error) {
+      Alerts.closeLoading();
+      console.error('Save member error:', error);
+      Alerts.handleApiError(error);
    }
+}
 
    async function viewMember(memberId) {
       currentMemberId = memberId;
@@ -652,7 +666,7 @@
          console.log('Member data retrieved:', member);
 
          const photoHtml = member.MbrProfilePicture ?
-            `<img src="/${member.MbrProfilePicture}" class="rounded-circle border border-4 border-white shadow" style="width:120px;height:120px;object-fit:cover;">` :
+            `<img src="/public/${member.MbrProfilePicture}" class="rounded-circle border border-4 border-white shadow" style="width:120px;height:120px;object-fit:cover;">` :
             `<div class="rounded-circle bg-gradient d-flex align-items-center justify-content-center text-white border border-4 border-white shadow" style="width:120px;height:120px;font-size:2.5rem;font-weight:700;background:linear-gradient(135deg, var(--primary-color) 0%, #8b5cf6 100%);">
                ${(member.MbrFirstName?.[0] || '') + (member.MbrFamilyName?.[0] || '')}
             </div>`;
