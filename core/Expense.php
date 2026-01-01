@@ -209,23 +209,23 @@ class Expense
       $expenses = $orm->selectWithJoin(
             baseTable: 'expense e',
             joins: [
-            ['table' => 'expense_category ec', 'on' => 'e.ExpenseCategoryID = ec.ExpenseCategoryID'],
+            ['table' => 'expense_category ec', 'on' => 'e.ExpCategoryID = ec.ExpCategoryID'],
             ['table' => 'fiscalyear fy',       'on' => 'e.FiscalYearID = fy.FiscalYearID'],
             ['table' => 'branch b',            'on' => 'e.BranchID = b.BranchID']
             ],
             fields: [
-            'e.ExpenseID',
-            'e.ExpenseTitle',
-            'e.ExpenseAmount',
-            'e.ExpenseDate',
-            'e.ExpenseStatus',
-            'ec.CategoryName',
-            'fy.YearName AS FiscalYear',
+            'e.ExpID',
+            'e.ExpTitle',
+            'e.ExpAmount',
+            'e.ExpDate',
+            'e.ExpStatus',
+            'ec.ExpCategoryName',
+            'fy.FiscalYearName AS FiscalYear',
             'b.BranchName'
             ],
             conditions: $conditions,
             params: $params,
-         orderBy: ['e.ExpenseDate' => 'DESC'],
+         orderBy: ['e.ExpDate' => 'DESC'],
             limit: $limit,
             offset: $offset
       );

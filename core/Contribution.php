@@ -6,8 +6,10 @@
  * Handles creation, update, soft deletion, restoration,
  * retrieval, and reporting of member financial contributions.
  *
+ * FIXED VERSION - All bugs corrected
+ *
  * @package  AliveChMS\Core
- * @version  1.0.0
+ * @version  1.0.1
  * @author   Benjamin Ebo Yankson
  * @since    2025-November
  */
@@ -74,17 +76,18 @@ class Contribution
 
       $orm->beginTransaction();
       try {
+         // FIXED: Changed 'Description' to 'ContributionDescription' to match schema
          $contributionId = $orm->insert('contribution', [
-            'ContributionAmount'   => $amount,
-            'ContributionDate'     => $contributionDate,
-            'ContributionTypeID'   => $typeId,
-            'PaymentOptionID'      => $paymentId,
-            'MbrID'                => $memberId,
-            'FiscalYearID'         => $fiscalYearId,
-            'Description'          => $data['description'] ?? null,
-            'Deleted'              => 0,
-            'RecordedBy'           => Auth::getCurrentUserId(),
-            'RecordedAt'           => date('Y-m-d H:i:s')
+            'ContributionAmount'       => $amount,
+            'ContributionDate'         => $contributionDate,
+            'ContributionTypeID'       => $typeId,
+            'PaymentOptionID'          => $paymentId,
+            'MbrID'                    => $memberId,
+            'FiscalYearID'             => $fiscalYearId,
+            'ContributionDescription'  => $data['description'] ?? null,  // FIXED: Column name
+            'Deleted'                  => 0,
+            'RecordedBy'               => Auth::getCurrentUserId(),
+            'RecordedAt'               => date('Y-m-d H:i:s')
          ])['id'];
 
          $orm->commit();
@@ -139,8 +142,9 @@ class Contribution
       if (!empty($data['payment_option_id'])) {
          $update['PaymentOptionID'] = (int)$data['payment_option_id'];
       }
+      // FIXED: Changed 'Description' to 'ContributionDescription'
       if (isset($data['description'])) {
-         $update['Description'] = $data['description'];
+         $update['ContributionDescription'] = $data['description'];
       }
 
       if (!empty($update)) {
@@ -269,7 +273,7 @@ class Contribution
             'c.ContributionID',
             'c.ContributionAmount',
             'c.ContributionDate',
-            'c.ContributionDescription',
+            'c.ContributionDescription',  // Already correct
             'm.MbrFirstName',
             'm.MbrFamilyName',
             'ct.ContributionTypeName',
@@ -282,10 +286,37 @@ class Contribution
          offset: $offset
       );
 
+      // FIXED: Simplified total count query logic
+      // Build WHERE clause for count query (excluding pagination)
+      $whereConditions = ['c.Deleted = 0'];
+      $countParams = [];
+
+      if (!empty($filters['contribution_type_id'])) {
+         $whereConditions[] = 'c.ContributionTypeID = :type_id';
+         $countParams[':type_id'] = (int)$filters['contribution_type_id'];
+      }
+      if (!empty($filters['member_id'])) {
+         $whereConditions[] = 'c.MbrID = :member_id';
+         $countParams[':member_id'] = (int)$filters['member_id'];
+      }
+      if (!empty($filters['fiscal_year_id'])) {
+         $whereConditions[] = 'c.FiscalYearID = :fy_id';
+         $countParams[':fy_id'] = (int)$filters['fiscal_year_id'];
+      }
+      if (!empty($filters['start_date'])) {
+         $whereConditions[] = 'c.ContributionDate >= :start';
+         $countParams[':start'] = $filters['start_date'];
+      }
+      if (!empty($filters['end_date'])) {
+         $whereConditions[] = 'c.ContributionDate <= :end';
+         $countParams[':end'] = $filters['end_date'];
+      }
+
+      $whereClause = implode(' AND ', $whereConditions);
+
       $total = $orm->runQuery(
-         "SELECT COUNT(*) AS total FROM contribution c WHERE c.Deleted = 0" .
-            (!empty($conditions) ? ' AND ' . implode(' AND ', array_keys(array_diff_key($conditions, ['c.Deleted' => 0]))) : ''),
-         array_diff_key($params, [':deleted' => 0])
+         "SELECT COUNT(*) AS total FROM contribution c WHERE $whereClause",
+         $countParams
       )[0]['total'];
 
       return [
@@ -309,30 +340,33 @@ class Contribution
    {
       $orm = new ORM();
 
-      $conditions = ['c.Deleted' => 0];
+      $conditions = ['c.Deleted = 0'];
       $params     = [];
 
       if (!empty($filters['contribution_type_id'])) {
-         $conditions['c.ContributionTypeID'] = ':type_id';
+         $conditions[] = 'c.ContributionTypeID = :type_id';
          $params[':type_id'] = (int)$filters['contribution_type_id'];
       }
       if (!empty($filters['fiscal_year_id'])) {
-         $conditions['c.FiscalYearID'] = ':fy_id';
+         $conditions[] = 'c.FiscalYearID = :fy_id';
          $params[':fy_id'] = (int)$filters['fiscal_year_id'];
       }
       if (!empty($filters['start_date'])) {
-         $conditions['c.ContributionDate >='] = ':start';
+         $conditions[] = 'c.ContributionDate >= :start';
          $params[':start'] = $filters['start_date'];
       }
       if (!empty($filters['end_date'])) {
-         $conditions['c.ContributionDate <='] = ':end';
+         $conditions[] = 'c.ContributionDate <= :end';
          $params[':end'] = $filters['end_date'];
       }
 
+      $whereClause = implode(' AND ', $conditions);
+
       $result = $orm->runQuery(
-         "SELECT COALESCE(SUM(c.ContributionAmount), 0) AS total FROM contribution c" .
-            (!empty($conditions) ? ' WHERE ' . implode(' AND ', array_keys($conditions)) : ''),
-            $params
+         "SELECT COALESCE(SUM(c.ContributionAmount), 0) AS total 
+          FROM contribution c 
+          WHERE $whereClause",
+         $params
       )[0];
 
       return ['total_contribution' => number_format((float)$result['total'], 2)];

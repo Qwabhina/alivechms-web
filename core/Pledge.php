@@ -322,7 +322,7 @@ class Pledge
             'm.MbrFirstName',
             'm.MbrFamilyName',
             'pt.PledgeTypeName',
-            'fy.YearName'
+            'fy.FiscalYearName'
          ],
          conditions: $conditions,
          params: $params,
