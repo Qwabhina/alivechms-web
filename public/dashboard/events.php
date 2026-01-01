@@ -128,23 +128,19 @@ require_once '../includes/sidebar.php';
          <h5 class="mb-0"><i class="bi bi-calendar3 me-2"></i>All Events</h5>
       </div>
       <div class="card-body">
-         <div class="d-flex justify-content-end mb-3 gap-2">
-            <button class="btn btn-success btn-sm" onclick="eventsGrid.download('xlsx', 'events.xlsx')">
-               <i class="bi bi-file-earmark-excel me-1"></i>Excel
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="eventsGrid.download('pdf', 'events.pdf', {orientation:'landscape', title:'Events Report'})">
-               <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="eventsGrid.print()">
-               <i class="bi bi-printer me-1"></i>Print
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="eventsGrid.setData()">
-               <i class="bi bi-arrow-clockwise"></i>
-            </button>
-         </div>
-         <div class="table-responsive">
-            <div id="eventsGrid"></div>
-         </div>
+         <table id="eventsTable" class="table table-striped table-hover" style="width:100%">
+            <thead>
+               <tr>
+                  <th>Event Title</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Location</th>
+                  <th>Branch</th>
+                  <th class="no-export">Actions</th>
+               </tr>
+            </thead>
+            <tbody></tbody>
+         </table>
       </div>
    </div>
 </div>
@@ -234,7 +230,7 @@ require_once '../includes/sidebar.php';
 </div>
 
 <script>
-   let eventsGrid = null;
+   let eventsTable = null;
    let currentEventId = null;
    let isEditMode = false;
 
@@ -248,112 +244,81 @@ require_once '../includes/sidebar.php';
    });
 
    async function initPage() {
-      initGrid();
+      initTable();
       initEventListeners();
       await loadDropdowns();
       loadStats();
    }
 
-   function initGrid() {
-      eventsGrid = new Tabulator("#eventsGrid", {
-         layout: "fitColumns",
-         responsiveLayout: "collapse",
-         resizableColumns: false,
-         pagination: true,
-         paginationMode: "remote",
-         paginationSize: Config.getSetting('items_per_page', 10),
-         paginationSizeSelector: [10, 25, 50, 100],
-         ajaxURL: `${Config.API_BASE_URL}/event/all`,
-         ajaxConfig: {
-            headers: {
-               'Authorization': `Bearer ${Auth.getToken()}`
+   function initTable() {
+      eventsTable = QMGridHelper.initWithButtons('#eventsTable', {
+         ajax: {
+            url: `${Config.API_BASE_URL}/event/all`,
+            type: 'GET',
+            data: function(d) {
+               return {
+                  page: Math.floor(d.start / d.length) + 1,
+                  limit: d.length,
+                  search: d.search.value || ''
+               };
+            },
+            dataFilter: function(data) {
+               return QMGridHelper.processServerResponse(data, function(e) {
+                  return {
+                     title: e.EventTitle,
+                     date: e.EventDate,
+                     time: e.StartTime ? `${e.StartTime}${e.EndTime ? ' - ' + e.EndTime : ''}` : 'N/A',
+                     location: e.Location || 'N/A',
+                     branch: e.BranchName,
+                     id: e.EventID
+                  };
+               });
             }
-         },
-         ajaxResponse: function(url, params, response) {
-            const data = response?.data?.data || response?.data || [];
-            const pagination = response?.data?.pagination || {};
-            return {
-               last_page: pagination.pages || 1,
-               data: data.map(e => ({
-                  title: e.EventTitle,
-                  date: e.EventDate,
-                  time: e.StartTime ? `${e.StartTime}${e.EndTime ? ' - ' + e.EndTime : ''}` : 'N/A',
-                  location: e.Location || 'N/A',
-                  branch: e.BranchName,
-                  id: e.EventID
-               }))
-            };
-         },
-         ajaxURLGenerator: function(url, config, params) {
-            let queryParams = [];
-            if (params.page) queryParams.push(`page=${params.page}`);
-            if (params.size) queryParams.push(`limit=${params.size}`);
-            return queryParams.length ? `${url}?${queryParams.join('&')}` : url;
          },
          columns: [{
-               title: "Event Title",
-               field: "title",
-               widthGrow: 2.5,
-               responsive: 0,
-               download: true
+               data: 'title',
+               title: 'Event Title'
             },
             {
-               title: "Date",
-               field: "date",
-               widthGrow: 1.5,
-               responsive: 0,
-               download: true,
-               formatter: cell => new Date(cell.getValue()).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric'
-               })
+               data: 'date',
+               title: 'Date',
+               render: function(data) {
+                  return new Date(data).toLocaleDateString('en-US', {
+                     year: 'numeric',
+                     month: 'short',
+                     day: 'numeric'
+                  });
+               }
             },
             {
-               title: "Time",
-               field: "time",
-               widthGrow: 1.5,
-               responsive: 1,
-               download: true
+               data: 'time',
+               title: 'Time'
             },
             {
-               title: "Location",
-               field: "location",
-               widthGrow: 1.5,
-               responsive: 2,
-               download: true
+               data: 'location',
+               title: 'Location'
             },
             {
-               title: "Branch",
-               field: "branch",
-               widthGrow: 1.5,
-               responsive: 2,
-               download: true
+               data: 'branch',
+               title: 'Branch'
             },
             {
-               title: "Actions",
-               field: "id",
-               width: 120,
-               headerSort: false,
-               responsive: 0,
-               download: false,
-               formatter: cell => {
-                  const id = cell.getValue();
-                  return `
-                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="viewEvent(${id})" title="View">
-                           <i class="bi bi-eye"></i>
-                        </button>
-                        <button class="btn btn-outline-warning" onclick="editEvent(${id})" title="Edit">
-                           <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-outline-danger" onclick="deleteEvent(${id})" title="Delete">
-                           <i class="bi bi-trash"></i>
-                        </button>
-                     </div>
-                  `;
+               data: 'id',
+               title: 'Actions',
+               orderable: false,
+               searchable: false,
+               className: 'no-export',
+               render: function(data) {
+                  return QMGridHelper.actionButtons(data, {
+                     viewFn: 'viewEvent',
+                     editFn: 'editEvent',
+                     deleteFn: 'deleteEvent'
+                  });
                }
             }
+         ],
+         order: [
+            [1, 'desc']
          ]
       });
    }
@@ -501,7 +466,7 @@ require_once '../includes/sidebar.php';
          Alerts.closeLoading();
          Alerts.success(isEditMode ? 'Event updated successfully' : 'Event created successfully');
          bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
-         eventsGrid.setData();
+         QMGridHelper.reload(eventsTable);
          loadStats();
       } catch (error) {
          Alerts.closeLoading();
@@ -627,7 +592,7 @@ require_once '../includes/sidebar.php';
          await api.delete(`event/delete/${eventId}`);
          Alerts.closeLoading();
          Alerts.success('Event deleted successfully');
-         eventsGrid.setData();
+         QMGridHelper.reload(eventsTable);
          loadStats();
       } catch (error) {
          Alerts.closeLoading();
@@ -649,14 +614,14 @@ require_once '../includes/sidebar.php';
       if (endDate) params.push(`end_date=${endDate}`);
 
       if (params.length > 0) url += '?' + params.join('&');
-      eventsGrid.setData(url);
+      eventsTable.ajax.url(url).load();
    }
 
    function clearFilters() {
       document.getElementById('filterBranch').value = '';
       document.getElementById('filterStartDate').value = '';
       document.getElementById('filterEndDate').value = '';
-      eventsGrid.setData();
+      eventsTable.ajax.url(`${Config.API_BASE_URL}/event/all`).load();
    }
 </script>
 

@@ -27,23 +27,7 @@ require_once '../includes/sidebar.php';
          <h5 class="mb-0"><i class="bi bi-calendar-range me-2"></i>All Fiscal Years</h5>
       </div>
       <div class="card-body">
-         <div class="d-flex justify-content-end mb-3 gap-2">
-            <button class="btn btn-success btn-sm" onclick="fiscalYearsGrid.download('xlsx', 'fiscal-years.xlsx')">
-               <i class="bi bi-file-earmark-excel me-1"></i>Excel
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="fiscalYearsGrid.download('pdf', 'fiscal-years.pdf', {orientation:'landscape', title:'Fiscal Years Report'})">
-               <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="fiscalYearsGrid.print()">
-               <i class="bi bi-printer me-1"></i>Print
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="fiscalYearsGrid.setData()">
-               <i class="bi bi-arrow-clockwise"></i>
-            </button>
-         </div>
-         <div class="table-responsive">
-            <div id="fiscalYearsGrid"></div>
-         </div>
+         <div id="fiscalYearsTable"></div>
       </div>
    </div>
 </div>
@@ -94,7 +78,7 @@ require_once '../includes/sidebar.php';
 </div>
 
 <script>
-   let fiscalYearsGrid = null;
+   let fiscalYearsTable = null;
    let currentFiscalYearId = null;
    let isEditMode = false;
 
@@ -108,106 +92,53 @@ require_once '../includes/sidebar.php';
    });
 
    async function initPage() {
-      initGrid();
+      initTable();
       initEventListeners();
       await loadDropdowns();
    }
 
-   function initGrid() {
-      fiscalYearsGrid = new Tabulator("#fiscalYearsGrid", {
-         layout: "fitColumns",
-         responsiveLayout: "collapse",
-         resizableColumns: false,
-         pagination: true,
-         paginationMode: "remote",
-         paginationSize: Config.getSetting('items_per_page', 10),
-         paginationSizeSelector: [10, 25, 50, 100],
-         ajaxURL: `${Config.API_BASE_URL}/fiscalyear/all`,
-         ajaxConfig: {
-            headers: {
-               'Authorization': `Bearer ${Auth.getToken()}`
-            }
-         },
-         ajaxResponse: function(url, params, response) {
-            const data = response?.data?.data || response?.data || [];
-            const pagination = response?.data?.pagination || {};
-            return {
-               last_page: pagination.pages || 1,
-               data: data.map(fy => ({
-                  start_date: fy.FiscalYearStartDate,
-                  end_date: fy.FiscalYearEndDate,
-                  branch: fy.BranchName,
-                  status: fy.Status,
-                  id: fy.FiscalYearID
-               }))
-            };
-         },
-         ajaxURLGenerator: function(url, config, params) {
-            let queryParams = [];
-            if (params.page) queryParams.push(`page=${params.page}`);
-            if (params.size) queryParams.push(`limit=${params.size}`);
-            return queryParams.length ? `${url}?${queryParams.join('&')}` : url;
-         },
+   async function initTable() {
+      fiscalYearsTable = await QMGridHelper.initWithButtons('#fiscalYearsTable', {
+         url: `${Config.API_BASE_URL}/fiscalyear/all`,
+         pageSize: 10,
          columns: [{
-               title: "Start Date",
-               field: "start_date",
-               widthGrow: 1.5,
-               responsive: 0,
-               download: true,
-               formatter: cell => new Date(cell.getValue()).toLocaleDateString()
+               key: 'FiscalYearStartDate',
+               title: 'Start Date',
+               render: (data) => QMGridHelper.formatDate(data)
             },
             {
-               title: "End Date",
-               field: "end_date",
-               widthGrow: 1.5,
-               responsive: 0,
-               download: true,
-               formatter: cell => new Date(cell.getValue()).toLocaleDateString()
+               key: 'FiscalYearEndDate',
+               title: 'End Date',
+               render: (data) => QMGridHelper.formatDate(data)
             },
             {
-               title: "Branch",
-               field: "branch",
-               widthGrow: 1.5,
-               responsive: 1,
-               download: true
+               key: 'BranchName',
+               title: 'Branch'
             },
             {
-               title: "Status",
-               field: "status",
-               widthGrow: 1,
-               responsive: 0,
-               download: false,
-               formatter: cell => {
-                  const status = cell.getValue();
-                  const badge = status === 'Active' ? 'success' : 'secondary';
-                  return `<span class="badge bg-${badge}">${status}</span>`;
-               }
+               key: 'Status',
+               title: 'Status',
+               render: (data) => QMGridHelper.statusBadge(data)
             },
             {
-               title: "Actions",
-               field: "id",
-               width: 120,
-               headerSort: false,
-               responsive: 0,
-               download: false,
-               formatter: cell => {
-                  const id = cell.getValue();
-                  const rowData = cell.getRow().getData();
-                  return `
-                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-warning" onclick="editFiscalYear(${id})" title="Edit">
-                           <i class="bi bi-pencil"></i>
-                        </button>
-                        ${rowData.status === 'Active' ? `
-                           <button class="btn btn-outline-info" onclick="closeFiscalYear(${id})" title="Close">
-                              <i class="bi bi-lock"></i>
-                           </button>
-                        ` : ''}
-                        <button class="btn btn-outline-danger" onclick="deleteFiscalYear(${id})" title="Delete">
-                           <i class="bi bi-trash"></i>
-                        </button>
-                     </div>
-                  `;
+               key: 'FiscalYearID',
+               title: 'Actions',
+               sortable: false,
+               className: 'no-export',
+               render: (data, row) => {
+                  const customButtons = row.Status === 'Active' ? [{
+                     icon: 'lock',
+                     color: 'info',
+                     fn: 'closeFiscalYear',
+                     title: 'Close'
+                  }] : [];
+
+                  return QMGridHelper.actionButtons(data, {
+                     view: false,
+                     editFn: 'editFiscalYear',
+                     deleteFn: 'deleteFiscalYear',
+                     custom: customButtons
+                  });
                }
             }
          ]
@@ -300,7 +231,7 @@ require_once '../includes/sidebar.php';
          Alerts.closeLoading();
          Alerts.success(isEditMode ? 'Fiscal year updated successfully' : 'Fiscal year created successfully');
          bootstrap.Modal.getInstance(document.getElementById('fiscalYearModal')).hide();
-         fiscalYearsGrid.setData();
+         QMGridHelper.reload(fiscalYearsTable);
       } catch (error) {
          Alerts.closeLoading();
          console.error('Save fiscal year error:', error);
@@ -337,7 +268,7 @@ require_once '../includes/sidebar.php';
          await api.post(`fiscalyear/close/${fiscalYearId}`);
          Alerts.closeLoading();
          Alerts.success('Fiscal year closed successfully');
-         fiscalYearsGrid.setData();
+         QMGridHelper.reload(fiscalYearsTable);
       } catch (error) {
          Alerts.closeLoading();
          console.error('Close fiscal year error:', error);
@@ -366,7 +297,7 @@ require_once '../includes/sidebar.php';
          await api.delete(`fiscalyear/delete/${fiscalYearId}`);
          Alerts.closeLoading();
          Alerts.success('Fiscal year deleted successfully');
-         fiscalYearsGrid.setData();
+         QMGridHelper.reload(fiscalYearsTable);
       } catch (error) {
          Alerts.closeLoading();
          console.error('Delete fiscal year error:', error);

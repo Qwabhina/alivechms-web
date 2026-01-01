@@ -74,23 +74,20 @@ require_once '../includes/sidebar.php';
          <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Activity Log</h5>
       </div>
       <div class="card-body">
-         <div class="d-flex justify-content-end mb-3 gap-2">
-            <button class="btn btn-success btn-sm" onclick="auditLogGrid.download('xlsx', 'audit-log.xlsx')">
-               <i class="bi bi-file-earmark-excel me-1"></i>Excel
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="auditLogGrid.download('pdf', 'audit-log.pdf', {orientation:'landscape', title:'Audit Log Report'})">
-               <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="auditLogGrid.print()">
-               <i class="bi bi-printer me-1"></i>Print
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="auditLogGrid.setData()">
-               <i class="bi bi-arrow-clockwise"></i>
-            </button>
-         </div>
-         <div class="table-responsive">
-            <div id="auditLogGrid"></div>
-         </div>
+         <table id="auditLogTable" class="table table-striped table-hover" style="width:100%">
+            <thead>
+               <tr>
+                  <th>Timestamp</th>
+                  <th>User</th>
+                  <th>Action</th>
+                  <th>Entity</th>
+                  <th>Entity ID</th>
+                  <th>IP Address</th>
+                  <th class="no-export">Actions</th>
+               </tr>
+            </thead>
+            <tbody></tbody>
+         </table>
       </div>
    </div>
 </div>
@@ -117,7 +114,7 @@ require_once '../includes/sidebar.php';
 </div>
 
 <script>
-   let auditLogGrid = null;
+   let auditLogTable = null;
 
    document.addEventListener('DOMContentLoaded', async () => {
       if (!Auth.requireAuth()) return;
@@ -129,56 +126,42 @@ require_once '../includes/sidebar.php';
    });
 
    async function initPage() {
-      initGrid();
+      initTable();
    }
 
-   function initGrid() {
-      auditLogGrid = new Tabulator("#auditLogGrid", {
-         layout: "fitColumns",
-         responsiveLayout: "collapse",
-         resizableColumns: false,
-         pagination: true,
-         paginationMode: "remote",
-         paginationSize: Config.getSetting('items_per_page', 10),
-         paginationSizeSelector: [10, 25, 50, 100],
-         ajaxURL: `${Config.API_BASE_URL}/audit/search`,
-         ajaxConfig: {
-            headers: {
-               'Authorization': `Bearer ${Auth.getToken()}`
+   function initTable() {
+      auditLogTable = QMGridHelper.initWithButtons('#auditLogTable', {
+         ajax: {
+            url: `${Config.API_BASE_URL}/audit/search`,
+            type: 'GET',
+            data: function(d) {
+               return {
+                  page: Math.floor(d.start / d.length) + 1,
+                  limit: d.length,
+                  search: d.search.value || ''
+               };
+            },
+            dataFilter: function(data) {
+               return QMGridHelper.processServerResponse(data, function(log) {
+                  return {
+                     user: log.MbrFirstName && log.MbrFamilyName ? `${log.MbrFirstName} ${log.MbrFamilyName}` : 'System',
+                     action: log.action,
+                     entity: log.entity_type,
+                     entity_id: log.entity_id,
+                     timestamp: log.created_at,
+                     ip: log.ip_address,
+                     changes: log.changes,
+                     metadata: log.metadata,
+                     user_agent: log.user_agent
+                  };
+               });
             }
          },
-         ajaxResponse: function(url, params, response) {
-            const data = response?.data?.data || response?.data || [];
-            const pagination = response?.data?.pagination || {};
-            return {
-               last_page: pagination.pages || 1,
-               data: data.map(log => ({
-                  user: log.MbrFirstName && log.MbrFamilyName ? `${log.MbrFirstName} ${log.MbrFamilyName}` : 'System',
-                  action: log.action,
-                  entity: log.entity_type,
-                  entity_id: log.entity_id,
-                  timestamp: log.created_at,
-                  ip: log.ip_address,
-                  changes: log.changes,
-                  metadata: log.metadata,
-                  user_agent: log.user_agent
-               }))
-            };
-         },
-         ajaxURLGenerator: function(url, config, params) {
-            let queryParams = [];
-            if (params.page) queryParams.push(`page=${params.page}`);
-            if (params.size) queryParams.push(`limit=${params.size}`);
-            return queryParams.length ? `${url}?${queryParams.join('&')}` : url;
-         },
          columns: [{
-               title: "Timestamp",
-               field: "timestamp",
-               widthGrow: 1.5,
-               responsive: 0,
-               download: true,
-               formatter: cell => {
-                  const date = new Date(cell.getValue());
+               data: 'timestamp',
+               title: 'Timestamp',
+               render: function(data) {
+                  const date = new Date(data);
                   return date.toLocaleString('en-US', {
                      year: 'numeric',
                      month: 'short',
@@ -189,20 +172,13 @@ require_once '../includes/sidebar.php';
                }
             },
             {
-               title: "User",
-               field: "user",
-               widthGrow: 1.5,
-               responsive: 0,
-               download: true
+               data: 'user',
+               title: 'User'
             },
             {
-               title: "Action",
-               field: "action",
-               widthGrow: 1,
-               responsive: 1,
-               download: true,
-               formatter: cell => {
-                  const action = cell.getValue();
+               data: 'action',
+               title: 'Action',
+               render: function(data) {
                   const badges = {
                      'create': 'success',
                      'update': 'primary',
@@ -210,46 +186,36 @@ require_once '../includes/sidebar.php';
                      'approve': 'info',
                      'reject': 'warning'
                   };
-                  return `<span class="badge bg-${badges[action] || 'secondary'}">${action}</span>`;
+                  return `<span class="badge bg-${badges[data] || 'secondary'}">${data}</span>`;
                }
             },
             {
-               title: "Entity",
-               field: "entity",
-               widthGrow: 1,
-               responsive: 2,
-               download: true
+               data: 'entity',
+               title: 'Entity'
             },
             {
-               title: "Entity ID",
-               field: "entity_id",
-               widthGrow: 0.8,
-               responsive: 2,
-               download: true
+               data: 'entity_id',
+               title: 'Entity ID'
             },
             {
-               title: "IP Address",
-               field: "ip",
-               widthGrow: 1.2,
-               responsive: 2,
-               download: true
+               data: 'ip',
+               title: 'IP Address'
             },
             {
-               title: "Actions",
-               field: "timestamp",
-               width: 80,
-               headerSort: false,
-               responsive: 0,
-               download: false,
-               formatter: cell => {
-                  const rowData = cell.getRow().getData();
-                  return `
-                     <button class="btn btn-sm btn-outline-primary" onclick='viewLog(${JSON.stringify(rowData)})' title="View Details">
-                        <i class="bi bi-eye"></i>
-                     </button>
-                  `;
+               data: null,
+               title: 'Actions',
+               orderable: false,
+               searchable: false,
+               className: 'no-export',
+               render: function(data, type, row) {
+                  return `<button class="btn btn-sm btn-outline-primary" onclick='viewLog(${JSON.stringify(row)})' title="View Details">
+                     <i class="bi bi-eye"></i>
+                  </button>`;
                }
             }
+         ],
+         order: [
+            [0, 'desc']
          ]
       });
    }
@@ -339,7 +305,9 @@ require_once '../includes/sidebar.php';
       if (endDate) params.push(`end_date=${endDate}`);
 
       if (params.length > 0) url += '?' + params.join('&');
-      auditLogGrid.setData(url);
+
+      // Reload table with new URL
+      auditLogTable.ajax.url(url).load();
    }
 
    function clearFilters() {
@@ -347,7 +315,7 @@ require_once '../includes/sidebar.php';
       document.getElementById('filterEntity').value = '';
       document.getElementById('filterStartDate').value = '';
       document.getElementById('filterEndDate').value = '';
-      auditLogGrid.setData();
+      auditLogTable.ajax.url(`${Config.API_BASE_URL}/audit/search`).load();
    }
 </script>
 

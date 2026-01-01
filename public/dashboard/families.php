@@ -95,29 +95,18 @@ require_once '../includes/sidebar.php';
          <h5 class="mb-0"><i class="bi bi-house-heart me-2"></i>All Families</h5>
       </div>
       <div class="card-body">
-         <div class="d-flex justify-content-between mb-3 gap-2">
-            <div class="input-group" style="max-width: 300px;">
-               <span class="input-group-text"><i class="bi bi-search"></i></span>
-               <input type="text" class="form-control" id="familySearch" placeholder="Search families...">
-            </div>
-            <div class="d-flex gap-2">
-               <button class="btn btn-success btn-sm" onclick="familiesGrid.download('xlsx', 'families.xlsx')">
-                  <i class="bi bi-file-earmark-excel me-1"></i>Excel
-               </button>
-               <button class="btn btn-danger btn-sm" onclick="familiesGrid.download('pdf', 'families.pdf', {orientation:'portrait', title:'Families List'})">
-                  <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-               </button>
-               <button class="btn btn-primary btn-sm" onclick="familiesGrid.print()">
-                  <i class="bi bi-printer me-1"></i>Print
-               </button>
-               <button class="btn btn-secondary btn-sm" onclick="familiesGrid.setData()">
-                  <i class="bi bi-arrow-clockwise"></i>
-               </button>
-            </div>
-         </div>
-         <div class="table-responsive">
-            <div id="familiesGrid"></div>
-         </div>
+         <table id="familiesTable" class="table table-striped table-hover" style="width:100%">
+            <thead>
+               <tr>
+                  <th>Family Name</th>
+                  <th>Head of Household</th>
+                  <th>Members</th>
+                  <th>Created</th>
+                  <th class="no-export">Actions</th>
+               </tr>
+            </thead>
+            <tbody></tbody>
+         </table>
       </div>
    </div>
 </div>
@@ -180,7 +169,7 @@ require_once '../includes/sidebar.php';
 </div>
 
 <script>
-   let familiesGrid = null;
+   let familiesTable = null;
    let currentFamilyId = null;
    let isEditMode = false;
    let headOfHouseholdChoices = null;
@@ -195,100 +184,71 @@ require_once '../includes/sidebar.php';
    });
 
    async function initPage() {
-      initGrid();
+      initTable();
       initEventListeners();
       loadStats();
       await loadMembers();
    }
 
-   function initGrid() {
-      familiesGrid = new Tabulator("#familiesGrid", {
-         layout: "fitColumns",
-         responsiveLayout: "collapse",
-         resizableColumns: false,
-         pagination: true,
-         paginationMode: "remote",
-         paginationSize: Config.getSetting('items_per_page', 10),
-         paginationSizeSelector: [10, 25, 50, 100],
-         ajaxURL: `${Config.API_BASE_URL}/family/all`,
-         ajaxConfig: {
-            headers: {
-               'Authorization': `Bearer ${Auth.getToken()}`
+   function initTable() {
+      familiesTable = QMGridHelper.initWithButtons('#familiesTable', {
+         ajax: {
+            url: `${Config.API_BASE_URL}/family/all`,
+            type: 'GET',
+            data: function(d) {
+               return {
+                  page: Math.floor(d.start / d.length) + 1,
+                  limit: d.length,
+                  search: d.search.value || '',
+                  sort: d.columns[d.order[0].column].data,
+                  order: d.order[0].dir
+               };
+            },
+            dataFilter: function(data) {
+               return QMGridHelper.processServerResponse(data, function(f) {
+                  return {
+                     name: f.FamilyName,
+                     head: f.HeadOfHouseholdName || '-',
+                     members: f.MemberCount || 0,
+                     created: f.CreatedAt ? new Date(f.CreatedAt).toLocaleDateString() : '-',
+                     id: f.FamilyID
+                  };
+               });
             }
-         },
-         ajaxResponse: function(url, params, response) {
-            const data = response?.data?.data || response?.data || [];
-            const pagination = response?.data?.pagination || {};
-            return {
-               last_page: pagination.pages || 1,
-               data: data.map(f => ({
-                  name: f.FamilyName,
-                  head: f.HeadOfHouseholdName || '-',
-                  members: f.MemberCount || 0,
-                  created: f.CreatedAt ? new Date(f.CreatedAt).toLocaleDateString() : '-',
-                  id: f.FamilyID
-               }))
-            };
-         },
-         ajaxURLGenerator: function(url, config, params) {
-            let queryParams = [];
-            if (params.page) queryParams.push(`page=${params.page}`);
-            if (params.size) queryParams.push(`limit=${params.size}`);
-            if (params.search) queryParams.push(`search=${encodeURIComponent(params.search)}`);
-            return queryParams.length ? `${url}?${queryParams.join('&')}` : url;
          },
          columns: [{
-               title: "Family Name",
-               field: "name",
-               widthGrow: 2,
-               responsive: 0,
-               download: true
+               data: 'name',
+               title: 'Family Name'
             },
             {
-               title: "Head of Household",
-               field: "head",
-               widthGrow: 2,
-               responsive: 1,
-               download: true
+               data: 'head',
+               title: 'Head of Household'
             },
             {
-               title: "Members",
-               field: "members",
-               widthGrow: 1,
-               responsive: 2,
-               download: true
+               data: 'members',
+               title: 'Members'
             },
             {
-               title: "Created",
-               field: "created",
-               widthGrow: 1.5,
-               responsive: 2,
-               download: true
+               data: 'created',
+               title: 'Created'
             },
             {
-               title: "Actions",
-               field: "id",
-               width: 120,
-               headerSort: false,
-               responsive: 0,
-               download: false,
-               formatter: function(cell) {
-                  const id = cell.getValue();
-                  return `
-                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="viewFamily(${id})" title="View">
-                           <i class="bi bi-eye"></i>
-                        </button>
-                        <button class="btn btn-outline-warning" onclick="editFamily(${id})" title="Edit">
-                           <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-outline-danger" onclick="deleteFamily(${id})" title="Delete">
-                           <i class="bi bi-trash"></i>
-                        </button>
-                     </div>
-                  `;
+               data: 'id',
+               title: 'Actions',
+               orderable: false,
+               searchable: false,
+               className: 'no-export',
+               render: function(data, type, row) {
+                  return QMGridHelper.actionButtons(data, {
+                     viewFn: 'viewFamily',
+                     editFn: 'editFamily',
+                     deleteFn: 'deleteFamily'
+                  });
                }
             }
+         ],
+         order: [
+            [0, 'asc']
          ]
       });
    }
@@ -409,7 +369,7 @@ require_once '../includes/sidebar.php';
          Alerts.closeLoading();
          Alerts.success(isEditMode ? 'Family updated successfully' : 'Family created successfully');
          bootstrap.Modal.getInstance(document.getElementById('familyModal')).hide();
-         familiesGrid.setData();
+         QMGridHelper.reload(familiesTable);
          loadStats();
       } catch (error) {
          Alerts.closeLoading();
@@ -509,7 +469,7 @@ require_once '../includes/sidebar.php';
          await api.delete(`family/delete/${familyId}`);
          Alerts.closeLoading();
          Alerts.success('Family deleted successfully');
-         familiesGrid.setData();
+         QMGridHelper.reload(familiesTable);
          loadStats();
       } catch (error) {
          Alerts.closeLoading();

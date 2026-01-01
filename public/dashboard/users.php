@@ -92,23 +92,19 @@ require_once '../includes/sidebar.php';
          <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>All Users</h5>
       </div>
       <div class="card-body">
-         <div class="d-flex justify-content-end mb-3 gap-2">
-            <button class="btn btn-success btn-sm" onclick="usersGrid.download('xlsx', 'users.xlsx')">
-               <i class="bi bi-file-earmark-excel me-1"></i>Excel
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="usersGrid.download('pdf', 'users.pdf', {orientation:'landscape', title:'Users Report'})">
-               <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="usersGrid.print()">
-               <i class="bi bi-printer me-1"></i>Print
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="usersGrid.setData()">
-               <i class="bi bi-arrow-clockwise"></i>
-            </button>
-         </div>
-         <div class="table-responsive">
-            <div id="usersGrid"></div>
-         </div>
+         <table id="usersTable" class="table table-striped table-hover" style="width:100%">
+            <thead>
+               <tr>
+                  <th>Name</th>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th class="no-export">Actions</th>
+               </tr>
+            </thead>
+            <tbody></tbody>
+         </table>
       </div>
    </div>
 </div>
@@ -148,7 +144,7 @@ require_once '../includes/sidebar.php';
 </div>
 
 <script>
-   let usersGrid = null;
+   let usersTable = null;
    let currentUserId = null;
 
    document.addEventListener('DOMContentLoaded', async () => {
@@ -161,114 +157,86 @@ require_once '../includes/sidebar.php';
    });
 
    async function initPage() {
-      initGrid();
+      initTable();
       initEventListeners();
       await loadRoles();
       loadStats();
    }
 
-   function initGrid() {
-      usersGrid = new Tabulator("#usersGrid", {
-         layout: "fitColumns",
-         responsiveLayout: "collapse",
-         resizableColumns: false,
-         pagination: true,
-         paginationMode: "remote",
-         paginationSize: Config.getSetting('items_per_page', 10),
-         paginationSizeSelector: [10, 25, 50, 100],
-         ajaxURL: `${Config.API_BASE_URL}/member/all`,
-         ajaxConfig: {
-            headers: {
-               'Authorization': `Bearer ${Auth.getToken()}`
+   function initTable() {
+      usersTable = QMGridHelper.initWithButtons('#usersTable', {
+         ajax: {
+            url: `${Config.API_BASE_URL}/member/all`,
+            type: 'GET',
+            data: function(d) {
+               return {
+                  page: Math.floor(d.start / d.length) + 1,
+                  limit: d.length,
+                  search: d.search.value || ''
+               };
+            },
+            dataFilter: function(data) {
+               return QMGridHelper.processServerResponse(data, function(m) {
+                  // Filter only members with Username (users with login access)
+                  if (!m.Username) return null;
+
+                  return {
+                     name: `${m.MbrFirstName} ${m.MbrFamilyName}`,
+                     username: m.Username,
+                     email: m.MbrEmailAddress || 'N/A',
+                     role: m.RoleName || 'No Role',
+                     status: m.MbrMembershipStatus,
+                     id: m.MbrID
+                  };
+               });
             }
          },
-         ajaxResponse: function(url, params, response) {
-            const data = response?.data?.data || response?.data || [];
-            const pagination = response?.data?.pagination || {};
-
-            // Filter only members with Username (users with login access)
-            const users = data.filter(m => m.Username);
-
-            return {
-               last_page: pagination.pages || 1,
-               data: users.map(u => ({
-                  name: `${u.MbrFirstName} ${u.MbrFamilyName}`,
-                  username: u.Username,
-                  email: u.MbrEmailAddress || 'N/A',
-                  role: u.RoleName || 'No Role',
-                  status: u.MbrMembershipStatus,
-                  id: u.MbrID
-               }))
-            };
-         },
-         ajaxURLGenerator: function(url, config, params) {
-            let queryParams = [];
-            if (params.page) queryParams.push(`page=${params.page}`);
-            if (params.size) queryParams.push(`limit=${params.size}`);
-            return queryParams.length ? `${url}?${queryParams.join('&')}` : url;
-         },
          columns: [{
-               title: "Name",
-               field: "name",
-               widthGrow: 2,
-               responsive: 0,
-               download: true
+               data: 'name',
+               title: 'Name'
             },
             {
-               title: "Username",
-               field: "username",
-               widthGrow: 1.5,
-               responsive: 0,
-               download: true
+               data: 'username',
+               title: 'Username'
             },
             {
-               title: "Email",
-               field: "email",
-               widthGrow: 2,
-               responsive: 1,
-               download: true
+               data: 'email',
+               title: 'Email'
             },
             {
-               title: "Role",
-               field: "role",
-               widthGrow: 1.5,
-               responsive: 1,
-               download: true
+               data: 'role',
+               title: 'Role'
             },
             {
-               title: "Status",
-               field: "status",
-               widthGrow: 1,
-               responsive: 0,
-               download: false,
-               formatter: cell => {
-                  const status = cell.getValue();
-                  const badge = status === 'Active' ? 'success' : 'secondary';
-                  return `<span class="badge bg-${badge}">${status}</span>`;
+               data: 'status',
+               title: 'Status',
+               render: function(data) {
+                  const badge = data === 'Active' ? 'success' : 'secondary';
+                  return `<span class="badge bg-${badge}">${data}</span>`;
                }
             },
             {
-               title: "Actions",
-               field: "id",
-               width: 100,
-               headerSort: false,
-               responsive: 0,
-               download: false,
-               formatter: cell => {
-                  const id = cell.getValue();
-                  const rowData = cell.getRow().getData();
+               data: 'id',
+               title: 'Actions',
+               orderable: false,
+               searchable: false,
+               className: 'no-export',
+               render: function(data, type, row) {
                   return `
                      <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick='assignRole(${id}, "${rowData.name}")' title="Assign Role">
+                        <button class="btn btn-outline-primary" onclick='assignRole(${data}, "${row.name}")' title="Assign Role">
                            <i class="bi bi-shield-check"></i>
                         </button>
-                        <button class="btn btn-outline-warning" onclick="viewUser(${id})" title="View">
+                        <button class="btn btn-outline-warning" onclick="viewUser(${data})" title="View">
                            <i class="bi bi-eye"></i>
                         </button>
                      </div>
                   `;
                }
             }
+         ],
+         order: [
+            [0, 'asc']
          ]
       });
    }
@@ -349,7 +317,7 @@ require_once '../includes/sidebar.php';
          Alerts.closeLoading();
          Alerts.success('Role assigned successfully');
          bootstrap.Modal.getInstance(document.getElementById('assignRoleModal')).hide();
-         usersGrid.setData();
+         QMGridHelper.reload(usersTable);
          loadStats();
       } catch (error) {
          Alerts.closeLoading();

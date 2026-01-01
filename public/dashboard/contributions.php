@@ -163,23 +163,19 @@ require_once '../includes/sidebar.php';
          <h5 class="mb-0"><i class="bi bi-cash-coin me-2"></i>All Contributions</h5>
       </div>
       <div class="card-body">
-         <div class="d-flex justify-content-end mb-3 gap-2">
-            <button class="btn btn-success btn-sm" onclick="contributionsGrid.download('xlsx', 'contributions.xlsx')">
-               <i class="bi bi-file-earmark-excel me-1"></i>Excel
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="contributionsGrid.download('pdf', 'contributions.pdf', {orientation:'landscape', title:'Contributions Report'})">
-               <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="contributionsGrid.print()">
-               <i class="bi bi-printer me-1"></i>Print
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="contributionsGrid.setData()">
-               <i class="bi bi-arrow-clockwise"></i>
-            </button>
-         </div>
-         <div class="table-responsive">
-            <div id="contributionsGrid"></div>
-         </div>
+         <table id="contributionsTable" class="table table-striped table-hover" style="width:100%">
+            <thead>
+               <tr>
+                  <th>Member</th>
+                  <th>Amount</th>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Payment Method</th>
+                  <th class="no-export">Actions</th>
+               </tr>
+            </thead>
+            <tbody></tbody>
+         </table>
       </div>
    </div>
 </div>
@@ -268,7 +264,7 @@ require_once '../includes/sidebar.php';
 </div>
 
 <script>
-   let contributionsGrid = null;
+   let contributionsTable = null;
    let currentContributionId = null;
    let isEditMode = false;
    let memberChoices = null;
@@ -287,7 +283,7 @@ require_once '../includes/sidebar.php';
    });
 
    async function initPage() {
-      initGrid();
+      initTable();
       initEventListeners();
       await loadDropdowns();
       loadStats();
@@ -296,107 +292,74 @@ require_once '../includes/sidebar.php';
       document.getElementById('contributionDate').valueAsDate = new Date();
    }
 
-   function initGrid() {
-      contributionsGrid = new Tabulator("#contributionsGrid", {
-         layout: "fitColumns",
-         responsiveLayout: "collapse",
-         resizableColumns: false,
-         pagination: true,
-         paginationMode: "remote",
-         paginationSize: Config.getSetting('items_per_page', 10),
-         paginationSizeSelector: [10, 25, 50, 100],
-         ajaxURL: `${Config.API_BASE_URL}/contribution/all`,
-         ajaxConfig: {
-            headers: {
-               'Authorization': `Bearer ${Auth.getToken()}`
+   function initTable() {
+      contributionsTable = QMGridHelper.initWithButtons('#contributionsTable', {
+         ajax: {
+            url: `${Config.API_BASE_URL}/contribution/all`,
+            type: 'GET',
+            data: function(d) {
+               return {
+                  page: Math.floor(d.start / d.length) + 1,
+                  limit: d.length,
+                  search: d.search.value || ''
+               };
+            },
+            dataFilter: function(data) {
+               return QMGridHelper.processServerResponse(data, function(c) {
+                  return {
+                     member: `${c.MbrFirstName} ${c.MbrFamilyName}`,
+                     amount: parseFloat(c.ContributionAmount),
+                     date: c.ContributionDate,
+                     type: c.ContributionTypeName,
+                     payment: c.PaymentOptionName,
+                     id: c.ContributionID
+                  };
+               });
             }
-         },
-         ajaxResponse: function(url, params, response) {
-            const data = response?.data?.data || response?.data || [];
-            const pagination = response?.data?.pagination || {};
-            return {
-               last_page: pagination.pages || 1,
-               data: data.map(c => ({
-                  member: `${c.MbrFirstName} ${c.MbrFamilyName}`,
-                  amount: parseFloat(c.ContributionAmount),
-                  date: c.ContributionDate,
-                  type: c.ContributionTypeName,
-                  payment: c.PaymentOptionName,
-                  id: c.ContributionID
-               }))
-            };
-         },
-         ajaxURLGenerator: function(url, config, params) {
-            let queryParams = [];
-            if (params.page) queryParams.push(`page=${params.page}`);
-            if (params.size) queryParams.push(`limit=${params.size}`);
-            return queryParams.length ? `${url}?${queryParams.join('&')}` : url;
          },
          columns: [{
-               title: "Member",
-               field: "member",
-               widthGrow: 2,
-               responsive: 0,
-               download: true
+               data: 'member',
+               title: 'Member'
             },
             {
-               title: "Amount",
-               field: "amount",
-               widthGrow: 1.5,
-               responsive: 0,
-               download: true,
-               formatter: function(cell) {
-                  return formatCurrency(parseFloat(cell.getValue()));
+               data: 'amount',
+               title: 'Amount',
+               render: function(data) {
+                  return formatCurrency(parseFloat(data));
                }
             },
             {
-               title: "Date",
-               field: "date",
-               widthGrow: 1.5,
-               responsive: 1,
-               download: true,
-               formatter: function(cell) {
-                  return new Date(cell.getValue()).toLocaleDateString();
+               data: 'date',
+               title: 'Date',
+               render: function(data) {
+                  return QMGridHelper.formatDate(data);
                }
             },
             {
-               title: "Type",
-               field: "type",
-               widthGrow: 1.5,
-               responsive: 2,
-               download: true
+               data: 'type',
+               title: 'Type'
             },
             {
-               title: "Payment Method",
-               field: "payment",
-               widthGrow: 1.5,
-               responsive: 2,
-               download: true
+               data: 'payment',
+               title: 'Payment Method'
             },
             {
-               title: "Actions",
-               field: "id",
-               width: 120,
-               headerSort: false,
-               responsive: 0,
-               download: false,
-               formatter: function(cell) {
-                  const id = cell.getValue();
-                  return `
-                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="viewContribution(${id})" title="View">
-                           <i class="bi bi-eye"></i>
-                        </button>
-                        <button class="btn btn-outline-warning" onclick="editContribution(${id})" title="Edit">
-                           <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-outline-danger" onclick="deleteContribution(${id})" title="Delete">
-                           <i class="bi bi-trash"></i>
-                        </button>
-                     </div>
-                  `;
+               data: 'id',
+               title: 'Actions',
+               orderable: false,
+               searchable: false,
+               className: 'no-export',
+               render: function(data) {
+                  return QMGridHelper.actionButtons(data, {
+                     viewFn: 'viewContribution',
+                     editFn: 'editContribution',
+                     deleteFn: 'deleteContribution'
+                  });
                }
             }
+         ],
+         order: [
+            [2, 'desc']
          ]
       });
    }
@@ -621,7 +584,7 @@ require_once '../includes/sidebar.php';
          Alerts.closeLoading();
          Alerts.success(isEditMode ? 'Contribution updated successfully' : 'Contribution recorded successfully');
          bootstrap.Modal.getInstance(document.getElementById('contributionModal')).hide();
-         contributionsGrid.setData();
+         QMGridHelper.reload(contributionsTable);
          loadStats();
       } catch (error) {
          Alerts.closeLoading();
@@ -703,14 +666,14 @@ require_once '../includes/sidebar.php';
          url += '?' + params.join('&');
       }
 
-      contributionsGrid.setData(url);
+      contributionsTable.ajax.url(url).load();
    }
 
    function clearFilters() {
       document.getElementById('filterType').value = '';
       document.getElementById('filterStartDate').value = '';
       document.getElementById('filterEndDate').value = '';
-      contributionsGrid.setData();
+      contributionsTable.ajax.url(`${Config.API_BASE_URL}/contribution/all`).load();
    }
 
    async function deleteContribution(contributionId) {
@@ -734,7 +697,7 @@ require_once '../includes/sidebar.php';
          await api.delete(`contribution/delete/${contributionId}`);
          Alerts.closeLoading();
          Alerts.success('Contribution deleted successfully');
-         contributionsGrid.setData();
+         QMGridHelper.reload(contributionsTable);
          loadStats();
       } catch (error) {
          Alerts.closeLoading();

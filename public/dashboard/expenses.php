@@ -135,23 +135,20 @@ require_once '../includes/sidebar.php';
          <h5 class="mb-0"><i class="bi bi-receipt-cutoff me-2"></i>All Expenses</h5>
       </div>
       <div class="card-body">
-         <div class="d-flex justify-content-end mb-3 gap-2">
-            <button class="btn btn-success btn-sm" onclick="expensesGrid.download('xlsx', 'expenses.xlsx')">
-               <i class="bi bi-file-earmark-excel me-1"></i>Excel
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="expensesGrid.download('pdf', 'expenses.pdf', {orientation:'landscape', title:'Expenses Report'})">
-               <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="expensesGrid.print()">
-               <i class="bi bi-printer me-1"></i>Print
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="expensesGrid.setData()">
-               <i class="bi bi-arrow-clockwise"></i>
-            </button>
-         </div>
-         <div class="table-responsive">
-            <div id="expensesGrid"></div>
-         </div>
+         <table id="expensesTable" class="table table-striped table-hover" style="width:100%">
+            <thead>
+               <tr>
+                  <th>Title</th>
+                  <th>Amount</th>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Branch</th>
+                  <th>Status</th>
+                  <th class="no-export">Actions</th>
+               </tr>
+            </thead>
+            <tbody></tbody>
+         </table>
       </div>
    </div>
 </div>
@@ -214,7 +211,7 @@ require_once '../includes/sidebar.php';
 </div>
 
 <script>
-   let expensesGrid = null;
+   let expensesTable = null;
 
    document.addEventListener('DOMContentLoaded', async () => {
       if (!Auth.requireAuth()) return;
@@ -230,125 +227,100 @@ require_once '../includes/sidebar.php';
    });
 
    async function initPage() {
-      initGrid();
+      initTable();
       initEventListeners();
       await loadDropdowns();
       loadStats();
       document.getElementById('expenseDate').valueAsDate = new Date();
    }
 
-   function initGrid() {
-      expensesGrid = new Tabulator("#expensesGrid", {
-         layout: "fitColumns",
-         responsiveLayout: "collapse",
-         resizableColumns: false,
-         pagination: true,
-         paginationMode: "remote",
-         paginationSize: Config.getSetting('items_per_page', 10),
-         paginationSizeSelector: [10, 25, 50, 100],
-         ajaxURL: `${Config.API_BASE_URL}/expense/all`,
-         ajaxConfig: {
-            headers: {
-               'Authorization': `Bearer ${Auth.getToken()}`
+   function initTable() {
+      expensesTable = QMGridHelper.initWithButtons('#expensesTable', {
+         ajax: {
+            url: `${Config.API_BASE_URL}/expense/all`,
+            type: 'GET',
+            data: function(d) {
+               return {
+                  page: Math.floor(d.start / d.length) + 1,
+                  limit: d.length,
+                  search: d.search.value || ''
+               };
+            },
+            dataFilter: function(data) {
+               return QMGridHelper.processServerResponse(data, function(e) {
+                  return {
+                     title: e.ExpenseTitle,
+                     amount: parseFloat(e.ExpenseAmount),
+                     date: e.ExpenseDate,
+                     category: e.CategoryName,
+                     branch: e.BranchName,
+                     status: e.ExpenseStatus,
+                     id: e.ExpenseID
+                  };
+               });
             }
          },
-         ajaxResponse: function(url, params, response) {
-            const data = response?.data?.data || response?.data || [];
-            const pagination = response?.data?.pagination || {};
-            return {
-               last_page: pagination.pages || 1,
-               data: data.map(e => ({
-                  title: e.ExpenseTitle,
-                  amount: parseFloat(e.ExpenseAmount),
-                  date: e.ExpenseDate,
-                  category: e.CategoryName,
-                  branch: e.BranchName,
-                  status: e.ExpenseStatus,
-                  id: e.ExpenseID
-               }))
-            };
-         },
-         ajaxURLGenerator: function(url, config, params) {
-            let queryParams = [];
-            if (params.page) queryParams.push(`page=${params.page}`);
-            if (params.size) queryParams.push(`limit=${params.size}`);
-            return queryParams.length ? `${url}?${queryParams.join('&')}` : url;
-         },
          columns: [{
-               title: "Title",
-               field: "title",
-               widthGrow: 2,
-               responsive: 0,
-               download: true
+               data: 'title',
+               title: 'Title'
             },
             {
-               title: "Amount",
-               field: "amount",
-               widthGrow: 1.5,
-               responsive: 0,
-               download: true,
-               formatter: cell => formatCurrency(parseFloat(cell.getValue()))
+               data: 'amount',
+               title: 'Amount',
+               render: function(data) {
+                  return formatCurrency(parseFloat(data));
+               }
             },
             {
-               title: "Date",
-               field: "date",
-               widthGrow: 1.5,
-               responsive: 1,
-               download: true,
-               formatter: cell => new Date(cell.getValue()).toLocaleDateString()
+               data: 'date',
+               title: 'Date',
+               render: function(data) {
+                  return QMGridHelper.formatDate(data);
+               }
             },
             {
-               title: "Category",
-               field: "category",
-               widthGrow: 1.5,
-               responsive: 2,
-               download: true
+               data: 'category',
+               title: 'Category'
             },
             {
-               title: "Branch",
-               field: "branch",
-               widthGrow: 1.5,
-               responsive: 2,
-               download: true
+               data: 'branch',
+               title: 'Branch'
             },
             {
-               title: "Status",
-               field: "status",
-               widthGrow: 1.5,
-               responsive: 1,
-               download: false,
-               formatter: cell => {
-                  const status = cell.getValue();
+               data: 'status',
+               title: 'Status',
+               render: function(data) {
                   const badges = {
                      'Pending Approval': 'warning',
                      'Approved': 'success',
                      'Rejected': 'danger',
                      'Cancelled': 'secondary'
                   };
-                  return `<span class="badge bg-${badges[status] || 'secondary'}">${status}</span>`;
+                  return `<span class="badge bg-${badges[data] || 'secondary'}">${data}</span>`;
                }
             },
             {
-               title: "Actions",
-               field: "id",
-               width: 100,
-               headerSort: false,
-               responsive: 0,
-               download: false,
-               formatter: cell => {
-                  const id = cell.getValue();
+               data: 'id',
+               title: 'Actions',
+               orderable: false,
+               searchable: false,
+               className: 'no-export',
+               render: function(data) {
                   return `
                      <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="viewExpense(${id})" title="View">
+                        <button class="btn btn-outline-primary" onclick="viewExpense(${data})" title="View">
                            <i class="bi bi-eye"></i>
                         </button>
-                        <button class="btn btn-outline-success" onclick="approveExpense(${id})" title="Approve">
+                        <button class="btn btn-outline-success" onclick="approveExpense(${data})" title="Approve">
                            <i class="bi bi-check"></i>
                         </button>
                      </div>
                   `;
                }
             }
+         ],
+         order: [
+            [2, 'desc']
          ]
       });
    }
@@ -496,7 +468,7 @@ require_once '../includes/sidebar.php';
          Alerts.closeLoading();
          Alerts.success('Expense request submitted successfully');
          bootstrap.Modal.getInstance(document.getElementById('expenseModal')).hide();
-         expensesGrid.setData();
+         QMGridHelper.reload(expensesTable);
          loadStats();
       } catch (error) {
          Alerts.closeLoading();
@@ -520,7 +492,7 @@ require_once '../includes/sidebar.php';
       if (endDate) params.push(`end_date=${endDate}`);
 
       if (params.length > 0) url += '?' + params.join('&');
-      expensesGrid.setData(url);
+      expensesTable.ajax.url(url).load();
    }
 
    function viewExpense(expenseId) {

@@ -95,7 +95,16 @@ require_once '../includes/sidebar.php';
       </div>
       <div class="card-body">
          <div class="table-responsive">
-            <div id="attendanceGrid"></div>
+            <table id="attendanceTable" class="table table-striped table-hover" style="width:100%">
+               <thead>
+                  <tr>
+                     <th>Member Name</th>
+                     <th>Phone</th>
+                     <th>Attendance Status</th>
+                  </tr>
+               </thead>
+               <tbody></tbody>
+            </table>
          </div>
       </div>
    </div>
@@ -103,7 +112,7 @@ require_once '../includes/sidebar.php';
 </main>
 
 <script>
-   let attendanceGrid = null;
+   let attendanceTable = null;
    let currentEventId = null;
    let attendanceData = {};
 
@@ -127,7 +136,7 @@ require_once '../includes/sidebar.php';
 
    async function initPage() {
       await loadEventInfo();
-      await initGrid();
+      await initTable();
       initEventListeners();
    }
 
@@ -158,45 +167,39 @@ require_once '../includes/sidebar.php';
       }
    }
 
-   async function initGrid() {
+   async function initTable() {
       try {
          const response = await api.get('member/all?limit=1000');
          const members = response?.data?.data || response?.data || [];
 
-         attendanceGrid = new Tabulator("#attendanceGrid", {
-            layout: "fitColumns",
-            responsiveLayout: "collapse",
-            resizableColumns: false,
-            pagination: true,
-            paginationSize: Config.getSetting('items_per_page', 10),
-            paginationSizeSelector: [10, 25, 50, 100],
-            data: members.map(m => ({
-               member_id: m.MbrID,
-               name: `${m.MbrFirstName} ${m.MbrFamilyName}`,
-               phone: m.MbrPhone || 'N/A',
-               status: ''
-            })),
+         const tableData = members.map(m => ({
+            member_id: m.MbrID,
+            name: `${m.MbrFirstName} ${m.MbrFamilyName}`,
+            phone: m.MbrPhone || 'N/A',
+            status: ''
+         }));
+
+         attendanceTable = jQuery('#attendanceTable').DataTable({
+            data: tableData,
+            pageLength: Config.getSetting('items_per_page', 10),
+            lengthMenu: [
+               [10, 25, 50, 100],
+               [10, 25, 50, 100]
+            ],
             columns: [{
-                  title: "Member Name",
-                  field: "name",
-                  widthGrow: 2,
-                  responsive: 0,
-                  headerFilter: "input",
-                  headerFilterPlaceholder: "Search..."
+                  data: 'name',
+                  title: 'Member Name'
                },
                {
-                  title: "Phone",
-                  field: "phone",
-                  widthGrow: 1.5,
-                  responsive: 2
+                  data: 'phone',
+                  title: 'Phone'
                },
                {
-                  title: "Attendance Status",
-                  field: "status",
-                  widthGrow: 2,
-                  responsive: 0,
-                  formatter: cell => {
-                     const memberId = cell.getRow().getData().member_id;
+                  data: null,
+                  title: 'Attendance Status',
+                  orderable: false,
+                  render: function(data, type, row) {
+                     const memberId = row.member_id;
                      const currentStatus = attendanceData[memberId] || '';
 
                      return `
@@ -221,13 +224,16 @@ require_once '../includes/sidebar.php';
                      `;
                   }
                }
+            ],
+            order: [
+               [0, 'asc']
             ]
          });
 
          // Load existing attendance if any
          await loadExistingAttendance();
       } catch (error) {
-         console.error('Init grid error:', error);
+         console.error('Init table error:', error);
          Alerts.error('Failed to load members');
       }
    }
@@ -245,22 +251,22 @@ require_once '../includes/sidebar.php';
 
    function setAttendance(memberId, status) {
       attendanceData[memberId] = status;
-      attendanceGrid.redraw(true);
+      attendanceTable.draw(false);
       updateCounts();
    }
 
    function markAllAs(status) {
-      const data = attendanceGrid.getData();
-      data.forEach(row => {
+      const data = attendanceTable.rows().data();
+      data.each(function(row) {
          attendanceData[row.member_id] = status;
       });
-      attendanceGrid.redraw(true);
+      attendanceTable.draw(false);
       updateCounts();
    }
 
    function clearAll() {
       attendanceData = {};
-      attendanceGrid.redraw(true);
+      attendanceTable.draw(false);
       updateCounts();
    }
 
@@ -279,7 +285,7 @@ require_once '../includes/sidebar.php';
       document.getElementById('saveAttendanceBtn').addEventListener('click', saveAttendance);
 
       document.getElementById('searchMembers').addEventListener('input', (e) => {
-         attendanceGrid.setFilter("name", "like", e.target.value);
+         attendanceTable.search(e.target.value).draw();
       });
    }
 

@@ -95,23 +95,18 @@ require_once '../includes/sidebar.php';
          <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>All Groups</h5>
       </div>
       <div class="card-body">
-         <div class="d-flex justify-content-end mb-3 gap-2">
-            <button class="btn btn-success btn-sm" onclick="groupsGrid.download('xlsx', 'groups.xlsx')">
-               <i class="bi bi-file-earmark-excel me-1"></i>Excel
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="groupsGrid.download('pdf', 'groups.pdf', {orientation:'landscape', title:'Groups List'})">
-               <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="groupsGrid.print()">
-               <i class="bi bi-printer me-1"></i>Print
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="groupsGrid.setData()">
-               <i class="bi bi-arrow-clockwise"></i>
-            </button>
-         </div>
-         <div class="table-responsive">
-            <div id="groupsGrid"></div>
-         </div>
+         <table id="groupsTable" class="table table-striped table-hover" style="width:100%">
+            <thead>
+               <tr>
+                  <th>Group Name</th>
+                  <th>Type</th>
+                  <th>Leader</th>
+                  <th>Members</th>
+                  <th class="no-export">Actions</th>
+               </tr>
+            </thead>
+            <tbody></tbody>
+         </table>
       </div>
    </div>
 </div>
@@ -184,7 +179,7 @@ require_once '../includes/sidebar.php';
 </div>
 
 <script>
-   let groupsGrid = null;
+   let groupsTable = null;
    let currentGroupId = null;
    let isEditMode = false;
    let leaderChoices = null;
@@ -200,101 +195,71 @@ require_once '../includes/sidebar.php';
    });
 
    async function initPage() {
-      initGrid();
+      initTable();
       initEventListeners();
       loadStats();
       await loadMembers();
       await loadGroupTypes();
    }
 
-   function initGrid() {
-      groupsGrid = new Tabulator("#groupsGrid", {
-         layout: "fitColumns",
-         responsiveLayout: "collapse",
-         resizableColumns: false,
-         pagination: true,
-         paginationMode: "remote",
-         paginationSize: Config.getSetting('items_per_page', 10),
-         paginationSizeSelector: [10, 25, 50, 100],
-         ajaxURL: `${Config.API_BASE_URL}/group/all`,
-         ajaxConfig: {
-            headers: {
-               'Authorization': `Bearer ${Auth.getToken()}`
+   function initTable() {
+      groupsTable = QMGridHelper.initWithButtons('#groupsTable', {
+         ajax: {
+            url: `${Config.API_BASE_URL}/group/all`,
+            type: 'GET',
+            data: function(d) {
+               return {
+                  page: Math.floor(d.start / d.length) + 1,
+                  limit: d.length,
+                  search: d.search.value || '',
+                  name: d.search.value || ''
+               };
+            },
+            dataFilter: function(data) {
+               return QMGridHelper.processServerResponse(data, function(g) {
+                  return {
+                     name: g.GroupName,
+                     type: g.GroupTypeName || '-',
+                     leader: `${g.LeaderFirstName || ''} ${g.LeaderFamilyName || ''}`.trim() || '-',
+                     members: g.MemberCount || 0,
+                     id: g.GroupID
+                  };
+               });
             }
-         },
-         ajaxResponse: function(url, params, response) {
-            const data = response?.data?.data || response?.data || [];
-            const pagination = response?.data?.pagination || {};
-            return {
-               last_page: pagination.pages || 1,
-               data: data.map(g => ({
-                  name: g.GroupName,
-                  type: g.GroupTypeName || '-',
-                  leader: `${g.LeaderFirstName || ''} ${g.LeaderFamilyName || ''}`.trim() || '-',
-                  members: g.MemberCount || 0,
-                  id: g.GroupID
-               }))
-            };
-         },
-         ajaxURLGenerator: function(url, config, params) {
-            let queryParams = [];
-            if (params.page) queryParams.push(`page=${params.page}`);
-            if (params.size) queryParams.push(`limit=${params.size}`);
-            if (params.search) queryParams.push(`name=${encodeURIComponent(params.search)}`);
-            return queryParams.length ? `${url}?${queryParams.join('&')}` : url;
          },
          columns: [{
-               title: "Group Name",
-               field: "name",
-               widthGrow: 2,
-               responsive: 0,
-               download: true
+               data: 'name',
+               title: 'Group Name'
             },
             {
-               title: "Type",
-               field: "type",
-               widthGrow: 1.5,
-               responsive: 2,
-               download: true
+               data: 'type',
+               title: 'Type'
             },
             {
-               title: "Leader",
-               field: "leader",
-               widthGrow: 2,
-               responsive: 1,
-               download: true
+               data: 'leader',
+               title: 'Leader'
             },
             {
-               title: "Members",
-               field: "members",
-               widthGrow: 1,
-               responsive: 2,
-               download: true
+               data: 'members',
+               title: 'Members'
             },
             {
-               title: "Actions",
-               field: "id",
-               width: 120,
-               headerSort: false,
-               responsive: 0,
-               download: false,
-               formatter: function(cell) {
-                  const id = cell.getValue();
-                  return `
-                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="viewGroup(${id})" title="View">
-                           <i class="bi bi-eye"></i>
-                        </button>
-                        <button class="btn btn-outline-warning" onclick="editGroup(${id})" title="Edit">
-                           <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-outline-danger" onclick="deleteGroup(${id})" title="Delete">
-                           <i class="bi bi-trash"></i>
-                        </button>
-                     </div>
-                  `;
+               data: 'id',
+               title: 'Actions',
+               orderable: false,
+               searchable: false,
+               className: 'no-export',
+               render: function(data) {
+                  return QMGridHelper.actionButtons(data, {
+                     viewFn: 'viewGroup',
+                     editFn: 'editGroup',
+                     deleteFn: 'deleteGroup'
+                  });
                }
             }
+         ],
+         order: [
+            [0, 'asc']
          ]
       });
    }
@@ -442,7 +407,7 @@ require_once '../includes/sidebar.php';
          Alerts.closeLoading();
          Alerts.success(isEditMode ? 'Group updated successfully' : 'Group created successfully');
          bootstrap.Modal.getInstance(document.getElementById('groupModal')).hide();
-         groupsGrid.setData();
+         QMGridHelper.reload(groupsTable);
          loadStats();
       } catch (error) {
          Alerts.closeLoading();
@@ -547,7 +512,7 @@ require_once '../includes/sidebar.php';
          await api.delete(`group/delete/${groupId}`);
          Alerts.closeLoading();
          Alerts.success('Group deleted successfully');
-         groupsGrid.setData();
+         QMGridHelper.reload(groupsTable);
          loadStats();
       } catch (error) {
          Alerts.closeLoading();

@@ -27,9 +27,7 @@ require_once '../includes/sidebar.php';
          <h5 class="mb-0"><i class="bi bi-shield-check me-2"></i>All Roles</h5>
       </div>
       <div class="card-body">
-         <div class="table-responsive">
-            <div id="rolesGrid"></div>
-         </div>
+         <div id="rolesTable"></div>
       </div>
    </div>
 </div>
@@ -96,7 +94,7 @@ require_once '../includes/sidebar.php';
 </div>
 
 <script>
-   let rolesGrid = null;
+   let rolesTable = null;
    let currentRoleId = null;
    let isEditMode = false;
    let allPermissions = [];
@@ -107,68 +105,39 @@ require_once '../includes/sidebar.php';
    });
 
    async function initPage() {
-      initGrid();
-      initEventListeners();
       await loadPermissions();
+      initTable();
+      initEventListeners();
    }
 
-   function initGrid() {
-      rolesGrid = new Tabulator("#rolesGrid", {
-         layout: "fitColumns",
-         responsiveLayout: "collapse",
-         resizableColumns: false,
-         ajaxURL: `${Config.API_BASE_URL}/role/all`,
-         ajaxConfig: {
-            headers: {
-               'Authorization': `Bearer ${Auth.getToken()}`
-            }
-         },
-         ajaxResponse: function(url, params, response) {
-            const data = response?.data || [];
-            return data.map(r => ({
-               name: r.RoleName,
-               permissions_count: r.permissions?.length || 0,
-               permissions: r.permissions || [],
-               id: r.RoleID
-            }));
-         },
+   async function initTable() {
+      rolesTable = await QMGridHelper.initWithButtons('#rolesTable', {
+         url: `${Config.API_BASE_URL}/role/all`,
+         pageSize: 10,
          columns: [{
-               title: "Role Name",
-               field: "name",
-               widthGrow: 2,
-               responsive: 0
+               key: 'RoleName',
+               title: 'Role Name'
             },
             {
-               title: "Permissions",
-               field: "permissions_count",
-               widthGrow: 1.5,
-               responsive: 1,
-               formatter: cell => {
-                  const count = cell.getValue();
+               key: 'permissions',
+               title: 'Permissions',
+               sortable: false,
+               render: (data) => {
+                  const count = data?.length || 0;
                   return `<span class="badge bg-primary">${count} permission${count !== 1 ? 's' : ''}</span>`;
                }
             },
             {
-               title: "Actions",
-               field: "id",
-               width: 120,
-               headerSort: false,
-               responsive: 0,
-               formatter: cell => {
-                  const id = cell.getValue();
-                  return `
-                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="viewRole(${id})" title="View">
-                           <i class="bi bi-eye"></i>
-                        </button>
-                        <button class="btn btn-outline-warning" onclick="editRole(${id})" title="Edit">
-                           <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-outline-danger" onclick="deleteRole(${id})" title="Delete">
-                           <i class="bi bi-trash"></i>
-                        </button>
-                     </div>
-                  `;
+               key: 'RoleID',
+               title: 'Actions',
+               sortable: false,
+               className: 'no-export',
+               render: (data) => {
+                  return QMGridHelper.actionButtons(data, {
+                     viewFn: 'viewRole',
+                     editFn: 'editRole',
+                     deleteFn: 'deleteRole'
+                  });
                }
             }
          ]
@@ -295,7 +264,7 @@ require_once '../includes/sidebar.php';
          Alerts.closeLoading();
          Alerts.success(isEditMode ? 'Role updated successfully' : 'Role created successfully');
          bootstrap.Modal.getInstance(document.getElementById('roleModal')).hide();
-         rolesGrid.setData();
+         QMGridHelper.reload(rolesTable);
       } catch (error) {
          Alerts.closeLoading();
          console.error('Save role error:', error);
@@ -372,7 +341,7 @@ require_once '../includes/sidebar.php';
          await api.delete(`role/delete/${roleId}`);
          Alerts.closeLoading();
          Alerts.success('Role deleted successfully');
-         rolesGrid.setData();
+         QMGridHelper.reload(rolesTable);
       } catch (error) {
          Alerts.closeLoading();
          console.error('Delete role error:', error);

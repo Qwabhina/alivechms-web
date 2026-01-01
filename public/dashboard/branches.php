@@ -27,23 +27,18 @@ require_once '../includes/sidebar.php';
          <h5 class="mb-0"><i class="bi bi-building me-2"></i>All Branches</h5>
       </div>
       <div class="card-body">
-         <div class="d-flex justify-content-end mb-3 gap-2">
-            <button class="btn btn-success btn-sm" onclick="branchesGrid.download('xlsx', 'branches.xlsx')">
-               <i class="bi bi-file-earmark-excel me-1"></i>Excel
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="branchesGrid.download('pdf', 'branches.pdf', {orientation:'landscape', title:'Branches Report'})">
-               <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="branchesGrid.print()">
-               <i class="bi bi-printer me-1"></i>Print
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="branchesGrid.setData()">
-               <i class="bi bi-arrow-clockwise"></i>
-            </button>
-         </div>
-         <div class="table-responsive">
-            <div id="branchesGrid"></div>
-         </div>
+         <table id="branchesTable" class="table table-striped table-hover" style="width:100%">
+            <thead>
+               <tr>
+                  <th>Branch Name</th>
+                  <th>Location</th>
+                  <th>Phone</th>
+                  <th>Email</th>
+                  <th class="no-export">Actions</th>
+               </tr>
+            </thead>
+            <tbody></tbody>
+         </table>
       </div>
    </div>
 </div>
@@ -93,7 +88,7 @@ require_once '../includes/sidebar.php';
 </div>
 
 <script>
-   let branchesGrid = null;
+   let branchesTable = null;
    let currentBranchId = null;
    let isEditMode = false;
 
@@ -103,80 +98,69 @@ require_once '../includes/sidebar.php';
    });
 
    async function initPage() {
-      initGrid();
+      initTable();
       initEventListeners();
    }
 
-   function initGrid() {
-      branchesGrid = new Tabulator("#branchesGrid", {
-         layout: "fitColumns",
-         responsiveLayout: "collapse",
-         resizableColumns: false,
-         ajaxURL: `${Config.API_BASE_URL}/branch/all?limit=1000`,
-         ajaxConfig: {
-            headers: {
-               'Authorization': `Bearer ${Auth.getToken()}`
+   function initTable() {
+      branchesTable = QMGridHelper.initWithButtons('#branchesTable', {
+         ajax: {
+            url: `${Config.API_BASE_URL}/branch/all`,
+            type: 'GET',
+            data: function(d) {
+               return {
+                  page: Math.floor(d.start / d.length) + 1,
+                  limit: d.length,
+                  search: d.search.value || '',
+                  sort: d.columns[d.order[0].column].data,
+                  order: d.order[0].dir
+               };
+            },
+            dataFilter: function(data) {
+               return QMGridHelper.processServerResponse(data, function(b) {
+                  return {
+                     name: b.BranchName,
+                     location: b.Location || 'N/A',
+                     phone: b.Phone || 'N/A',
+                     email: b.Email || 'N/A',
+                     id: b.BranchID
+                  };
+               });
             }
-         },
-         ajaxResponse: function(url, params, response) {
-            const data = response?.data?.data || response?.data || [];
-            return data.map(b => ({
-               name: b.BranchName,
-               location: b.Location || 'N/A',
-               phone: b.Phone || 'N/A',
-               email: b.Email || 'N/A',
-               id: b.BranchID
-            }));
          },
          columns: [{
-               title: "Branch Name",
-               field: "name",
-               widthGrow: 2,
-               responsive: 0,
-               download: true
+               data: 'name',
+               title: 'Branch Name'
             },
             {
-               title: "Location",
-               field: "location",
-               widthGrow: 2,
-               responsive: 1,
-               download: true
+               data: 'location',
+               title: 'Location'
             },
             {
-               title: "Phone",
-               field: "phone",
-               widthGrow: 1.5,
-               responsive: 2,
-               download: true
+               data: 'phone',
+               title: 'Phone'
             },
             {
-               title: "Email",
-               field: "email",
-               widthGrow: 2,
-               responsive: 2,
-               download: true
+               data: 'email',
+               title: 'Email'
             },
             {
-               title: "Actions",
-               field: "id",
-               width: 100,
-               headerSort: false,
-               responsive: 0,
-               download: false,
-               formatter: cell => {
-                  const id = cell.getValue();
-                  return `
-                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-warning" onclick="editBranch(${id})" title="Edit">
-                           <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-outline-danger" onclick="deleteBranch(${id})" title="Delete">
-                           <i class="bi bi-trash"></i>
-                        </button>
-                     </div>
-                  `;
+               data: 'id',
+               title: 'Actions',
+               orderable: false,
+               searchable: false,
+               className: 'no-export',
+               render: function(data, type, row) {
+                  return QMGridHelper.actionButtons(data, {
+                     view: false,
+                     editFn: 'editBranch',
+                     deleteFn: 'deleteBranch'
+                  });
                }
             }
+         ],
+         order: [
+            [0, 'asc']
          ]
       });
    }
@@ -248,7 +232,7 @@ require_once '../includes/sidebar.php';
          Alerts.closeLoading();
          Alerts.success(isEditMode ? 'Branch updated successfully' : 'Branch created successfully');
          bootstrap.Modal.getInstance(document.getElementById('branchModal')).hide();
-         branchesGrid.setData();
+         QMGridHelper.reload(branchesTable);
       } catch (error) {
          Alerts.closeLoading();
          console.error('Save branch error:', error);
@@ -285,7 +269,7 @@ require_once '../includes/sidebar.php';
          await api.delete(`branch/delete/${branchId}`);
          Alerts.closeLoading();
          Alerts.success('Branch deleted successfully');
-         branchesGrid.setData();
+         QMGridHelper.reload(branchesTable);
       } catch (error) {
          Alerts.closeLoading();
          console.error('Delete branch error:', error);

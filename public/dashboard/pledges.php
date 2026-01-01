@@ -95,23 +95,20 @@ require_once '../includes/sidebar.php';
          <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>All Pledges</h5>
       </div>
       <div class="card-body">
-         <div class="d-flex justify-content-end mb-3 gap-2">
-            <button class="btn btn-success btn-sm" onclick="pledgesGrid.download('xlsx', 'pledges.xlsx')">
-               <i class="bi bi-file-earmark-excel me-1"></i>Excel
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="pledgesGrid.download('pdf', 'pledges.pdf', {orientation:'landscape', title:'Pledges Report'})">
-               <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="pledgesGrid.print()">
-               <i class="bi bi-printer me-1"></i>Print
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="pledgesGrid.setData()">
-               <i class="bi bi-arrow-clockwise"></i>
-            </button>
-         </div>
-         <div class="table-responsive">
-            <div id="pledgesGrid"></div>
-         </div>
+         <table id="pledgesTable" class="table table-striped table-hover" style="width:100%">
+            <thead>
+               <tr>
+                  <th>Member</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Pledge Date</th>
+                  <th>Due Date</th>
+                  <th>Status</th>
+                  <th class="no-export">Actions</th>
+               </tr>
+            </thead>
+            <tbody></tbody>
+         </table>
       </div>
    </div>
 </div>
@@ -175,7 +172,7 @@ require_once '../includes/sidebar.php';
 </div>
 
 <script>
-   let pledgesGrid = null;
+   let pledgesTable = null;
    let memberChoices = null;
 
    document.addEventListener('DOMContentLoaded', async () => {
@@ -192,128 +189,105 @@ require_once '../includes/sidebar.php';
    });
 
    async function initPage() {
-      initGrid();
+      initTable();
       initEventListeners();
       await loadDropdowns();
       loadStats();
       document.getElementById('pledgeDate').valueAsDate = new Date();
    }
 
-   function initGrid() {
-      pledgesGrid = new Tabulator("#pledgesGrid", {
-         layout: "fitColumns",
-         responsiveLayout: "collapse",
-         resizableColumns: false,
-         pagination: true,
-         paginationMode: "remote",
-         paginationSize: Config.getSetting('items_per_page', 10),
-         paginationSizeSelector: [10, 25, 50, 100],
-         ajaxURL: `${Config.API_BASE_URL}/pledge/all`,
-         ajaxConfig: {
-            headers: {
-               'Authorization': `Bearer ${Auth.getToken()}`
+   function initTable() {
+      pledgesTable = QMGridHelper.initWithButtons('#pledgesTable', {
+         ajax: {
+            url: `${Config.API_BASE_URL}/pledge/all`,
+            type: 'GET',
+            data: function(d) {
+               return {
+                  page: Math.floor(d.start / d.length) + 1,
+                  limit: d.length,
+                  search: d.search.value || ''
+               };
+            },
+            dataFilter: function(data) {
+               return QMGridHelper.processServerResponse(data, function(p) {
+                  return {
+                     member: `${p.MbrFirstName} ${p.MbrFamilyName}`,
+                     type: p.PledgeTypeName,
+                     amount: parseFloat(p.PledgeAmount),
+                     date: p.PledgeDate,
+                     due_date: p.DueDate,
+                     status: p.PledgeStatus,
+                     id: p.PledgeID
+                  };
+               });
             }
          },
-         ajaxResponse: function(url, params, response) {
-            const data = response?.data?.data || response?.data || [];
-            const pagination = response?.data?.pagination || {};
-            return {
-               last_page: pagination.pages || 1,
-               data: data.map(p => ({
-                  member: `${p.MbrFirstName} ${p.MbrFamilyName}`,
-                  type: p.PledgeTypeName,
-                  amount: parseFloat(p.PledgeAmount),
-                  date: p.PledgeDate,
-                  due_date: p.DueDate,
-                  status: p.PledgeStatus,
-                  id: p.PledgeID
-               }))
-            };
-         },
-         ajaxURLGenerator: function(url, config, params) {
-            let queryParams = [];
-            if (params.page) queryParams.push(`page=${params.page}`);
-            if (params.size) queryParams.push(`limit=${params.size}`);
-            return queryParams.length ? `${url}?${queryParams.join('&')}` : url;
-         },
          columns: [{
-               title: "Member",
-               field: "member",
-               widthGrow: 2,
-               responsive: 0,
-               download: true
+               data: 'member',
+               title: 'Member'
             },
             {
-               title: "Type",
-               field: "type",
-               widthGrow: 1.5,
-               responsive: 2,
-               download: true
+               data: 'type',
+               title: 'Type'
             },
             {
-               title: "Amount",
-               field: "amount",
-               widthGrow: 1.5,
-               responsive: 0,
-               download: true,
-               formatter: cell => formatCurrency(parseFloat(cell.getValue()))
+               data: 'amount',
+               title: 'Amount',
+               render: function(data) {
+                  return formatCurrency(parseFloat(data));
+               }
             },
             {
-               title: "Pledge Date",
-               field: "date",
-               widthGrow: 1.5,
-               responsive: 1,
-               download: true,
-               formatter: cell => new Date(cell.getValue()).toLocaleDateString()
+               data: 'date',
+               title: 'Pledge Date',
+               render: function(data) {
+                  return QMGridHelper.formatDate(data);
+               }
             },
             {
-               title: "Due Date",
-               field: "due_date",
-               widthGrow: 1.5,
-               responsive: 2,
-               download: true,
-               formatter: cell => cell.getValue() ? new Date(cell.getValue()).toLocaleDateString() : 'N/A'
+               data: 'due_date',
+               title: 'Due Date',
+               render: function(data) {
+                  return data ? QMGridHelper.formatDate(data) : 'N/A';
+               }
             },
             {
-               title: "Status",
-               field: "status",
-               widthGrow: 1.5,
-               responsive: 1,
-               download: false,
-               formatter: cell => {
-                  const status = cell.getValue();
+               data: 'status',
+               title: 'Status',
+               render: function(data) {
                   const badges = {
                      'Active': 'warning',
                      'Fulfilled': 'success',
                      'Cancelled': 'danger'
                   };
-                  return `<span class="badge bg-${badges[status] || 'secondary'}">${status}</span>`;
+                  return `<span class="badge bg-${badges[data] || 'secondary'}">${data}</span>`;
                }
             },
             {
-               title: "Actions",
-               field: "id",
-               width: 120,
-               headerSort: false,
-               responsive: 0,
-               download: false,
-               formatter: cell => {
-                  const id = cell.getValue();
+               data: 'id',
+               title: 'Actions',
+               orderable: false,
+               searchable: false,
+               className: 'no-export',
+               render: function(data) {
                   return `
                      <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="viewPledge(${id})" title="View">
+                        <button class="btn btn-outline-primary" onclick="viewPledge(${data})" title="View">
                            <i class="bi bi-eye"></i>
                         </button>
-                        <button class="btn btn-outline-warning" onclick="editPledge(${id})" title="Edit">
+                        <button class="btn btn-outline-warning" onclick="editPledge(${data})" title="Edit">
                            <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="btn btn-outline-success" onclick="recordPayment(${id})" title="Record Payment">
+                        <button class="btn btn-outline-success" onclick="recordPayment(${data})" title="Record Payment">
                            <i class="bi bi-cash"></i>
                         </button>
                      </div>
                   `;
                }
             }
+         ],
+         order: [
+            [3, 'desc']
          ]
       });
    }
@@ -457,7 +431,7 @@ require_once '../includes/sidebar.php';
          Alerts.closeLoading();
          Alerts.success('Pledge created successfully');
          bootstrap.Modal.getInstance(document.getElementById('pledgeModal')).hide();
-         pledgesGrid.setData();
+         QMGridHelper.reload(pledgesTable);
          loadStats();
       } catch (error) {
          Alerts.closeLoading();

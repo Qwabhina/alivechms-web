@@ -55,8 +55,8 @@ $pageTitle = $pageTitle ?? 'Dashboard';
    <!-- Bootstrap Icons -->
    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
-   <!-- Tabulator -->
-   <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/css/tabulator_bootstrap5.min.css" rel="stylesheet">
+   <!-- QMGrid - Modern table library -->
+   <link href="https://cdn.jsdelivr.net/gh/Qwabhina/qmgrid@latest/qmgrid.min.css" rel="stylesheet">
 
    <!-- Choices.js -->
    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/styles/choices.min.css">

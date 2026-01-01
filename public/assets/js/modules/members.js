@@ -1,5 +1,5 @@
 // State
-   let membersGrid = null;
+   let membersTable = null;
    let currentStep = 0;
    const totalSteps = 5;
    let currentMemberId = null;
@@ -25,7 +25,7 @@
          await Promise.all([loadFamilies(), loadRoles()]);
 
          // Initialize components
-         initGrid();
+         initTable();
          initStepper();
          initDatePickers();
          initEventListeners();
@@ -112,88 +112,66 @@
       }
    }
 
-   function initGrid() {
-      membersGrid = new Tabulator("#membersGrid", {
-         layout: "fitColumns",
-         responsiveLayout: "collapse",
-         resizableColumns: false,
-         pagination: true,
-         paginationMode: "remote",
-         paginationSize: Config.getSetting('items_per_page', 10),
-         paginationSizeSelector: [10, 25, 50, 100],
-         ajaxURL: `${Config.API_BASE_URL}/member/all`,
-         ajaxConfig: {
-            headers: {
-               'Authorization': `Bearer ${Auth.getToken()}`
+   function initTable() {
+      membersTable = QMGridHelper.initWithButtons('#membersTable', {
+         ajax: {
+            url: `${Config.API_BASE_URL}/member/all`,
+            type: 'GET',
+            data: function(d) {
+               return {
+                  page: Math.floor(d.start / d.length) + 1,
+                  limit: d.length,
+                  search: d.search.value || '',
+                  sort: d.columns[d.order[0].column].data,
+                  order: d.order[0].dir
+               };
+            },
+            dataFilter: function(data) {
+               return QMGridHelper.processServerResponse(data, function(m) {
+                  return {
+                     photo: m.MbrProfilePicture,
+                     name: `${m.MbrFirstName} ${m.MbrFamilyName}`,
+                     gender: m.MbrGender || '-',
+                     registrationDate: m.MbrRegistrationDate || '-',
+                     id: m.MbrID
+                  };
+               });
             }
-         },
-         ajaxResponse: function(url, params, response) {
-            const data = response?.data?.data || response?.data || [];
-            const pagination = response?.data?.pagination || {};
-            return {
-               last_page: pagination.pages || 1,
-               data: data.map(m => ({
-                  photo: m.MbrProfilePicture,
-                  name: `${m.MbrFirstName} ${m.MbrFamilyName}`,
-                  gender: m.MbrGender || '-',
-                  registrationDate: m.MbrRegistrationDate || '-',
-                  id: m.MbrID
-               }))
-            };
-         },
-         ajaxURLGenerator: function(url, config, params) {
-            let queryParams = [];
-            if (params.page) queryParams.push(`page=${params.page}`);
-            if (params.size) queryParams.push(`limit=${params.size}`);
-            if (params.search) queryParams.push(`search=${encodeURIComponent(params.search)}`);
-            return queryParams.length ? `${url}?${queryParams.join('&')}` : url;
          },
          columns: [
             {
-               title: "Photo",
-               field: "photo",
-               width: 70,
-               headerSort: false,
-               download: false,
-               responsive: 0,
-               formatter: function(cell) {
-                  const photo = cell.getValue();
-                  const name = cell.getRow().getData().name;
-                  if (photo) {
-                     return `<img src="/public/${photo}" class="member-photo" alt="${name}">`;
+               data: 'photo',
+               title: 'Photo',
+               orderable: false,
+               searchable: false,
+               className: 'no-export',
+               render: function(data, type, row) {
+                  if (data) {
+                     return `<img src="/public/${data}" class="member-photo" alt="${row.name}">`;
                   }
-                  const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                  const initials = row.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
                   return `<div class="member-photo-placeholder">${initials}</div>`;
                }
             },
-            {title: "Full Name", field: "name", widthGrow: 3, responsive: 0, download: true},
-            {title: "Gender", field: "gender", widthGrow: 1, responsive: 2, download: true},
-            {title: "Registration Date", field: "registrationDate", widthGrow: 2, responsive: 1, download: true},
+            { data: 'name', title: 'Full Name' },
+            { data: 'gender', title: 'Gender' },
+            { data: 'registrationDate', title: 'Registration Date' },
             {
-               title: "Actions",
-               field: "id",
-               width: 120,
-               headerSort: false,
-               responsive: 0,
-               download: false,
-               formatter: function(cell) {
-                  const id = cell.getValue();
-                  return `
-                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="viewMember(${id})" title="View">
-                           <i class="bi bi-eye"></i>
-                        </button>
-                        <button class="btn btn-outline-warning" onclick="editMember(${id})" title="Edit">
-                           <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-outline-danger" onclick="deleteMember(${id})" title="Delete">
-                           <i class="bi bi-trash"></i>
-                        </button>
-                     </div>
-                  `;
+               data: 'id',
+               title: 'Actions',
+               orderable: false,
+               searchable: false,
+               className: 'no-export',
+               render: function(data, type, row) {
+                  return QMGridHelper.actionButtons(data, {
+                     viewFn: 'viewMember',
+                     editFn: 'editMember',
+                     deleteFn: 'deleteMember'
+                  });
                }
             }
-         ]
+         ],
+         order: [[1, 'asc']] // Sort by name
       });
    }
 
@@ -635,7 +613,7 @@ async function saveMember() {
       Alerts.success(isEditMode ? 'Member updated successfully' : 'Member created successfully');
 
       bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
-      membersGrid.setData(); // Reload table data
+      QMGridHelper.reload(membersTable); // Reload table data
       loadStats();
 
    } catch (error) {
@@ -976,7 +954,7 @@ async function saveMember() {
          await api.delete(`member/delete/${memberId}`);
          Alerts.closeLoading();
          Alerts.success('Member deleted successfully');
-         membersGrid.setData();
+         QMGridHelper.reload(membersTable);
          loadStats();
       } catch (error) {
          Alerts.closeLoading();
