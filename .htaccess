@@ -4,8 +4,15 @@
 # Prevent directory listing
 Options -Indexes
 
-# Enable rewrite engine
+# Environment-aware HTTPS enforcement
+# Only enforces HTTPS in production, allows HTTP in development
 RewriteEngine On
+
+# Force HTTPS redirect ONLY in production
+# Check if APP_ENV is set to 'production' in environment
+RewriteCond %{ENV:APP_ENV} ^production$ [NC]
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
 # Block access to sensitive files
 RewriteRule ^(\.env|\.git|composer\.json|composer\.lock|vendor/|logs/|core/|routes/) - [F,L,NC]
@@ -21,24 +28,43 @@ RewriteRule ^(.*)$ index.php?path=$1 [QSA,L]
 
 # Security headers
 <IfModule mod_headers.c>
-    # Basic security headers
+    # Basic security headers (always applied)
     Header always set X-Content-Type-Options nosniff
     Header always set X-Frame-Options DENY
     Header always set X-XSS-Protection "1; mode=block"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     
-    # Updated Content-Security-Policy to allow CDN resources
-    # This allows Bootstrap, Chart.js, SweetAlert2, DataTables, etc. from trusted CDNs
-    Header always set Content-Security-Policy "\
-        default-src 'self'; \
-        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net  https://cdnjs.cloudflare.com; \
-        style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; \
-        font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; \
-        img-src 'self' data: https:; \
-        connect-src 'self' https://cdn.jsdelivr.net; \
-        frame-ancestors 'none'; \
-        base-uri 'self'; \
-        form-action 'self'"
+    # Production-only security headers
+    <If "%{ENV:APP_ENV} == 'production'">
+        # HSTS header only in production
+        Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        
+        # CSP with upgrade-insecure-requests for production
+        Header always set Content-Security-Policy "\
+            default-src 'self'; \
+            script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; \
+            style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; \
+            font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; \
+            img-src 'self' data: https:; \
+            connect-src 'self' https://cdn.jsdelivr.net; \
+            frame-ancestors 'none'; \
+            base-uri 'self'; \
+            form-action 'self'; \
+            upgrade-insecure-requests"
+    </If>
+    <Else>
+        # Development CSP without upgrade-insecure-requests
+        Header always set Content-Security-Policy "\
+            default-src 'self'; \
+            script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; \
+            style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; \
+            font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; \
+            img-src 'self' data: https:; \
+            connect-src 'self' https://cdn.jsdelivr.net; \
+            frame-ancestors 'none'; \
+            base-uri 'self'; \
+            form-action 'self'"
+    </Else>
 </IfModule>
 
 # Disable server signature

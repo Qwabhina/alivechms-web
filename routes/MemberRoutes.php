@@ -18,6 +18,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Member.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class MemberRoutes extends BaseRoute
 {
@@ -65,7 +66,7 @@ class MemberRoutes extends BaseRoute
                         $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
 
                         if (!in_array($fileExtension, $allowedExtensions)) {
-                            self::error('Invalid file type. Only JPG, PNG, and GIF are allowed.', 400);
+                            ResponseHelper::error('Invalid file type. Only JPG, PNG, and GIF are allowed.', 400);
                         }
 
                         $fileName = uniqid('member_') . '.' . $fileExtension;
@@ -101,20 +102,20 @@ class MemberRoutes extends BaseRoute
 
                 // Validate required fields for both multipart and JSON
                 if (empty($payload['first_name'])) {
-                    self::error('First name is required', 400);
+                    ResponseHelper::error('First name is required', 400);
                 }
                 if (empty($payload['family_name'])) {
-                    self::error('Family name is required', 400);
+                    ResponseHelper::error('Family name is required', 400);
                 }
                 if (empty($payload['email_address'])) {
-                    self::error('Email address is required', 400);
+                    ResponseHelper::error('Email address is required', 400);
                 }
 
                 try {
                     $result = Member::register($payload);
-                    self::success($result, 'Member registered', 201);
+                    ResponseHelper::created($result, 'Member registered');
                 } catch (Exception $e) {
-                    self::error($e->getMessage(), 400);
+                    ResponseHelper::error($e->getMessage(), 400);
                 }
             })(),
 
@@ -144,9 +145,9 @@ class MemberRoutes extends BaseRoute
 
                 try {
                     $result = Member::uploadProfilePicture($memberId);
-                    self::success($result, 'Profile picture uploaded');
+                    ResponseHelper::success($result, 'Profile picture uploaded');
                 } catch (Exception $e) {
-                    self::error($e->getMessage(), 400);
+                    ResponseHelper::error($e->getMessage(), 400);
                 }
             })(),
 
@@ -158,7 +159,7 @@ class MemberRoutes extends BaseRoute
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
 
                 $member = Member::get($memberId);
-                self::success($member);
+                ResponseHelper::success($member);
             })(),
 
             // UPDATE MEMBER
@@ -186,7 +187,7 @@ class MemberRoutes extends BaseRoute
                 ]);
 
                 $result = Member::update($memberId, $payload);
-                self::success($result, 'Member updated');
+                ResponseHelper::success($result, 'Member updated');
             })(),
 
             // UPDATE MEMBER (POST with file upload support)
@@ -224,7 +225,7 @@ class MemberRoutes extends BaseRoute
                         $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
 
                         if (!in_array($fileExtension, $allowedExtensions)) {
-                            self::error('Invalid file type. Only JPG, PNG, and GIF are allowed.', 400);
+                            ResponseHelper::error('Invalid file type. Only JPG, PNG, and GIF are allowed.', 400);
                         }
 
                         $fileName = uniqid('member_') . '.' . $fileExtension;
@@ -256,7 +257,7 @@ class MemberRoutes extends BaseRoute
                 }
 
                 $result = Member::update($memberId, $payload);
-                self::success($result, 'Member updated');
+                ResponseHelper::success($result, 'Member updated');
             })(),
 
             // SOFT DELETE MEMBER
@@ -267,7 +268,7 @@ class MemberRoutes extends BaseRoute
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
 
                 $result = Member::delete($memberId);
-                self::success($result, 'Member deleted');
+                ResponseHelper::success($result, 'Member deleted');
             })(),
 
             // LIST ALL MEMBERS (PAGINATED)
@@ -280,7 +281,7 @@ class MemberRoutes extends BaseRoute
                 $filters = self::getFilters(['status', 'family_id', 'date_from', 'date_to', 'search']);
 
                 $result = Member::getAll($page, $limit, $filters);
-                self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+                ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
             })(),
 
             // RECENT MEMBERS (LAST 10)
@@ -289,11 +290,11 @@ class MemberRoutes extends BaseRoute
                 self::authorize('view_members');
 
                 $members = Member::getRecent();
-                self::success(['data' => $members]);
+                ResponseHelper::success(['data' => $members]);
             })(),
 
             // FALLBACK
-            default => self::error('Member endpoint not found', 404),
+            default => ResponseHelper::notFound('Member endpoint not found'),
         };
     }
 }

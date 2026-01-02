@@ -23,6 +23,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Dashboard.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class DashboardRoutes extends BaseRoute
 {
@@ -41,15 +42,15 @@ class DashboardRoutes extends BaseRoute
 
                 try {
                     $overview = Dashboard::getOverview();
-                    self::success($overview);
+                    ResponseHelper::success($overview);
                 } catch (Exception $e) {
                     Helpers::logError("Dashboard generation failed: " . $e->getMessage());
-                    self::error('Failed to generate dashboard', 500);
+                    ResponseHelper::serverError('Failed to generate dashboard');
                 }
             })(),
 
             // FALLBACK
-            default => self::error('Dashboard endpoint not found', 404),
+            default => ResponseHelper::notFound('Dashboard endpoint not found'),
         };
     }
 }

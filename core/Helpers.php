@@ -19,6 +19,7 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/ResponseHelper.php';
 class Helpers
 {
     /**
@@ -29,18 +30,16 @@ class Helpers
      * @param string $type    Response type: 'success' or 'error' (default 'error')
      * @return never
      * 
-     * DEPRECATED: Use sendSuccess() or sendError() instead
+     * @deprecated Use ResponseHelper::success() or ResponseHelper::error() instead
      */
     public static function sendFeedback(string $message, int $code = 400, string $type = 'error'): void
     {
-        http_response_code($code);
-        echo json_encode([
-            'status'  => $type,
-            'message' => $message,
-            'code'    => $code,
-            'timestamp' => date('c')
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
+        // Redirect to new ResponseHelper
+        if ($type === 'success') {
+            ResponseHelper::success(null, $message, $code);
+        } else {
+            ResponseHelper::error($message, $code);
+        }
     }
 
     /**
@@ -51,26 +50,12 @@ class Helpers
      * @param int    $code    HTTP status code (default 200)
      * @param string $message Optional success message
      * @return never
+     * 
+     * @deprecated Use ResponseHelper::success() instead
      */
     public static function sendSuccess($data = null, int $code = 200, string $message = ''): void
     {
-        http_response_code($code);
-
-        $response = [
-            'status' => 'success',
-            'timestamp' => date('c')
-        ];
-
-        if ($message !== null && $message !== '') {
-            $response['message'] = $message;
-        }
-
-        if ($data !== null) {
-            $response['data'] = $data;
-        }
-
-        echo json_encode($response, JSON_UNESCAPED_UNICODE);
-        exit;
+        ResponseHelper::success($data, $message ?: 'Success', $code);
     }
 
     /**
@@ -81,24 +66,12 @@ class Helpers
      * @param int    $code    HTTP status code (default 400)
      * @param array  $errors  Optional array of validation errors
      * @return never
+     * 
+     * @deprecated Use ResponseHelper::error() instead
      */
     public static function sendError(string $message, int $code = 400, array $errors = []): void
     {
-        http_response_code($code);
-
-        $response = [
-            'status' => 'error',
-            'message' => $message,
-            'code' => $code,
-            'timestamp' => date('c')
-        ];
-
-        if (!empty($errors)) {
-            $response['errors'] = $errors;
-        }
-
-        echo json_encode($response, JSON_UNESCAPED_UNICODE);
-        exit;
+        ResponseHelper::error($message, $code, $errors);
     }
 
     /**

@@ -15,6 +15,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Auth.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 class AuthRoutes extends BaseRoute
 {
     public static function handle(): void
@@ -41,20 +42,11 @@ class AuthRoutes extends BaseRoute
                     // Clear rate limit on successful login
                     RateLimiter::clear(Helpers::getClientIp());
 
-                    // Custom response format for login (tokens at root level for frontend compatibility)
-                    http_response_code(200);
-                    echo json_encode([
-                        'status' => 'success',
-                        'message' => 'Login successful',
-                        'access_token' => $result['access_token'],
-                        'refresh_token' => $result['refresh_token'],
-                        'user' => $result['user'],
-                        'timestamp' => date('c')
-                    ], JSON_UNESCAPED_UNICODE);
-                    exit;
+                    // FIXED: Use standard response format (consistent with other endpoints)
+                    ResponseHelper::success($result, 'Login successful');
                 } catch (Exception $e) {
                     Helpers::logError("Login failed for user {$payload['userid']}: " . $e->getMessage());
-                    self::error('Invalid credentials', 401);
+                    ResponseHelper::unauthorized('Invalid credentials');
                 }
             })(),
 
@@ -66,10 +58,10 @@ class AuthRoutes extends BaseRoute
 
                 try {
                     $result = Auth::refreshAccessToken($payload['refresh_token']);
-                    self::success($result, 'Token refreshed', 200);
+                    ResponseHelper::success($result, 'Token refreshed');
                 } catch (Exception $e) {
                     Helpers::logError("Token refresh failed: " . $e->getMessage());
-                    self::error('Invalid or expired refresh token', 401);
+                    ResponseHelper::unauthorized('Invalid or expired refresh token');
                 }
             })(),
 
@@ -81,15 +73,15 @@ class AuthRoutes extends BaseRoute
 
                 try {
                     Auth::logout($payload['refresh_token']);
-                    self::success(null, 'Logged out successfully', 200);
+                    ResponseHelper::success(null, 'Logged out successfully');
                 } catch (Exception $e) {
                     Helpers::logError("Logout failed: " . $e->getMessage());
-                    self::error('Logout failed', 400);
+                    ResponseHelper::error('Logout failed', 400);
                 }
             })(),
 
             // FALLBACK
-            default => self::error('Auth endpoint not found', 404),
+            default => ResponseHelper::notFound('Auth endpoint not found'),
         };
     }
 }

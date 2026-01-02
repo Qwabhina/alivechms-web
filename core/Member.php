@@ -444,47 +444,64 @@ class Member
         // Apply search filter (searches name, email, phone)
         if (!empty($filters['search'])) {
             $searchTerm = '%' . $filters['search'] . '%';
-            $whereConditions[] = '(c.MbrFirstName LIKE :search OR c.MbrFamilyName LIKE :search2 OR c.MbrOtherNames LIKE :search3 OR c.MbrEmailAddress LIKE :search4)';
+            $whereConditions[] = '(c.MbrFirstName LIKE :search OR c.MbrFamilyName LIKE :search2 OR c.MbrOtherNames LIKE :search3 OR c.MbrEmailAddress LIKE :search4 OR p.PhoneNumber LIKE :search5)';
             $params[':search'] = $searchTerm;
             $params[':search2'] = $searchTerm;
             $params[':search3'] = $searchTerm;
             $params[':search4'] = $searchTerm;
+            $params[':search5'] = $searchTerm;
         }
 
         $whereClause = implode(' AND ', $whereConditions);
 
-        // Get members with pagination
+        // FIXED: Use single query with JOIN to get members and phones together (eliminates N+1 problem)
         $members = $orm->runQuery(
-            "SELECT c.*, f.FamilyName
-         FROM `churchmember` c
-         LEFT JOIN `family` f ON c.FamilyID = f.FamilyID
-         WHERE $whereClause
-         ORDER BY c.MbrRegistrationDate DESC
-         LIMIT :limit OFFSET :offset",
+            "SELECT c.*, f.FamilyName,
+                    GROUP_CONCAT(DISTINCT p.PhoneNumber ORDER BY p.IsPrimary DESC, p.PhoneNumber SEPARATOR ',') AS PhoneNumbers,
+                    MAX(CASE WHEN p.IsPrimary = 1 THEN p.PhoneNumber END) AS PrimaryPhone
+             FROM `churchmember` c
+             LEFT JOIN `family` f ON c.FamilyID = f.FamilyID
+             LEFT JOIN `member_phone` p ON c.MbrID = p.MbrID
+             WHERE $whereClause
+             GROUP BY c.MbrID
+             ORDER BY c.MbrRegistrationDate DESC
+             LIMIT :limit OFFSET :offset",
             array_merge($params, [
                 ':limit' => $limit,
                 ':offset' => $offset
             ])
         );
 
-        // Get total count
+        // Get total count (also optimized to avoid N+1)
         $totalResult = $orm->runQuery(
             "SELECT COUNT(DISTINCT c.MbrID) AS total 
-         FROM `churchmember` c
-         WHERE $whereClause",
+             FROM `churchmember` c
+             LEFT JOIN `member_phone` p ON c.MbrID = p.MbrID
+             WHERE $whereClause",
             $params
         );
 
         $total = (int)($totalResult[0]['total'] ?? 0);
 
-        // Process phone numbers for display
+        // Process phone numbers for display (no more N+1 queries!)
         foreach ($members as &$member) {
-            // Get primary phone
-            $phones = $orm->getWhere('member_phone', ['MbrID' => $member['MbrID']]);
-            $member['phones'] = $phones;
-            $phoneNumbers = array_column($phones, 'PhoneNumber');
+            // Convert comma-separated phone numbers to array
+            $phoneNumbers = !empty($member['PhoneNumbers']) ? explode(',', $member['PhoneNumbers']) : [];
             $member['PhoneNumbers'] = $phoneNumbers;
-            $member['PrimaryPhone'] = !empty($phoneNumbers) ? $phoneNumbers[0] : null;
+
+            // Create phones array with structure for backward compatibility
+            $member['phones'] = [];
+            foreach ($phoneNumbers as $index => $phone) {
+                $member['phones'][] = [
+                    'PhoneNumber' => $phone,
+                    'IsPrimary' => ($index === 0) ? 1 : 0
+                ];
+            }
+
+            // Ensure PrimaryPhone is set
+            if (empty($member['PrimaryPhone']) && !empty($phoneNumbers)) {
+                $member['PrimaryPhone'] = $phoneNumbers[0];
+            }
         }
 
         return [

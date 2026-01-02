@@ -1,31 +1,58 @@
 <?php
 
 /**
- * Cache Manager
+ * Cache Manager (Legacy Compatibility Layer)
  *
- * High-performance file-based caching with automatic expiration,
- * cache invalidation, and memory optimization.
- *
- * Supports:
- * - Automatic expiration
- * - Tag-based invalidation
- * - Compression for large data
- * - Cache warming
- * - Statistics tracking
+ * Provides backward compatibility with the existing Cache class
+ * while leveraging the new cache system architecture.
  *
  * @package  AliveChMS\Core
- * @version  2.0.0
+ * @version  3.0.0
  * @author   Benjamin Ebo Yankson
- * @since    2025-December
+ * @since    2025-January
  */
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/Cache/CacheManager.php';
+
 class Cache
 {
+   private static ?CacheManager $manager = null;
    private const CACHE_DIR = __DIR__ . '/../cache/data';
    private const DEFAULT_TTL = 3600; // 1 hour
    private const MAX_FILE_SIZE = 5242880; // 5MB
+
+   /**
+    * Get cache manager instance
+    */
+   private static function getManager(): CacheManager
+   {
+      if (self::$manager === null) {
+         $config = [
+            'default' => 'file',
+            'drivers' => [
+               'file' => [
+                  'driver' => 'file',
+                  'cache_dir' => self::CACHE_DIR,
+                  'tag_dir' => self::CACHE_DIR . '/../tags',
+                  'default_ttl' => self::DEFAULT_TTL,
+                  'max_size' => self::MAX_FILE_SIZE
+               ],
+               'memory' => [
+                  'driver' => 'memory',
+                  'max_memory' => 50 * 1024 * 1024 // 50MB
+               ]
+            ],
+            'fallback_enabled' => true,
+            'fallback_driver' => 'memory'
+         ];
+
+         self::$manager = new CacheManager($config);
+      }
+
+      return self::$manager;
+   }
 
    /**
     * Get cached value
@@ -36,26 +63,7 @@ class Cache
     */
    public static function get(string $key, $default = null)
    {
-      $file = self::getFilePath($key);
-
-      if (!file_exists($file)) {
-         return $default;
-      }
-
-      $data = @unserialize(file_get_contents($file));
-
-      if (!$data || !isset($data['expires'], $data['value'])) {
-         self::delete($key);
-         return $default;
-      }
-
-      // Check expiration
-      if ($data['expires'] > 0 && time() > $data['expires']) {
-         self::delete($key);
-         return $default;
-      }
-
-      return $data['value'];
+      return self::getManager()->get($key, $default);
    }
 
    /**
@@ -69,34 +77,7 @@ class Cache
     */
    public static function set(string $key, $value, int $ttl = self::DEFAULT_TTL, array $tags = []): bool
    {
-      self::ensureCacheDir();
-
-      $file = self::getFilePath($key);
-      $expires = $ttl > 0 ? time() + $ttl : 0;
-
-      $data = [
-         'value' => $value,
-         'expires' => $expires,
-         'tags' => $tags,
-         'created' => time()
-      ];
-
-      $serialized = serialize($data);
-
-      // Don't cache if too large
-      if (strlen($serialized) > self::MAX_FILE_SIZE) {
-         Helpers::logError("Cache value too large for key: $key");
-         return false;
-      }
-
-      $success = @file_put_contents($file, $serialized, LOCK_EX) !== false;
-
-      // Store tag index
-      if ($success && !empty($tags)) {
-         self::indexTags($key, $tags);
-      }
-
-      return $success;
+      return self::getManager()->set($key, $value, $ttl, $tags);
    }
 
    /**
@@ -110,16 +91,31 @@ class Cache
     */
    public static function remember(string $key, callable $callback, int $ttl = self::DEFAULT_TTL, array $tags = [])
    {
-      $value = self::get($key);
+      return self::getManager()->remember($key, $callback, $ttl, $tags);
+   }
 
-      if ($value !== null) {
-         return $value;
-      }
+   /**
+    * Remember forever
+    * 
+    * @param string $key Cache key
+    * @param callable $callback Callback to execute if cache miss
+    * @param array $tags Cache tags
+    * @return mixed Cached or fresh value
+    */
+   public static function rememberForever(string $key, callable $callback, array $tags = [])
+   {
+      return self::getManager()->rememberForever($key, $callback, $tags);
+   }
 
-      $value = $callback();
-      self::set($key, $value, $ttl, $tags);
-
-      return $value;
+   /**
+    * Check if cache key exists
+    * 
+    * @param string $key Cache key
+    * @return bool Whether key exists
+    */
+   public static function has(string $key): bool
+   {
+      return self::getManager()->has($key);
    }
 
    /**
@@ -130,36 +126,60 @@ class Cache
     */
    public static function delete(string $key): bool
    {
-      $file = self::getFilePath($key);
+      return self::getManager()->delete($key);
+   }
 
-      if (file_exists($file)) {
-         return @unlink($file);
-      }
+   /**
+    * Get multiple cached values
+    * 
+    * @param array $keys Array of cache keys
+    * @return array Key-value pairs of cached data
+    */
+   public static function getMultiple(array $keys): array
+   {
+      return self::getManager()->getMultiple($keys);
+   }
 
-      return true;
+   /**
+    * Store multiple values in cache
+    * 
+    * @param array $values Key-value pairs to cache
+    * @param int $ttl Time to live in seconds
+    * @param array $tags Cache tags
+    * @return bool Success status
+    */
+   public static function setMultiple(array $values, int $ttl = self::DEFAULT_TTL, array $tags = []): bool
+   {
+      return self::getManager()->setMultiple($values, $ttl, $tags);
+   }
+
+   /**
+    * Delete multiple cached values
+    * 
+    * @param array $keys Array of cache keys
+    * @return bool Success status
+    */
+   public static function deleteMultiple(array $keys): bool
+   {
+      return self::getManager()->deleteMultiple($keys);
    }
 
    /**
     * Flush all cache entries
     * 
-    * @return int Number of files deleted
+    * @return int Number of files deleted (for backward compatibility)
     */
    public static function flush(): int
    {
-      if (!is_dir(self::CACHE_DIR)) {
-         return 0;
+      $stats = self::getManager()->getStats();
+      $totalEntries = 0;
+
+      foreach ($stats['drivers'] as $driverStats) {
+         $totalEntries += $driverStats['total_entries'] ?? 0;
       }
 
-      $deleted = 0;
-      $files = glob(self::CACHE_DIR . '/*');
-
-      foreach ($files as $file) {
-         if (is_file($file) && @unlink($file)) {
-            $deleted++;
-         }
-      }
-
-      return $deleted;
+      self::getManager()->flush();
+      return $totalEntries;
    }
 
    /**
@@ -170,27 +190,18 @@ class Cache
     */
    public static function invalidateTag(string $tag): int
    {
-      $indexFile = self::getTagIndexPath($tag);
+      return self::getManager()->invalidateTag($tag);
+   }
 
-      if (!file_exists($indexFile)) {
-         return 0;
-      }
-
-      $keys = @unserialize(file_get_contents($indexFile));
-      if (!is_array($keys)) {
-         return 0;
-      }
-
-      $deleted = 0;
-      foreach ($keys as $key) {
-         if (self::delete($key)) {
-            $deleted++;
-         }
-      }
-
-      @unlink($indexFile);
-
-      return $deleted;
+   /**
+    * Invalidate multiple tags
+    * 
+    * @param array $tags Array of tag names
+    * @return int Total number of entries invalidated
+    */
+   public static function invalidateTags(array $tags): int
+   {
+      return self::getManager()->invalidateTags($tags);
    }
 
    /**
@@ -200,136 +211,130 @@ class Cache
     */
    public static function cleanup(): int
    {
-      if (!is_dir(self::CACHE_DIR)) {
-         return 0;
-      }
-
-      $deleted = 0;
-      $files = glob(self::CACHE_DIR . '/cache_*');
-      $now = time();
-
-      foreach ($files as $file) {
-         if (!is_file($file)) {
-            continue;
-         }
-
-         $data = @unserialize(file_get_contents($file));
-
-         if (!$data || !isset($data['expires'])) {
-            @unlink($file);
-            $deleted++;
-            continue;
-         }
-
-         // Delete if expired
-         if ($data['expires'] > 0 && $now > $data['expires']) {
-            @unlink($file);
-            $deleted++;
-         }
-      }
-
-      return $deleted;
+      return self::getManager()->cleanup();
    }
 
    /**
     * Get cache statistics
     * 
-    * @return array Cache stats
+    * @return array Cache stats (backward compatible format)
     */
    public static function stats(): array
    {
-      if (!is_dir(self::CACHE_DIR)) {
-         return [
-            'total_entries' => 0,
-            'total_size' => 0,
-            'expired_entries' => 0
-         ];
-      }
+      $stats = self::getManager()->getStats();
 
-      $files = glob(self::CACHE_DIR . '/cache_*');
-      $now = time();
+      // Convert to backward compatible format
+      $totalEntries = 0;
       $totalSize = 0;
-      $expired = 0;
+      $expiredEntries = 0;
 
-      foreach ($files as $file) {
-         if (!is_file($file)) {
-            continue;
-         }
-
-         $size = filesize($file);
-         $totalSize += $size;
-
-         $data = @unserialize(file_get_contents($file));
-         if ($data && isset($data['expires']) && $data['expires'] > 0 && $now > $data['expires']) {
-            $expired++;
-         }
+      foreach ($stats['drivers'] as $driverStats) {
+         $totalEntries += $driverStats['total_entries'] ?? 0;
+         $totalSize += $driverStats['total_size'] ?? 0;
+         $expiredEntries += $driverStats['expired_entries'] ?? 0;
       }
 
       return [
-         'total_entries' => count($files),
+         'total_entries' => $totalEntries,
          'total_size' => $totalSize,
          'total_size_mb' => round($totalSize / 1024 / 1024, 2),
-         'expired_entries' => $expired
+         'expired_entries' => $expiredEntries,
+         'drivers' => $stats['drivers'],
+         'manager' => $stats['manager']
       ];
    }
 
    /**
-    * Ensure cache directory exists
+    * Warm cache with predefined data
+    * 
+    * @param array $data Key-value pairs to cache
+    * @param int $ttl Time to live
+    * @param array $tags Cache tags
+    * @return bool Success status
     */
-   private static function ensureCacheDir(): void
+   public static function warm(array $data, int $ttl = self::DEFAULT_TTL, array $tags = []): bool
    {
-      if (!is_dir(self::CACHE_DIR)) {
-         @mkdir(self::CACHE_DIR, 0755, true);
-      }
+      return self::getManager()->warm($data, $ttl, $tags);
    }
 
    /**
-    * Get file path for cache key
+    * Get cache driver instance
+    * 
+    * @param string $driver Driver name
+    * @return CacheInterface Driver instance
+    */
+   public static function driver(string $driver = null): CacheInterface
+   {
+      return self::getManager()->driver($driver);
+   }
+
+   /**
+    * Increment cached value
     * 
     * @param string $key Cache key
-    * @return string File path
+    * @param int $value Value to increment by
+    * @return int|false New value or false on failure
     */
-   private static function getFilePath(string $key): string
+   public static function increment(string $key, int $value = 1)
    {
-      $hash = hash('sha256', $key);
-      return self::CACHE_DIR . '/cache_' . $hash;
+      $driver = self::getManager()->driver();
+      if (method_exists($driver, 'increment')) {
+         return $driver->increment($key, $value);
+      }
+
+      // Fallback implementation
+      $current = self::get($key, 0);
+      if (!is_numeric($current)) {
+         return false;
+      }
+
+      $new = (int)$current + $value;
+      return self::set($key, $new) ? $new : false;
    }
 
    /**
-    * Get tag index file path
-    * 
-    * @param string $tag Tag name
-    * @return string File path
-    */
-   private static function getTagIndexPath(string $tag): string
-   {
-      $hash = hash('sha256', 'tag_' . $tag);
-      return self::CACHE_DIR . '/tag_' . $hash;
-   }
-
-   /**
-    * Index cache key by tags
+    * Decrement cached value
     * 
     * @param string $key Cache key
-    * @param array $tags Tags
+    * @param int $value Value to decrement by
+    * @return int|false New value or false on failure
     */
-   private static function indexTags(string $key, array $tags): void
+   public static function decrement(string $key, int $value = 1)
    {
-      foreach ($tags as $tag) {
-         $indexFile = self::getTagIndexPath($tag);
-         $keys = [];
+      return self::increment($key, -$value);
+   }
 
-         if (file_exists($indexFile)) {
-            $existing = @unserialize(file_get_contents($indexFile));
-            if (is_array($existing)) {
-               $keys = $existing;
-            }
-         }
+   // Legacy method aliases for backward compatibility
 
-         if (!in_array($key, $keys, true)) {
-            $keys[] = $key;
-            @file_put_contents($indexFile, serialize($keys), LOCK_EX);
-         }
-      }
+   /**
+    * @deprecated Use invalidateTag() instead
+    */
+   public static function forgetTag(string $tag): int
+   {
+      return self::invalidateTag($tag);
+   }
+
+   /**
+    * @deprecated Use delete() instead
+    */
+   public static function forget(string $key): bool
+   {
+      return self::delete($key);
+   }
+
+   /**
+    * @deprecated Use set() with TTL 0 instead
+    */
+   public static function forever(string $key, $value, array $tags = []): bool
+   {
+      return self::set($key, $value, 0, $tags);
+   }
+
+   /**
+    * @deprecated Use flush() instead
+    */
+   public static function clear(): int
+   {
+      return self::flush();
    }
 }

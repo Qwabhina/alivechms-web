@@ -35,6 +35,9 @@ if (!class_exists('Validator')) {
 if (!class_exists('Helpers')) {
    require_once __DIR__ . '/Helpers.php';
 }
+if (!class_exists('ResponseHelper')) {
+   require_once __DIR__ . '/ResponseHelper.php';
+}
 if (!class_exists('ORM')) {
    require_once __DIR__ . '/ORM.php';
 }
@@ -77,7 +80,7 @@ abstract class BaseRoute
 
       if (!$token) {
          if ($required) {
-            Helpers::sendError('Unauthorized: Valid token required', 401);
+            ResponseHelper::unauthorized('Valid token required');
          }
          return false;
       }
@@ -86,7 +89,7 @@ abstract class BaseRoute
 
       if ($decoded === false) {
          if ($required) {
-            Helpers::sendError('Unauthorized: Invalid or expired token', 401);
+            ResponseHelper::unauthorized('Invalid or expired token');
          }
          return false;
       }
@@ -113,7 +116,7 @@ abstract class BaseRoute
          Auth::checkPermission($permission);
       } catch (Exception $e) {
          Helpers::logError("Authorization failed for user " . self::$currentUserId . ": " . $e->getMessage());
-         self::error('Forbidden: Insufficient permissions', 403);
+         ResponseHelper::forbidden('Insufficient permissions');
       }
    }
 
@@ -130,7 +133,7 @@ abstract class BaseRoute
 
       if (!is_array($payload)) {
          if ($required) {
-            Helpers::sendError('Invalid JSON payload', 400);
+            ResponseHelper::error('Invalid JSON payload', 400);
          }
          return [];
       }
@@ -138,7 +141,7 @@ abstract class BaseRoute
       if (!empty($rules)) {
          $validator = Validator::make($payload, $rules);
          if ($validator->fails()) {
-            Helpers::sendError('Validation failed', 422, $validator->errors());
+            ResponseHelper::validationError($validator->errors());
          }
          return $validator->validated();
       }
@@ -157,7 +160,7 @@ abstract class BaseRoute
    protected static function getIdFromPath(array $pathParts, int $position, string $name = 'ID'): int
    {
       if (!isset($pathParts[$position]) || !is_numeric($pathParts[$position])) {
-         Helpers::sendError("Valid {$name} required", 400);
+         ResponseHelper::error("Valid {$name} required", 400);
       }
 
       return (int)$pathParts[$position];
@@ -262,14 +265,7 @@ abstract class BaseRoute
     */
    protected static function success($data = null, string $message = 'Success', int $code = 200): never
    {
-      http_response_code($code);
-      echo json_encode([
-         'status'   => 'success',
-         'message'  => $message,
-         'data'     => $data,
-         'timestamp' => date('c')
-      ], JSON_UNESCAPED_UNICODE);
-      exit;
+      ResponseHelper::success($data, $message, $code);
    }
 
    /**
@@ -283,15 +279,7 @@ abstract class BaseRoute
     */
    protected static function paginated(array $data, int $total, int $page, int $limit): never
    {
-      self::success([
-         'data' => $data,
-         'pagination' => [
-            'page'   => $page,
-            'limit'  => $limit,
-            'total'  => $total,
-            'pages'  => (int)ceil($total / $limit)
-         ]
-      ]);
+      ResponseHelper::paginated($data, $total, $page, $limit);
    }
 
    /**
@@ -304,6 +292,6 @@ abstract class BaseRoute
     */
    protected static function error(string $message, int $code = 400, array $errors = []): never
    {
-      Helpers::sendError($message, $code, $errors);
+      ResponseHelper::error($message, $code, $errors);
    }
 }

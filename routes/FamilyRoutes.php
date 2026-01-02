@@ -22,6 +22,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Family.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class FamilyRoutes extends BaseRoute
 {
@@ -51,7 +52,7 @@ class FamilyRoutes extends BaseRoute
                 $result = self::withTransaction(function () use ($payload) {
                     return Family::create($payload);
                 });
-                self::success($result, 'Family created', 201);
+                ResponseHelper::created($result, 'Family created');
             })(),
 
             // UPDATE FAMILY
@@ -73,7 +74,7 @@ class FamilyRoutes extends BaseRoute
                 $result = self::withTransaction(function () use ($familyId, $payload) {
                     return Family::update($familyId, $payload);
                 });
-                self::success($result, 'Family updated');
+                ResponseHelper::success($result, 'Family updated');
             })(),
 
             // SOFT DELETE FAMILY
@@ -86,7 +87,7 @@ class FamilyRoutes extends BaseRoute
                 $result = self::withTransaction(function () use ($familyId) {
                     return Family::softDelete($familyId);
                 });
-                self::success($result, 'Family deleted');
+                ResponseHelper::success($result, 'Family deleted');
             })(),
 
             // VIEW SINGLE FAMILY WITH MEMBERS
@@ -97,7 +98,7 @@ class FamilyRoutes extends BaseRoute
                 $familyId = self::getIdFromPath($pathParts, 2, 'Family ID');
 
                 $family = Family::get($familyId);
-                self::success($family);
+                ResponseHelper::success($family);
             })(),
 
             // LIST ALL FAMILIES (PAGINATED) - For dropdowns, no auth required
@@ -109,7 +110,7 @@ class FamilyRoutes extends BaseRoute
                 $filters = self::getFilters(['branch_id', 'status', 'date_from', 'date_to']);
 
                 $result = Family::getAll($page, $limit, $filters);
-                self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+                ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
             })(),
 
             // ADD MEMBER TO FAMILY
@@ -127,7 +128,7 @@ class FamilyRoutes extends BaseRoute
                 $result = self::withTransaction(function () use ($familyId, $payload) {
                     return Family::addMember($familyId, (int)$payload['member_id'], $payload);
                 });
-                self::success($result, 'Member added to family');
+                ResponseHelper::success($result, 'Member added to family');
             })(),
 
             // REMOVE MEMBER FROM FAMILY
@@ -141,7 +142,7 @@ class FamilyRoutes extends BaseRoute
                 $result = self::withTransaction(function () use ($familyId, $memberId) {
                     return Family::removeMember($familyId, $memberId);
                 });
-                self::success($result, 'Member removed from family');
+                ResponseHelper::success($result, 'Member removed from family');
             })(),
 
             // UPDATE MEMBER ROLE IN FAMILY
@@ -159,11 +160,11 @@ class FamilyRoutes extends BaseRoute
                 $result = self::withTransaction(function () use ($familyId, $memberId, $payload) {
                     return Family::updateMemberRole($familyId, $memberId, $payload);
                 });
-                self::success($result, 'Member role updated');
+                ResponseHelper::success($result, 'Member role updated');
             })(),
 
             // FALLBACK
-            default => self::error('Family endpoint not found', 404),
+            default => ResponseHelper::notFound('Family endpoint not found'),
         };
     }
 }

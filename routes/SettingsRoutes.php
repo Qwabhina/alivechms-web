@@ -14,6 +14,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Settings.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class SettingsRoutes extends BaseRoute
 {
@@ -30,7 +31,7 @@ class SettingsRoutes extends BaseRoute
             self::authorize('manage_settings');
 
             $settings = Settings::getAll();
-            self::success(['data' => $settings]);
+            ResponseHelper::success(['data' => $settings]);
          })(),
 
          // GET SETTINGS BY CATEGORY
@@ -39,7 +40,7 @@ class SettingsRoutes extends BaseRoute
             self::authorize('manage_settings');
 
             $settings = Settings::getByCategory();
-            self::success(['data' => $settings]);
+            ResponseHelper::success(['data' => $settings]);
          })(),
 
          // GET SINGLE SETTING
@@ -49,7 +50,7 @@ class SettingsRoutes extends BaseRoute
 
             $key = $pathParts[2];
             $value = Settings::get($key);
-            self::success(['key' => $key, 'value' => $value]);
+            ResponseHelper::success(['key' => $key, 'value' => $value]);
          })(),
 
          // UPDATE SETTINGS (BULK)
@@ -60,7 +61,7 @@ class SettingsRoutes extends BaseRoute
             $payload = self::getPayload();
 
             if (empty($payload['settings']) || !is_array($payload['settings'])) {
-               Helpers::sendFeedback('Settings array is required', 400);
+               ResponseHelper::error('Settings array is required', 400);
             }
 
             $result = Settings::updateBulk($payload['settings']);
@@ -70,7 +71,7 @@ class SettingsRoutes extends BaseRoute
                SettingsHelper::clearCache();
             }
 
-            self::success($result, 'Settings updated successfully');
+            ResponseHelper::success($result, 'Settings updated successfully');
          })(),
 
          // UPLOAD CHURCH LOGO
@@ -80,7 +81,7 @@ class SettingsRoutes extends BaseRoute
 
             // Check if file was uploaded
             if (!isset($_FILES['logo']) || $_FILES['logo']['error'] !== UPLOAD_ERR_OK) {
-               self::error('No file uploaded or upload error occurred', 400);
+               ResponseHelper::error('No file uploaded or upload error occurred', 400);
             }
 
             $file = $_FILES['logo'];
@@ -91,12 +92,12 @@ class SettingsRoutes extends BaseRoute
             $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'];
 
             if (!in_array($mimeType, $allowedTypes)) {
-               self::error('Invalid file type. Allowed: JPG, PNG, GIF, SVG, WebP', 400);
+               ResponseHelper::error('Invalid file type. Allowed: JPG, PNG, GIF, SVG, WebP', 400);
             }
 
             // Validate file size (max 2MB)
             if ($file['size'] > 2 * 1024 * 1024) {
-               self::error('File too large. Maximum size: 2MB', 400);
+               ResponseHelper::error('File too large. Maximum size: 2MB', 400);
             }
 
             // Create upload directory if not exists
@@ -126,7 +127,7 @@ class SettingsRoutes extends BaseRoute
 
             // Move uploaded file
             if (!move_uploaded_file($file['tmp_name'], $filepath)) {
-               self::error('Failed to save uploaded file', 500);
+               ResponseHelper::serverError('Failed to save uploaded file');
             }
 
             // Update setting
@@ -139,7 +140,7 @@ class SettingsRoutes extends BaseRoute
 
             Helpers::logError("Church logo uploaded: $relativePath");
 
-            self::success([
+            ResponseHelper::success([
                'path' => $relativePath,
                'url' => '/public/' . $relativePath
             ], 'Logo uploaded successfully');
@@ -151,7 +152,7 @@ class SettingsRoutes extends BaseRoute
             self::authorize('manage_settings');
 
             $result = Settings::initializeDefaults();
-            self::success($result);
+            ResponseHelper::success($result);
          })(),
 
          // DELETE SETTING
@@ -161,11 +162,11 @@ class SettingsRoutes extends BaseRoute
 
             $key = $pathParts[2];
             $result = Settings::delete($key);
-            self::success($result, 'Setting deleted');
+            ResponseHelper::success($result, 'Setting deleted');
          })(),
 
          // FALLBACK
-         default => self::error('Settings endpoint not found', 404),
+         default => ResponseHelper::notFound('Settings endpoint not found'),
       };
    }
 }
