@@ -200,85 +200,116 @@ require_once '../includes/sidebar.php';
    }
 
    function initTable() {
-      budgetsTable = QMGridHelper.initWithButtons('#budgetsTable', {
-         ajax: {
-            url: `${Config.API_BASE_URL}/budget/all`,
-            type: 'GET',
-            data: function(d) {
-               return {
-                  page: Math.floor(d.start / d.length) + 1,
-                  limit: d.length,
-                  search: d.search.value || ''
-               };
-            },
-            dataFilter: function(data) {
-               return QMGridHelper.processServerResponse(data, function(b) {
-                  return {
-                     title: b.BudgetTitle,
-                     fiscal_year: b.YearName,
-                     branch: b.BranchName,
-                     total: parseFloat(b.TotalAmount),
-                     status: b.BudgetStatus,
-                     created: b.CreatedAt,
-                     id: b.BudgetID
-                  };
-               });
-            }
+      budgetsTable = QMGridHelper.initWithExport('#budgetsTable', {
+         url: `${Config.API_BASE_URL}/budget/all`,
+         pageSize: 25,
+         filename: 'budgets_export',
+         onDataLoaded: (data) => {
+            console.log(`Loaded ${data.data.length} budgets`);
+         },
+         onError: (error) => {
+            console.error('Failed to load budgets:', error);
+            Alerts.error('Failed to load budgets data');
          },
          columns: [{
-               data: 'title',
-               title: 'Title'
+               key: 'BudgetTitle',
+               title: 'Title',
+               render: function(data) {
+                  return `<div class="fw-medium">${data}</div>`;
+               }
             },
             {
-               data: 'fiscal_year',
-               title: 'Fiscal Year'
+               key: 'YearName',
+               title: 'Fiscal Year',
+               render: function(data) {
+                  return data || '-';
+               }
             },
             {
-               data: 'branch',
-               title: 'Branch'
+               key: 'BranchName',
+               title: 'Branch',
+               render: function(data) {
+                  return data || '-';
+               }
             },
             {
-               data: 'total',
+               key: 'TotalAmount',
                title: 'Total Amount',
                render: function(data) {
-                  return formatCurrency(parseFloat(data));
+                  return QMGridHelper.formatCurrency(data);
                }
             },
             {
-               data: 'status',
+               key: 'BudgetStatus',
                title: 'Status',
                render: function(data) {
-                  const badges = {
-                     'Draft': 'warning',
-                     'Submitted': 'info',
-                     'Approved': 'success',
-                     'Rejected': 'danger'
-                  };
-                  return `<span class="badge bg-${badges[data] || 'secondary'}">${data}</span>`;
+                  return QMGridHelper.statusBadge(data, {
+                     'draft': 'warning',
+                     'submitted': 'info',
+                     'approved': 'success',
+                     'rejected': 'danger',
+                     'active': 'success',
+                     'closed': 'secondary'
+                  });
                }
             },
             {
-               data: 'created',
+               key: 'CreatedAt',
                title: 'Created',
                render: function(data) {
-                  return QMGridHelper.formatDate(data);
+                  return QMGridHelper.formatDate(data, 'short');
                }
             },
             {
-               data: 'id',
+               key: 'progress',
+               title: 'Progress',
+               sortable: false,
+               render: function(data, row) {
+                  const spent = parseFloat(row.SpentAmount || 0);
+                  const total = parseFloat(row.TotalAmount || 1);
+                  const percentage = Math.min((spent / total) * 100, 100);
+
+                  let progressClass = 'bg-success';
+                  if (percentage > 90) progressClass = 'bg-danger';
+                  else if (percentage > 75) progressClass = 'bg-warning';
+
+                  return `
+                     <div class="progress" style="height: 20px;">
+                        <div class="progress-bar ${progressClass}" role="progressbar" 
+                             style="width: ${percentage}%" aria-valuenow="${percentage}" 
+                             aria-valuemin="0" aria-valuemax="100">
+                           ${percentage.toFixed(1)}%
+                        </div>
+                     </div>
+                  `;
+               }
+            },
+            {
+               key: 'BudgetID',
                title: 'Actions',
-               orderable: false,
-               searchable: false,
-               className: 'no-export',
-               render: function(data) {
-                  return `<button class="btn btn-sm btn-outline-primary" onclick="viewBudget(${data})" title="View">
-                     <i class="bi bi-eye"></i>
-                  </button>`;
+               sortable: false,
+               exportable: false,
+               render: function(data, row) {
+                  return QMGridHelper.actionButtons(data, {
+                     view: true,
+                     edit: row.BudgetStatus === 'Draft',
+                     delete: row.BudgetStatus === 'Draft',
+                     viewFn: 'viewBudget',
+                     editFn: 'editBudget',
+                     deleteFn: 'deleteBudget',
+                     viewPermission: Auth.hasPermission('view_budget'),
+                     editPermission: Auth.hasPermission('create_budget'),
+                     deletePermission: Auth.hasPermission('delete_budget'),
+                     custom: [{
+                        icon: 'check-circle',
+                        color: 'success',
+                        title: 'Approve Budget',
+                        fn: 'approveBudget',
+                        permission: Auth.hasPermission('approve_budget') && row.BudgetStatus === 'Submitted'
+                     }]
+                  });
                }
             }
-         ],
-         order: [
-            [5, 'desc']
          ]
       });
    }
@@ -482,6 +513,30 @@ require_once '../includes/sidebar.php';
 
    function viewBudget(budgetId) {
       Alerts.info('View functionality coming soon');
+   }
+
+   function editBudget(budgetId) {
+      if (!Auth.hasPermission('create_budget')) {
+         Alerts.error('You do not have permission to edit budgets');
+         return;
+      }
+      Alerts.info('Edit functionality coming soon');
+   }
+
+   function deleteBudget(budgetId) {
+      if (!Auth.hasPermission('delete_budget')) {
+         Alerts.error('You do not have permission to delete budgets');
+         return;
+      }
+      Alerts.info('Delete functionality coming soon');
+   }
+
+   function approveBudget(budgetId) {
+      if (!Auth.hasPermission('approve_budget')) {
+         Alerts.error('You do not have permission to approve budgets');
+         return;
+      }
+      Alerts.info('Approve functionality coming soon');
    }
 </script>
 

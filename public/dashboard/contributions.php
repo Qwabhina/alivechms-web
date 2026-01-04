@@ -293,73 +293,80 @@ require_once '../includes/sidebar.php';
    }
 
    function initTable() {
-      contributionsTable = QMGridHelper.initWithButtons('#contributionsTable', {
-         ajax: {
-            url: `${Config.API_BASE_URL}/contribution/all`,
-            type: 'GET',
-            data: function(d) {
-               return {
-                  page: Math.floor(d.start / d.length) + 1,
-                  limit: d.length,
-                  search: d.search.value || ''
-               };
-            },
-            dataFilter: function(data) {
-               return QMGridHelper.processServerResponse(data, function(c) {
-                  return {
-                     member: `${c.MbrFirstName} ${c.MbrFamilyName}`,
-                     amount: parseFloat(c.ContributionAmount),
-                     date: c.ContributionDate,
-                     type: c.ContributionTypeName,
-                     payment: c.PaymentOptionName,
-                     id: c.ContributionID
-                  };
-               });
-            }
+      contributionsTable = QMGridHelper.initWithExport('#contributionsTable', {
+         url: `${Config.API_BASE_URL}/contribution/all`,
+         pageSize: 25,
+         filename: 'contributions_export',
+         onDataLoaded: (data) => {
+            console.log(`Loaded ${data.data.length} contributions`);
+         },
+         onError: (error) => {
+            console.error('Failed to load contributions:', error);
+            Alerts.error('Failed to load contributions data');
          },
          columns: [{
-               data: 'member',
-               title: 'Member'
+               key: 'member_info',
+               title: 'Member',
+               sortable: false,
+               render: function(data, row) {
+                  return QMGridHelper.formatMemberName({
+                     FirstName: row.MbrFirstName,
+                     FamilyName: row.MbrFamilyName,
+                     EmailAddress: row.MbrEmailAddress
+                  });
+               }
             },
             {
-               data: 'amount',
+               key: 'ContributionAmount',
                title: 'Amount',
                render: function(data) {
-                  return formatCurrency(parseFloat(data));
+                  return QMGridHelper.formatCurrency(data);
                }
             },
             {
-               data: 'date',
+               key: 'ContributionDate',
                title: 'Date',
                render: function(data) {
-                  return QMGridHelper.formatDate(data);
+                  return QMGridHelper.formatDate(data, 'short');
                }
             },
             {
-               data: 'type',
-               title: 'Type'
+               key: 'ContributionTypeName',
+               title: 'Type',
+               render: function(data) {
+                  return data || '-';
+               }
             },
             {
-               data: 'payment',
-               title: 'Payment Method'
+               key: 'PaymentOptionName',
+               title: 'Payment Method',
+               render: function(data) {
+                  return data || '-';
+               }
             },
             {
-               data: 'id',
+               key: 'FiscalYearName',
+               title: 'Fiscal Year',
+               render: function(data) {
+                  return data || '-';
+               }
+            },
+            {
+               key: 'ContributionID',
                title: 'Actions',
-               orderable: false,
-               searchable: false,
-               className: 'no-export',
+               sortable: false,
+               exportable: false,
                render: function(data) {
                   return QMGridHelper.actionButtons(data, {
                      viewFn: 'viewContribution',
                      editFn: 'editContribution',
-                     deleteFn: 'deleteContribution'
+                     deleteFn: 'deleteContribution',
+                     viewPermission: Auth.hasPermission('view_contribution'),
+                     editPermission: Auth.hasPermission('edit_contribution'),
+                     deletePermission: Auth.hasPermission('delete_contribution')
                   });
                }
             }
-         ],
-         order: [
-            [2, 'desc']
          ]
       });
    }
@@ -655,25 +662,69 @@ require_once '../includes/sidebar.php';
       const startDate = document.getElementById('filterStartDate').value;
       const endDate = document.getElementById('filterEndDate').value;
 
-      let url = `${Config.API_BASE_URL}/contribution/all`;
-      let params = [];
+      const filters = {};
+      if (typeId) filters.contribution_type_id = typeId;
+      if (startDate) filters.start_date = startDate;
+      if (endDate) filters.end_date = endDate;
 
-      if (typeId) params.push(`contribution_type_id=${typeId}`);
-      if (startDate) params.push(`start_date=${startDate}`);
-      if (endDate) params.push(`end_date=${endDate}`);
-
-      if (params.length > 0) {
-         url += '?' + params.join('&');
-      }
-
-      contributionsTable.ajax.url(url).load();
+      // Reinitialize table with filters using server-side processing
+      contributionsTable = QMGridHelper.initWithButtons('#contributionsTable', {
+         url: `${Config.API_BASE_URL}/contribution/all`,
+         method: 'GET', // Explicitly specify GET method for AliveChMS API
+         filters: filters,
+         columns: [{
+               key: 'MbrFirstName',
+               title: 'Member',
+               render: function(data, row) {
+                  return `${row.MbrFirstName} ${row.MbrFamilyName}`;
+               }
+            },
+            {
+               key: 'ContributionAmount',
+               title: 'Amount',
+               render: function(data) {
+                  return formatCurrency(parseFloat(data));
+               }
+            },
+            {
+               key: 'ContributionDate',
+               title: 'Date',
+               render: function(data) {
+                  return QMGridHelper.formatDate(data);
+               }
+            },
+            {
+               key: 'ContributionTypeName',
+               title: 'Type'
+            },
+            {
+               key: 'PaymentOptionName',
+               title: 'Payment Method'
+            },
+            {
+               key: 'ContributionID',
+               title: 'Actions',
+               sortable: false,
+               className: 'no-export',
+               render: function(data) {
+                  return QMGridHelper.actionButtons(data, {
+                     viewFn: 'viewContribution',
+                     editFn: 'editContribution',
+                     deleteFn: 'deleteContribution'
+                  });
+               }
+            }
+         ]
+      });
    }
 
    function clearFilters() {
       document.getElementById('filterType').value = '';
       document.getElementById('filterStartDate').value = '';
       document.getElementById('filterEndDate').value = '';
-      contributionsTable.ajax.url(`${Config.API_BASE_URL}/contribution/all`).load();
+
+      // Reinitialize table without filters
+      initTable();
    }
 
    async function deleteContribution(contributionId) {

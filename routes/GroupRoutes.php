@@ -35,6 +35,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Group.php';
 require_once __DIR__ . '/../core/GroupType.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class GroupRoutes extends BaseRoute
 {
@@ -58,7 +59,7 @@ class GroupRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Group::create($payload);
-            self::success($result, 'Group created', 201);
+            ResponseHelper::created($result, 'Group created');
          })(),
 
          // UPDATE GROUP
@@ -71,7 +72,7 @@ class GroupRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Group::update($groupId, $payload);
-            self::success($result, 'Group updated');
+            ResponseHelper::success($result, 'Group updated');
          })(),
 
          // DELETE GROUP
@@ -82,7 +83,7 @@ class GroupRoutes extends BaseRoute
             $groupId = self::getIdFromPath($pathParts, 2, 'Group ID');
 
             $result = Group::delete($groupId);
-            self::success($result, 'Group deleted');
+            ResponseHelper::success($result, 'Group deleted');
          })(),
 
          // VIEW SINGLE GROUP
@@ -93,7 +94,7 @@ class GroupRoutes extends BaseRoute
             $groupId = self::getIdFromPath($pathParts, 2, 'Group ID');
 
             $group = Group::get($groupId);
-            self::success($group);
+            ResponseHelper::success($group);
          })(),
 
          // LIST ALL GROUPS (Paginated + Multi-Filter)
@@ -115,7 +116,7 @@ class GroupRoutes extends BaseRoute
             }
 
             $result = Group::getAll($page, $limit, $filters);
-            self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
          })(),
 
          // ADD MEMBER TO GROUP
@@ -130,7 +131,7 @@ class GroupRoutes extends BaseRoute
             ]);
 
             $result = Group::addMember($groupId, (int)$payload['member_id']);
-            self::success($result, 'Member added to group');
+            ResponseHelper::success($result, 'Member added to group');
          })(),
 
          // REMOVE MEMBER FROM GROUP
@@ -142,7 +143,7 @@ class GroupRoutes extends BaseRoute
             $memberId = self::getIdFromPath($pathParts, 3, 'Member ID');
 
             $result = Group::removeMember($groupId, $memberId);
-            self::success($result, 'Member removed from group');
+            ResponseHelper::success($result, 'Member removed from group');
          })(),
 
          // GET GROUP MEMBERS (Paginated)
@@ -155,7 +156,7 @@ class GroupRoutes extends BaseRoute
             [$page, $limit] = self::getPagination(10, 100);
 
             $result = Group::getMembers($groupId, $page, $limit);
-            self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
          })(),
 
          // =================================================================
@@ -172,7 +173,7 @@ class GroupRoutes extends BaseRoute
             ]);
 
             $result = GroupType::create($payload);
-            self::success($result, 'Group type created', 201);
+            ResponseHelper::created($result, 'Group type created');
          })(),
 
          // UPDATE GROUP TYPE
@@ -185,7 +186,7 @@ class GroupRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = GroupType::update($typeId, $payload);
-            self::success($result, 'Group type updated');
+            ResponseHelper::success($result, 'Group type updated');
          })(),
 
          // DELETE GROUP TYPE
@@ -196,7 +197,7 @@ class GroupRoutes extends BaseRoute
             $typeId = self::getIdFromPath($pathParts, 2, 'GroupType ID');
 
             $result = GroupType::delete($typeId);
-            self::success($result, 'Group type deleted');
+            ResponseHelper::success($result, 'Group type deleted');
          })(),
 
          // VIEW SINGLE GROUP TYPE
@@ -207,7 +208,7 @@ class GroupRoutes extends BaseRoute
             $typeId = self::getIdFromPath($pathParts, 2, 'GroupType ID');
 
             $type = GroupType::get($typeId);
-            self::success($type);
+            ResponseHelper::success($type);
          })(),
 
          // LIST ALL GROUP TYPES
@@ -218,11 +219,11 @@ class GroupRoutes extends BaseRoute
             [$page, $limit] = self::getPagination(10, 100);
 
             $result = GroupType::getAll($page, $limit);
-            self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
          })(),
 
          // FALLBACK
-         default => self::error('Group/GroupType endpoint not found', 404),
+         default => ResponseHelper::notFound('Group/GroupType endpoint not found'),
       };
    }
 }

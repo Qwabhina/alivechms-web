@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Settings.php';
 require_once __DIR__ . '/../core/SettingsHelper.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class PublicRoutes extends BaseRoute
 {
@@ -43,7 +44,7 @@ class PublicRoutes extends BaseRoute
                'items_per_page' => SettingsHelper::getItemsPerPage(),
             ];
 
-            self::success($publicSettings);
+            ResponseHelper::success($publicSettings);
          })(),
 
          // GET SYSTEM INFO
@@ -55,11 +56,11 @@ class PublicRoutes extends BaseRoute
                'maintenance_mode' => SettingsHelper::isMaintenanceMode(),
             ];
 
-            self::success($info);
+            ResponseHelper::success($info);
          })(),
 
          // FALLBACK
-         default => self::error('Public endpoint not found', 404),
+         default => ResponseHelper::notFound('Public endpoint not found'),
       };
    }
 }

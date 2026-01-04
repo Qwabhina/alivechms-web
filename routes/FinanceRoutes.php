@@ -30,6 +30,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Finance.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class FinanceRoutes extends BaseRoute
 {
@@ -49,7 +50,7 @@ class FinanceRoutes extends BaseRoute
 
       // Validate Fiscal Year ID presence and format
       if (!$fiscalYearId || !is_numeric($fiscalYearId)) {
-         self::error('Fiscal Year ID is required in URL (e.g., /finance/income-statement/5)', 400);
+         ResponseHelper::error('Fiscal Year ID is required in URL (e.g., /finance/income-statement/5)', 400);
       }
 
       match (true) {
@@ -57,39 +58,39 @@ class FinanceRoutes extends BaseRoute
          // Example: GET /finance/income-statement/5?date_from=2025-01-01&date_to=2025-06-30
          $method === 'GET' && ($pathParts[1] ?? '') === 'income-statement' => (function () use ($fiscalYearId, $dateFrom, $dateTo) {
             $report = Finance::getIncomeStatement((int)$fiscalYearId, $dateFrom, $dateTo);
-            self::success($report);
+            ResponseHelper::success($report);
          })(),
 
          // BUDGET VS ACTUAL COMPARISON
          // Shows variance per category – critical for financial oversight
          $method === 'GET' && ($pathParts[1] ?? '') === 'budget-vs-actual' => (function () use ($fiscalYearId, $dateFrom, $dateTo) {
             $report = Finance::getBudgetVsActual((int)$fiscalYearId, $dateFrom, $dateTo);
-            self::success($report);
+            ResponseHelper::success($report);
          })(),
 
          // EXPENSE SUMMARY BY CATEGORY
          // Top-down view of where money is going – includes transaction count
          $method === 'GET' && ($pathParts[1] ?? '') === 'expense-summary' => (function () use ($fiscalYearId, $dateFrom, $dateTo) {
             $report = Finance::getExpenseSummary((int)$fiscalYearId, $dateFrom, $dateTo);
-            self::success($report);
+            ResponseHelper::success($report);
          })(),
 
          // CONTRIBUTION SUMMARY BY TYPE
          // Breaks down giving by tithe, offering, building fund, etc.
          $method === 'GET' && ($pathParts[1] ?? '') === 'contribution-summary' => (function () use ($fiscalYearId, $dateFrom, $dateTo) {
             $report = Finance::getContributionSummary((int)$fiscalYearId, $dateFrom, $dateTo);
-            self::success($report);
+            ResponseHelper::success($report);
          })(),
 
          // SIMPLE BALANCE SHEET
          // Cash-in-hand model: total income minus approved expenses
          $method === 'GET' && ($pathParts[1] ?? '') === 'balance-sheet' => (function () use ($fiscalYearId, $dateFrom, $dateTo) {
             $report = Finance::getBalanceSheet((int)$fiscalYearId, $dateFrom, $dateTo);
-            self::success($report);
+            ResponseHelper::success($report);
          })(),
 
          // FALLBACK
-         default => self::error('Finance report endpoint not found', 404),
+         default => ResponseHelper::notFound('Finance report endpoint not found'),
       };
    }
 }

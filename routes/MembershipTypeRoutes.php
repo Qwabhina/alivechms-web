@@ -37,6 +37,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/MembershipType.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class MembershipTypeRoutes extends BaseRoute
 {
@@ -56,7 +57,7 @@ class MembershipTypeRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = MembershipType::create($payload);
-            self::success($result, 'Membership type created', 201);
+            ResponseHelper::created($result, 'Membership type created');
          })(),
 
          // UPDATE MEMBERSHIP TYPE
@@ -69,7 +70,7 @@ class MembershipTypeRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = MembershipType::update($typeId, $payload);
-            self::success($result, 'Membership type updated');
+            ResponseHelper::success($result, 'Membership type updated');
          })(),
 
          // DELETE MEMBERSHIP TYPE
@@ -80,7 +81,7 @@ class MembershipTypeRoutes extends BaseRoute
             $typeId = self::getIdFromPath($pathParts, 2, 'Membership Type ID');
 
             $result = MembershipType::delete($typeId);
-            self::success($result, 'Membership type deleted');
+            ResponseHelper::success($result, 'Membership type deleted');
          })(),
 
          // VIEW SINGLE MEMBERSHIP TYPE
@@ -91,7 +92,7 @@ class MembershipTypeRoutes extends BaseRoute
             $typeId = self::getIdFromPath($pathParts, 2, 'Membership Type ID');
 
             $type = MembershipType::get($typeId);
-            self::success($type);
+            ResponseHelper::success($type);
          })(),
 
          // LIST ALL MEMBERSHIP TYPES (Paginated + Search)
@@ -107,7 +108,7 @@ class MembershipTypeRoutes extends BaseRoute
             }
 
             $result = MembershipType::getAll($page, $limit, $filters);
-            self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
          })(),
 
          // ASSIGN MEMBERSHIP TYPE TO MEMBER
@@ -120,7 +121,7 @@ class MembershipTypeRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = MembershipType::assign($memberId, $payload);
-            self::success($result, 'Membership type assigned');
+            ResponseHelper::success($result, 'Membership type assigned');
          })(),
 
          // UPDATE MEMBERSHIP ASSIGNMENT (e.g., set end date)
@@ -133,7 +134,7 @@ class MembershipTypeRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = MembershipType::updateAssignment($assignmentId, $payload);
-            self::success($result, 'Membership assignment updated');
+            ResponseHelper::success($result, 'Membership assignment updated');
          })(),
 
          // GET MEMBER'S MEMBERSHIP HISTORY
@@ -155,11 +156,11 @@ class MembershipTypeRoutes extends BaseRoute
             }
 
             $result = MembershipType::getMemberAssignments($memberId, $filters);
-            self::success($result);
+            ResponseHelper::success($result);
          })(),
 
          // FALLBACK
-         default => self::error('MembershipType endpoint not found', 404),
+         default => ResponseHelper::notFound('MembershipType endpoint not found'),
       };
    }
 }

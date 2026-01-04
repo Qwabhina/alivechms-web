@@ -22,6 +22,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Contribution.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class ContributionRoutes extends BaseRoute
 {
@@ -41,7 +42,7 @@ class ContributionRoutes extends BaseRoute
                 $payload = self::getPayload();
 
                 $result = Contribution::create($payload);
-                self::success($result, 'Contribution created', 201);
+                ResponseHelper::created($result, 'Contribution created');
             })(),
 
             // UPDATE CONTRIBUTION
@@ -53,7 +54,7 @@ class ContributionRoutes extends BaseRoute
                 $payload = self::getPayload();
 
                 $result = Contribution::update($contributionId, $payload);
-                self::success($result, 'Contribution updated');
+                ResponseHelper::success($result, 'Contribution updated');
             })(),
 
             // SOFT DELETE CONTRIBUTION
@@ -64,7 +65,7 @@ class ContributionRoutes extends BaseRoute
                 $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
 
                 $result = Contribution::delete($contributionId);
-                self::success($result, 'Contribution deleted');
+                ResponseHelper::success($result, 'Contribution deleted');
             })(),
 
             // RESTORE SOFT-DELETED CONTRIBUTION
@@ -75,7 +76,7 @@ class ContributionRoutes extends BaseRoute
                 $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
 
                 $result = Contribution::restore($contributionId);
-                self::success($result, 'Contribution restored');
+                ResponseHelper::success($result, 'Contribution restored');
             })(),
 
             // VIEW SINGLE CONTRIBUTION
@@ -86,7 +87,7 @@ class ContributionRoutes extends BaseRoute
                 $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
 
                 $result = Contribution::get($contributionId);
-                self::success($result);
+                ResponseHelper::success($result);
             })(),
 
             // LIST ALL CONTRIBUTIONS (Paginated + Filtered)
@@ -105,7 +106,7 @@ class ContributionRoutes extends BaseRoute
                 ]);
 
                 $result = Contribution::getAll($page, $limit, $filters);
-                self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+                ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
             })(),
 
             // TOTAL CONTRIBUTIONS (Reporting)
@@ -122,7 +123,7 @@ class ContributionRoutes extends BaseRoute
                 ]);
 
                 $result = Contribution::getTotal($filters);
-                self::success($result);
+                ResponseHelper::success($result);
             })(),
 
             // GET CONTRIBUTION STATISTICS
@@ -131,7 +132,7 @@ class ContributionRoutes extends BaseRoute
                 self::authorize('view_contribution');
 
                 $result = Contribution::getStats();
-                self::success($result);
+                ResponseHelper::success($result);
             })(),
 
             // GET CONTRIBUTION TYPES
@@ -140,7 +141,7 @@ class ContributionRoutes extends BaseRoute
                 self::authorize('view_contribution');
 
                 $result = Contribution::getTypes();
-                self::success(['data' => $result]);
+                ResponseHelper::success(['data' => $result]);
             })(),
 
             // GET PAYMENT OPTIONS
@@ -149,11 +150,11 @@ class ContributionRoutes extends BaseRoute
                 self::authorize('view_contribution');
 
                 $result = Contribution::getPaymentOptions();
-                self::success(['data' => $result]);
+                ResponseHelper::success(['data' => $result]);
             })(),
 
             // FALLBACK
-            default => self::error('Contribution endpoint not found', 404),
+            default => ResponseHelper::notFound('Contribution endpoint not found'),
         };
     }
 }

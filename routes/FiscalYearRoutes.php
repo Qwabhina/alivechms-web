@@ -30,6 +30,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/FiscalYear.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class FiscalYearRoutes extends BaseRoute
 {
@@ -49,7 +50,7 @@ class FiscalYearRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = FiscalYear::create($payload);
-            self::success($result, 'Fiscal year created', 201);
+            ResponseHelper::created($result, 'Fiscal year created');
          })(),
 
          // UPDATE FISCAL YEAR
@@ -62,7 +63,7 @@ class FiscalYearRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = FiscalYear::update($fiscalYearId, $payload);
-            self::success($result, 'Fiscal year updated');
+            ResponseHelper::success($result, 'Fiscal year updated');
          })(),
 
          // DELETE FISCAL YEAR (Only if no financial records)
@@ -73,7 +74,7 @@ class FiscalYearRoutes extends BaseRoute
             $fiscalYearId = self::getIdFromPath($pathParts, 2, 'Fiscal Year ID');
 
             $result = FiscalYear::delete($fiscalYearId);
-            self::success($result, 'Fiscal year deleted');
+            ResponseHelper::success($result, 'Fiscal year deleted');
          })(),
 
          // VIEW SINGLE FISCAL YEAR
@@ -84,7 +85,7 @@ class FiscalYearRoutes extends BaseRoute
             $fiscalYearId = self::getIdFromPath($pathParts, 2, 'Fiscal Year ID');
 
             $fiscalYear = FiscalYear::get($fiscalYearId);
-            self::success($fiscalYear);
+            ResponseHelper::success($fiscalYear);
          })(),
 
          // LIST ALL FISCAL YEARS (Paginated + Multi-Filter)
@@ -109,7 +110,7 @@ class FiscalYearRoutes extends BaseRoute
             }
 
             $result = FiscalYear::getAll($page, $limit, $filters);
-            self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
          })(),
 
          // CLOSE FISCAL YEAR (Irreversible)
@@ -120,11 +121,11 @@ class FiscalYearRoutes extends BaseRoute
             $fiscalYearId = self::getIdFromPath($pathParts, 2, 'Fiscal Year ID');
 
             $result = FiscalYear::close($fiscalYearId);
-            self::success($result, 'Fiscal year closed');
+            ResponseHelper::success($result, 'Fiscal year closed');
          })(),
 
          // FALLBACK
-         default => self::error('Fiscal year endpoint not found', 404),
+         default => ResponseHelper::notFound('Fiscal year endpoint not found'),
       };
    }
 }

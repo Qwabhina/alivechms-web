@@ -28,6 +28,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/ExpenseCategory.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class ExpenseCategoryRoutes extends BaseRoute
 {
@@ -47,7 +48,7 @@ class ExpenseCategoryRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = ExpenseCategory::create($payload);
-            self::success($result, 'Expense category created', 201);
+            ResponseHelper::created($result, 'Expense category created');
          })(),
 
          // UPDATE EXPENSE CATEGORY
@@ -60,7 +61,7 @@ class ExpenseCategoryRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = ExpenseCategory::update($categoryId, $payload);
-            self::success($result, 'Expense category updated');
+            ResponseHelper::success($result, 'Expense category updated');
          })(),
 
          // DELETE EXPENSE CATEGORY
@@ -71,7 +72,7 @@ class ExpenseCategoryRoutes extends BaseRoute
             $categoryId = self::getIdFromPath($pathParts, 2, 'Category ID');
 
             $result = ExpenseCategory::delete($categoryId);
-            self::success($result, 'Expense category deleted');
+            ResponseHelper::success($result, 'Expense category deleted');
          })(),
 
          // VIEW SINGLE EXPENSE CATEGORY
@@ -82,7 +83,7 @@ class ExpenseCategoryRoutes extends BaseRoute
             $categoryId = self::getIdFromPath($pathParts, 2, 'Category ID');
 
             $category = ExpenseCategory::get($categoryId);
-            self::success($category);
+            ResponseHelper::success($category);
          })(),
 
          // LIST ALL EXPENSE CATEGORIES
@@ -91,11 +92,11 @@ class ExpenseCategoryRoutes extends BaseRoute
             self::authorize('view_expense');
 
             $result = ExpenseCategory::getAll();
-            self::success($result);
+            ResponseHelper::success($result);
          })(),
 
          // FALLBACK
-         default => self::error('ExpenseCategory endpoint not found', 404),
+         default => ResponseHelper::notFound('ExpenseCategory endpoint not found'),
       };
    }
 }

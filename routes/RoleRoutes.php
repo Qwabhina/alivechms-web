@@ -38,6 +38,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Role.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class RoleRoutes extends BaseRoute
 {
@@ -57,7 +58,7 @@ class RoleRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Role::create($payload);
-            self::success($result, 'Role created', 201);
+            ResponseHelper::created($result, 'Role created');
          })(),
 
          // UPDATE ROLE
@@ -70,7 +71,7 @@ class RoleRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Role::update($roleId, $payload);
-            self::success($result, 'Role updated');
+            ResponseHelper::success($result, 'Role updated');
          })(),
 
          // DELETE ROLE
@@ -81,7 +82,7 @@ class RoleRoutes extends BaseRoute
             $roleId = self::getIdFromPath($pathParts, 2, 'Role ID');
 
             $result = Role::delete($roleId);
-            self::success($result, 'Role deleted');
+            ResponseHelper::success($result, 'Role deleted');
          })(),
 
          // VIEW SINGLE ROLE (with full permission tree)
@@ -92,7 +93,7 @@ class RoleRoutes extends BaseRoute
             $roleId = self::getIdFromPath($pathParts, 2, 'Role ID');
 
             $role = Role::get($roleId);
-            self::success($role);
+            ResponseHelper::success($role);
          })(),
 
          // LIST ALL ROLES (with permissions) - For dropdowns, no auth required
@@ -100,7 +101,7 @@ class RoleRoutes extends BaseRoute
             self::authenticate(false); // Allow public access for dropdowns
 
             $result = Role::getAll();
-            self::success($result);
+            ResponseHelper::success($result);
          })(),
 
          // ASSIGN PERMISSIONS TO ROLE (Replace All)
@@ -115,7 +116,7 @@ class RoleRoutes extends BaseRoute
             ]);
 
             $result = Role::assignPermissions($roleId, $payload['permission_ids']);
-            self::success($result, 'Permissions assigned to role');
+            ResponseHelper::success($result, 'Permissions assigned to role');
          })(),
 
          // ASSIGN ROLE TO MEMBER
@@ -130,11 +131,11 @@ class RoleRoutes extends BaseRoute
             ]);
 
             $result = Role::assignToMember($memberId, (int)$payload['role_id']);
-            self::success($result, 'Role assigned to member');
+            ResponseHelper::success($result, 'Role assigned to member');
          })(),
 
          // FALLBACK
-         default => self::error('Role endpoint not found', 404),
+         default => ResponseHelper::notFound('Role endpoint not found'),
       };
    }
 }

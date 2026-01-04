@@ -113,65 +113,128 @@
    }
 
    function initTable() {
-      membersTable = QMGridHelper.initWithButtons('#membersTable', {
-         ajax: {
-            url: `${Config.API_BASE_URL}/member/all`,
-            type: 'GET',
-            data: function(d) {
-               return {
-                  page: Math.floor(d.start / d.length) + 1,
-                  limit: d.length,
-                  search: d.search.value || '',
-                  sort: d.columns[d.order[0].column].data,
-                  order: d.order[0].dir
-               };
-            },
-            dataFilter: function(data) {
-               return QMGridHelper.processServerResponse(data, function(m) {
-                  return {
-                     photo: m.MbrProfilePicture,
-                     name: `${m.MbrFirstName} ${m.MbrFamilyName}`,
-                     gender: m.MbrGender || '-',
-                     registrationDate: m.MbrRegistrationDate || '-',
-                     id: m.MbrID
-                  };
-               });
-            }
+      membersTable = QMGridHelper.initWithExport('#membersTable', {
+         url: `${Config.API_BASE_URL}/member/all`,
+         pageSize: 25,
+         filename: 'church_members',
+         selectable: true,
+         multiSelect: true,
+         exportOptions: {
+            filename: 'church-members',
+            dateFormat: 'DD/MM/YYYY',
+            includeHeaders: true
+         },
+         onDataLoaded: (data) => {
+            console.log(`Loaded ${data.data.length} of ${data.total} members`);
+            updateMemberCount(data.total);
+         },
+         onError: (error) => {
+            console.error('Failed to load members:', error);
+            Alerts.error('Failed to load members: ' + (error.message || 'Unknown error'));
          },
          columns: [
             {
-               data: 'photo',
-               title: 'Photo',
-               orderable: false,
-               searchable: false,
-               className: 'no-export',
-               render: function(data, type, row) {
-                  if (data) {
-                     return `<img src="/public/${data}" class="member-photo" alt="${row.name}">`;
-                  }
-                  const initials = row.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-                  return `<div class="member-photo-placeholder">${initials}</div>`;
+               key: 'ProfilePicture',
+               title: '',
+               width: '50px',
+               sortable: false,
+               exportable: false,
+               render: function(data, row) {
+                  const fullName = `${row.FirstName || ''} ${row.FamilyName || ''}`.trim();
+                  return QMGridHelper.formatProfilePicture(data, fullName, 40);
                }
             },
-            { data: 'name', title: 'Full Name' },
-            { data: 'gender', title: 'Gender' },
-            { data: 'registrationDate', title: 'Registration Date' },
             {
-               data: 'id',
+               key: 'FirstName',
+               title: 'Member',
+               render: function(data, row) {
+                  return QMGridHelper.formatMemberName({
+                     FirstName: row.FirstName || row.MbrFirstName,
+                     OtherNames: row.OtherNames || row.MbrOtherNames,
+                     FamilyName: row.FamilyName || row.MbrFamilyName,
+                     EmailAddress: row.EmailAddress || row.MbrEmailAddress,
+                     ProfilePicture: row.ProfilePicture || row.MbrProfilePicture
+                  });
+               }
+            },
+            {
+               key: 'PhoneNumbers',
+               title: 'Phone',
+               sortable: false,
+               render: function(data, row) {
+                  // Handle different phone number formats from API
+                  const phones = data || row.PrimaryPhone || row.phone_numbers;
+                  return QMGridHelper.formatPhoneNumbers(phones);
+               }
+            },
+            {
+               key: 'Gender',
+               title: 'Gender',
+               width: '100px',
+               render: function(data) {
+                  if (!data) return '-';
+                  const colors = { 'Male': 'primary', 'Female': 'success', 'Other': 'info' };
+                  const color = colors[data] || 'secondary';
+                  return `<span class="badge bg-${color}">${data}</span>`;
+               }
+            },
+            {
+               key: 'DateOfBirth',
+               title: 'Age',
+               width: '80px',
+               render: function(data) {
+                  if (!data) return '-';
+                  try {
+                     const birthDate = new Date(data);
+                     const age = Math.floor((new Date() - birthDate) / (365.25 * 24 * 60 * 60 * 1000));
+                     return age > 0 ? `${age} years` : '-';
+                  } catch (e) {
+                     return '-';
+                  }
+               }
+            },
+            {
+               key: 'FamilyID',
+               title: 'Family',
+               width: '120px',
+               render: function(data, row) {
+                  if (!data) return '<span class="badge bg-secondary">No Family</span>';
+                  const familyName = row.FamilyName || `Family ${data}`;
+                  return `<span class="badge bg-info">${familyName}</span>`;
+               }
+            },
+            {
+               key: 'Occupation',
+               title: 'Occupation',
+               render: function(data) {
+                  return data || '-';
+               }
+            },
+            {
+               key: 'CreatedAt',
+               title: 'Joined',
+               width: '100px',
+               render: function(data) {
+                  return QMGridHelper.formatDate(data, 'short');
+               }
+            },
+            {
+               key: 'MbrRecID',
                title: 'Actions',
-               orderable: false,
-               searchable: false,
-               className: 'no-export',
-               render: function(data, type, row) {
-                  return QMGridHelper.actionButtons(data, {
-                     viewFn: 'viewMember',
-                     editFn: 'editMember',
-                     deleteFn: 'deleteMember'
+               width: '120px',
+               sortable: false,
+               exportable: false,
+               render: function(data, row) {
+                  return QMGridHelper.memberActionButtons({
+                     MbrRecID: data || row.MbrID
+                  }, {
+                     view_members: Auth.hasPermission(Config.PERMISSIONS.VIEW_MEMBERS),
+                     edit_members: Auth.hasPermission(Config.PERMISSIONS.EDIT_MEMBERS),
+                     delete_members: Auth.hasPermission(Config.PERMISSIONS.DELETE_MEMBERS)
                   });
                }
             }
-         ],
-         order: [[1, 'asc']] // Sort by name
+         ]
       });
    }
 
@@ -328,57 +391,122 @@
          openMemberModal();
       });
 
+      // Search functionality
+      const memberSearch = document.getElementById('memberSearch');
+      if (memberSearch) {
+         memberSearch.addEventListener('input', function(e) {
+            searchMembers(e.target.value);
+         });
+      }
+
+      // Filter functionality
+      const applyFiltersBtn = document.getElementById('applyMemberFilters');
+      if (applyFiltersBtn) {
+         applyFiltersBtn.addEventListener('click', applyMemberFilters);
+      }
+
+      const clearFiltersBtn = document.getElementById('clearMemberFilters');
+      if (clearFiltersBtn) {
+         clearFiltersBtn.addEventListener('click', clearMemberFilters);
+      }
+
+      // Export functionality
+      const exportSelectedBtn = document.getElementById('exportSelectedMembers');
+      if (exportSelectedBtn) {
+         exportSelectedBtn.addEventListener('click', exportSelectedMembers);
+      }
+
+      const exportAllBtn = document.getElementById('exportAllMembers');
+      if (exportAllBtn) {
+         exportAllBtn.addEventListener('click', exportAllMembers);
+      }
+
+      const printListBtn = document.getElementById('printMemberList');
+      if (printListBtn) {
+         printListBtn.addEventListener('click', printMemberList);
+      }
+
+      // Refresh functionality
+      const refreshBtn = document.getElementById('refreshMemberGrid');
+      if (refreshBtn) {
+         refreshBtn.addEventListener('click', refreshMemberGrid);
+      }
+
+      // Clear selection
+      const clearSelectionBtn = document.getElementById('clearMemberSelection');
+      if (clearSelectionBtn) {
+         clearSelectionBtn.addEventListener('click', clearMemberSelection);
+      }
+
       // Profile picture upload
       const profileZone = document.getElementById('profileDropzone');
       const profileInput = document.getElementById('profilePictureInput');
 
-      profileZone.addEventListener('click', () => profileInput.click());
-      profileZone.addEventListener('dragover', (e) => {
-         e.preventDefault();
-         profileZone.style.borderColor = 'var(--primary-color)';
-      });
-      profileZone.addEventListener('dragleave', () => {
-         profileZone.style.borderColor = '';
-      });
-      profileZone.addEventListener('drop', (e) => {
-         e.preventDefault();
-         profileZone.style.borderColor = '';
-         if (e.dataTransfer.files[0]) handleProfileUpload(e.dataTransfer.files[0]);
-      });
-      profileInput.addEventListener('change', (e) => {
-         if (e.target.files[0]) handleProfileUpload(e.target.files[0]);
-      });
+      if (profileZone && profileInput) {
+         profileZone.addEventListener('click', () => profileInput.click());
+         profileZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            profileZone.style.borderColor = 'var(--primary-color)';
+         });
+         profileZone.addEventListener('dragleave', () => {
+            profileZone.style.borderColor = '';
+         });
+         profileZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            profileZone.style.borderColor = '';
+            if (e.dataTransfer.files[0]) handleProfileUpload(e.dataTransfer.files[0]);
+         });
+         profileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) handleProfileUpload(e.target.files[0]);
+         });
+      }
 
-      document.getElementById('removePhotoBtn').addEventListener('click', () => {
-         profilePictureFile = null;
-         document.getElementById('profilePreview').classList.add('d-none');
-         document.getElementById('uploadPlaceholder').classList.remove('d-none');
-         document.getElementById('removePhotoBtn').classList.add('d-none');
-         
-         // Mark for removal in edit mode
-         if (isEditMode) {
-            document.getElementById('profilePreview').setAttribute('data-removed', 'true');
-         }
-      });
+      const removePhotoBtn = document.getElementById('removePhotoBtn');
+      if (removePhotoBtn) {
+         removePhotoBtn.addEventListener('click', () => {
+            profilePictureFile = null;
+            document.getElementById('profilePreview').classList.add('d-none');
+            document.getElementById('uploadPlaceholder').classList.remove('d-none');
+            document.getElementById('removePhotoBtn').classList.add('d-none');
+            
+            // Mark for removal in edit mode
+            if (isEditMode) {
+               document.getElementById('profilePreview').setAttribute('data-removed', 'true');
+            }
+         });
+      }
 
       // Phone number management
-      document.getElementById('addPhoneBtn').addEventListener('click', addPhoneField);
-      document.getElementById('phoneContainer').addEventListener('click', (e) => {
-         if (e.target.closest('.remove-phone')) {
-            e.target.closest('.phone-row').remove();
-         }
-      });
+      const addPhoneBtn = document.getElementById('addPhoneBtn');
+      if (addPhoneBtn) {
+         addPhoneBtn.addEventListener('click', addPhoneField);
+      }
+
+      const phoneContainer = document.getElementById('phoneContainer');
+      if (phoneContainer) {
+         phoneContainer.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-phone')) {
+               e.target.closest('.phone-row').remove();
+            }
+         });
+      }
 
       // Login toggle
-      document.getElementById('enableLogin').addEventListener('change', (e) => {
-         document.getElementById('loginFields').classList.toggle('d-none', !e.target.checked);
-      });
+      const enableLogin = document.getElementById('enableLogin');
+      if (enableLogin) {
+         enableLogin.addEventListener('change', (e) => {
+            document.getElementById('loginFields').classList.toggle('d-none', !e.target.checked);
+         });
+      }
 
       // Edit from view
-      document.getElementById('editFromViewBtn').addEventListener('click', () => {
-         bootstrap.Modal.getInstance(document.getElementById('viewMemberModal')).hide();
-         editMember(currentMemberId);
-      });
+      const editFromViewBtn = document.getElementById('editFromViewBtn');
+      if (editFromViewBtn) {
+         editFromViewBtn.addEventListener('click', () => {
+            bootstrap.Modal.getInstance(document.getElementById('viewMemberModal')).hide();
+            editMember(currentMemberId);
+         });
+      }
    }
 
    function handleProfileUpload(file) {
@@ -613,7 +741,7 @@ async function saveMember() {
       Alerts.success(isEditMode ? 'Member updated successfully' : 'Member created successfully');
 
       bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
-      QMGridHelper.reload(membersTable); // Reload table data
+      QMGridHelper.reload(membersTable);
       loadStats();
 
    } catch (error) {
@@ -933,6 +1061,180 @@ async function saveMember() {
       openMemberModal(memberId);
    }
 
+   function viewMemberProfile(memberId) {
+      // Same as viewMember but could be extended for different view
+      viewMember(memberId);
+   }
+
+   // ===================================================================
+   // ENHANCED MEMBER MANAGEMENT FUNCTIONS
+   // ===================================================================
+
+   /**
+    * Update member count display
+    */
+   function updateMemberCount(total) {
+      const countElement = document.getElementById('total-members-count');
+      if (countElement) {
+         countElement.textContent = total.toLocaleString();
+      }
+      
+      // Update stats cards if they exist
+      const totalElement = document.querySelector('#statsCards .stat-card:first-child h3');
+      if (totalElement) {
+         totalElement.textContent = total.toLocaleString();
+      }
+   }
+
+   /**
+    * Search members functionality
+    */
+   function searchMembers(searchTerm) {
+      if (membersTable) {
+         QMGridHelper.search(membersTable, searchTerm);
+      }
+   }
+
+   /**
+    * Apply filters to member table
+    */
+   function applyMemberFilters() {
+      const filters = {};
+      
+      // Get filter values from UI elements
+      const statusFilter = document.getElementById('statusFilter');
+      const familyFilter = document.getElementById('familyFilter');
+      const genderFilter = document.getElementById('genderFilter');
+      const dateFromFilter = document.getElementById('dateFromFilter');
+      const dateToFilter = document.getElementById('dateToFilter');
+      
+      if (statusFilter && statusFilter.value) {
+         filters.status = statusFilter.value;
+      }
+      if (familyFilter && familyFilter.value) {
+         filters.family_id = familyFilter.value;
+      }
+      if (genderFilter && genderFilter.value) {
+         filters.gender = genderFilter.value;
+      }
+      if (dateFromFilter && dateFromFilter.value) {
+         filters.date_from = dateFromFilter.value;
+      }
+      if (dateToFilter && dateToFilter.value) {
+         filters.date_to = dateToFilter.value;
+      }
+      
+      // Remove empty filters
+      Object.keys(filters).forEach(key => {
+         if (!filters[key]) delete filters[key];
+      });
+      
+      // Update grid with new filters
+      if (membersTable && Object.keys(filters).length > 0) {
+         QMGridHelper.updateFilters(membersTable, filters);
+      } else if (membersTable) {
+         // Clear filters and reload
+         QMGridHelper.reload(membersTable);
+      }
+   }
+
+   /**
+    * Clear all filters
+    */
+   function clearMemberFilters() {
+      // Clear filter UI elements
+      const filterElements = [
+         'statusFilter', 'familyFilter', 'genderFilter', 
+         'dateFromFilter', 'dateToFilter'
+      ];
+      
+      filterElements.forEach(id => {
+         const element = document.getElementById(id);
+         if (element) {
+            element.value = '';
+         }
+      });
+      
+      // Reload table without filters
+      if (membersTable) {
+         QMGridHelper.reload(membersTable);
+      }
+   }
+
+   /**
+    * Export selected members
+    */
+   function exportSelectedMembers() {
+      if (!membersTable) return;
+      
+      const selectedRows = QMGridHelper.getSelectedRows(membersTable);
+      if (selectedRows.length === 0) {
+         Alerts.warning('Please select members to export');
+         return;
+      }
+      
+      QMGridHelper.export(membersTable, 'excel', {
+         selectedOnly: true,
+         filename: `selected-members-${new Date().toISOString().split('T')[0]}`,
+         includeHeaders: true
+      });
+      
+      Alerts.success(`Exporting ${selectedRows.length} selected members`);
+   }
+
+   /**
+    * Export all members
+    */
+   function exportAllMembers() {
+      if (!membersTable) return;
+      
+      QMGridHelper.export(membersTable, 'excel', {
+         filename: `all-members-${new Date().toISOString().split('T')[0]}`,
+         includeHeaders: true
+      });
+      
+      Alerts.success('Exporting all members');
+   }
+
+   /**
+    * Print member list
+    */
+   function printMemberList() {
+      if (!membersTable) return;
+      
+      QMGridHelper.export(membersTable, 'print', {
+         filename: 'Church Members List'
+      });
+   }
+
+   /**
+    * Refresh member grid
+    */
+   function refreshMemberGrid() {
+      if (membersTable) {
+         QMGridHelper.reload(membersTable);
+         Alerts.info('Refreshing member list...');
+      }
+   }
+
+   /**
+    * Clear member selection
+    */
+   function clearMemberSelection() {
+      if (membersTable) {
+         QMGridHelper.clearSelection(membersTable);
+      }
+   }
+
+   /**
+    * Go to specific page
+    */
+   function goToMemberPage(page) {
+      if (membersTable) {
+         QMGridHelper.goToPage(membersTable, page);
+      }
+   }
+
    async function deleteMember(memberId) {
       if (!Auth.hasPermission(Config.PERMISSIONS.DELETE_MEMBERS)) {
          Alerts.error('You do not have permission to delete members');
@@ -962,3 +1264,76 @@ async function saveMember() {
          Alerts.handleApiError(error);
       }
    }
+
+// ===================================================================
+// AUTO-REFRESH AND CLEANUP
+// ===================================================================
+
+// Auto-refresh every 5 minutes (optional - can be disabled)
+let autoRefreshInterval = null;
+
+function startAutoRefresh() {
+   // Clear existing interval
+   if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+   }
+   
+   // Set up auto-refresh every 5 minutes
+   autoRefreshInterval = setInterval(() => {
+      if (membersTable && document.visibilityState === 'visible') {
+         console.log('Auto-refreshing member data...');
+         QMGridHelper.reload(membersTable);
+      }
+   }, 5 * 60 * 1000); // 5 minutes
+}
+
+function stopAutoRefresh() {
+   if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      autoRefreshInterval = null;
+   }
+}
+
+// Start auto-refresh when page loads (after initial load)
+setTimeout(() => {
+   if (membersTable) {
+      startAutoRefresh();
+   }
+}, 10000); // Start after 10 seconds
+
+// Stop auto-refresh when page becomes hidden
+document.addEventListener('visibilitychange', () => {
+   if (document.visibilityState === 'hidden') {
+      stopAutoRefresh();
+   } else if (membersTable) {
+      startAutoRefresh();
+   }
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+   // Stop auto-refresh
+   stopAutoRefresh();
+   
+   // Clean up grid instance
+   if (membersTable) {
+      QMGridHelper.destroy(membersTable);
+   }
+});
+
+// ===================================================================
+// GLOBAL FUNCTIONS (for HTML onclick handlers)
+// ===================================================================
+
+// Make functions globally available for HTML onclick handlers
+window.viewMember = viewMember;
+window.editMember = editMember;
+window.deleteMember = deleteMember;
+window.viewMemberProfile = viewMemberProfile;
+window.searchMembers = searchMembers;
+window.applyMemberFilters = applyMemberFilters;
+window.clearMemberFilters = clearMemberFilters;
+window.exportSelectedMembers = exportSelectedMembers;
+window.exportAllMembers = exportAllMembers;
+window.printMemberList = printMemberList;
+window.refreshMemberGrid = refreshMemberGrid;

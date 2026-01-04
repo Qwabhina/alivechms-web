@@ -21,6 +21,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Expense.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class ExpenseRoutes extends BaseRoute
 {
@@ -40,7 +41,7 @@ class ExpenseRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Expense::create($payload);
-            self::success($result, 'Expense created', 201);
+            ResponseHelper::created($result, 'Expense created');
          })(),
 
          // VIEW SINGLE EXPENSE
@@ -51,7 +52,7 @@ class ExpenseRoutes extends BaseRoute
             $expenseId = self::getIdFromPath($pathParts, 2, 'Expense ID');
 
             $expense = Expense::get($expenseId);
-            self::success($expense);
+            ResponseHelper::success($expense);
          })(),
 
          // LIST ALL EXPENSES (Paginated + Filtered)
@@ -71,7 +72,7 @@ class ExpenseRoutes extends BaseRoute
             ]);
 
             $result = Expense::getAll($page, $limit, $filters);
-            self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
          })(),
 
          // REVIEW EXPENSE (Approve/Reject)
@@ -91,7 +92,7 @@ class ExpenseRoutes extends BaseRoute
                $payload['action'],
                $payload['remarks'] ?? null
             );
-            self::success($result, 'Expense reviewed');
+            ResponseHelper::success($result, 'Expense reviewed');
          })(),
 
          // CANCEL PENDING EXPENSE
@@ -106,11 +107,11 @@ class ExpenseRoutes extends BaseRoute
             ]);
 
             $result = Expense::cancel($expenseId, $payload['reason']);
-            self::success($result, 'Expense cancelled');
+            ResponseHelper::success($result, 'Expense cancelled');
          })(),
 
          // FALLBACK
-         default => self::error('Expense endpoint not found', 404),
+         default => ResponseHelper::notFound('Expense endpoint not found'),
       };
    }
 }

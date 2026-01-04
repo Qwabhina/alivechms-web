@@ -251,74 +251,91 @@ require_once '../includes/sidebar.php';
    }
 
    function initTable() {
-      eventsTable = QMGridHelper.initWithButtons('#eventsTable', {
-         ajax: {
-            url: `${Config.API_BASE_URL}/event/all`,
-            type: 'GET',
-            data: function(d) {
-               return {
-                  page: Math.floor(d.start / d.length) + 1,
-                  limit: d.length,
-                  search: d.search.value || ''
-               };
-            },
-            dataFilter: function(data) {
-               return QMGridHelper.processServerResponse(data, function(e) {
-                  return {
-                     title: e.EventTitle,
-                     date: e.EventDate,
-                     time: e.StartTime ? `${e.StartTime}${e.EndTime ? ' - ' + e.EndTime : ''}` : 'N/A',
-                     location: e.Location || 'N/A',
-                     branch: e.BranchName,
-                     id: e.EventID
-                  };
-               });
-            }
+      eventsTable = QMGridHelper.initWithExport('#eventsTable', {
+         url: `${Config.API_BASE_URL}/event/all`,
+         pageSize: 25,
+         filename: 'events_export',
+         onDataLoaded: (data) => {
+            console.log(`Loaded ${data.data.length} events`);
+         },
+         onError: (error) => {
+            console.error('Failed to load events:', error);
+            Alerts.error('Failed to load events data');
          },
          columns: [{
-               data: 'title',
-               title: 'Event Title'
-            },
-            {
-               data: 'date',
-               title: 'Date',
+               key: 'EventTitle',
+               title: 'Event Title',
                render: function(data) {
-                  return new Date(data).toLocaleDateString('en-US', {
-                     year: 'numeric',
-                     month: 'short',
-                     day: 'numeric'
-                  });
+                  return `<div class="fw-medium">${data}</div>`;
                }
             },
             {
-               data: 'time',
-               title: 'Time'
+               key: 'EventDate',
+               title: 'Date',
+               render: function(data) {
+                  return QMGridHelper.formatDate(data, 'long');
+               }
             },
             {
-               data: 'location',
-               title: 'Location'
+               key: 'StartTime',
+               title: 'Time',
+               sortable: false,
+               render: function(data, row) {
+                  if (!data) return '<span class="text-muted">All day</span>';
+
+                  let timeStr = data;
+                  if (row.EndTime) {
+                     timeStr += ` - ${row.EndTime}`;
+                  }
+                  return `<span class="badge bg-info">${timeStr}</span>`;
+               }
             },
             {
-               data: 'branch',
-               title: 'Branch'
+               key: 'Location',
+               title: 'Location',
+               render: function(data) {
+                  return data ? `<i class="bi bi-geo-alt me-1"></i>${data}` : '<span class="text-muted">No location</span>';
+               }
             },
             {
-               data: 'id',
+               key: 'BranchName',
+               title: 'Branch',
+               render: function(data) {
+                  return data || '-';
+               }
+            },
+            {
+               key: 'attendance_count',
+               title: 'Attendance',
+               sortable: false,
+               render: function(data, row) {
+                  const count = row.attendance_count || row.total_attendance || 0;
+                  return `<span class="badge bg-secondary">${count} attendees</span>`;
+               }
+            },
+            {
+               key: 'EventID',
                title: 'Actions',
-               orderable: false,
-               searchable: false,
-               className: 'no-export',
+               sortable: false,
+               exportable: false,
                render: function(data) {
                   return QMGridHelper.actionButtons(data, {
                      viewFn: 'viewEvent',
                      editFn: 'editEvent',
-                     deleteFn: 'deleteEvent'
+                     deleteFn: 'deleteEvent',
+                     viewPermission: Auth.hasPermission('view_events'),
+                     editPermission: Auth.hasPermission('manage_events'),
+                     deletePermission: Auth.hasPermission('manage_events'),
+                     custom: [{
+                        icon: 'clipboard-check',
+                        color: 'success',
+                        title: 'Record Attendance',
+                        fn: 'recordAttendance',
+                        permission: Auth.hasPermission('manage_events')
+                     }]
                   });
                }
             }
-         ],
-         order: [
-            [1, 'desc']
          ]
       });
    }
@@ -571,6 +588,14 @@ require_once '../includes/sidebar.php';
       openEventModal(eventId);
    }
 
+   function recordAttendance(eventId) {
+      if (!Auth.hasPermission('manage_events')) {
+         Alerts.error('You do not have permission to record attendance');
+         return;
+      }
+      window.location.href = `attendance.php?event_id=${eventId}`;
+   }
+
    async function deleteEvent(eventId) {
       if (!Auth.hasPermission('manage_events')) {
          Alerts.error('You do not have permission to delete events');
@@ -606,22 +631,76 @@ require_once '../includes/sidebar.php';
       const startDate = document.getElementById('filterStartDate').value;
       const endDate = document.getElementById('filterEndDate').value;
 
-      let url = `${Config.API_BASE_URL}/event/all`;
-      let params = [];
+      const filters = {};
+      if (branchId) filters.branch_id = branchId;
+      if (startDate) filters.start_date = startDate;
+      if (endDate) filters.end_date = endDate;
 
-      if (branchId) params.push(`branch_id=${branchId}`);
-      if (startDate) params.push(`start_date=${startDate}`);
-      if (endDate) params.push(`end_date=${endDate}`);
-
-      if (params.length > 0) url += '?' + params.join('&');
-      eventsTable.ajax.url(url).load();
+      // Reinitialize table with filters using server-side processing
+      eventsTable = QMGridHelper.initWithButtons('#eventsTable', {
+         url: `${Config.API_BASE_URL}/event/all`,
+         method: 'GET', // Explicitly specify GET method for AliveChMS API
+         filters: filters,
+         columns: [{
+               key: 'EventTitle',
+               title: 'Event Title'
+            },
+            {
+               key: 'EventDate',
+               title: 'Date',
+               render: function(data) {
+                  return new Date(data).toLocaleDateString('en-US', {
+                     year: 'numeric',
+                     month: 'short',
+                     day: 'numeric'
+                  });
+               }
+            },
+            {
+               key: 'StartTime',
+               title: 'Time',
+               render: function(data, row) {
+                  if (data) {
+                     return row.EndTime ? `${data} - ${row.EndTime}` : data;
+                  }
+                  return 'N/A';
+               }
+            },
+            {
+               key: 'Location',
+               title: 'Location',
+               render: function(data) {
+                  return data || 'N/A';
+               }
+            },
+            {
+               key: 'BranchName',
+               title: 'Branch'
+            },
+            {
+               key: 'EventID',
+               title: 'Actions',
+               sortable: false,
+               className: 'no-export',
+               render: function(data) {
+                  return QMGridHelper.actionButtons(data, {
+                     viewFn: 'viewEvent',
+                     editFn: 'editEvent',
+                     deleteFn: 'deleteEvent'
+                  });
+               }
+            }
+         ]
+      });
    }
 
    function clearFilters() {
       document.getElementById('filterBranch').value = '';
       document.getElementById('filterStartDate').value = '';
       document.getElementById('filterEndDate').value = '';
-      eventsTable.ajax.url(`${Config.API_BASE_URL}/event/all`).load();
+
+      // Reinitialize table without filters
+      initTable();
    }
 </script>
 

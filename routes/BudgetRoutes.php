@@ -23,6 +23,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Budget.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class BudgetRoutes extends BaseRoute
 {
@@ -42,7 +43,7 @@ class BudgetRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Budget::create($payload);
-            self::success($result, 'Budget created', 201);
+            ResponseHelper::created($result, 'Budget created');
          })(),
 
          // UPDATE BUDGET (title/description only, draft state)
@@ -55,7 +56,7 @@ class BudgetRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Budget::update($budgetId, $payload);
-            self::success($result, 'Budget updated');
+            ResponseHelper::success($result, 'Budget updated');
          })(),
 
          // SUBMIT BUDGET FOR APPROVAL
@@ -66,7 +67,7 @@ class BudgetRoutes extends BaseRoute
             $budgetId = self::getIdFromPath($pathParts, 2, 'Budget ID');
 
             $result = Budget::submitForApproval($budgetId);
-            self::success($result, 'Budget submitted for approval');
+            ResponseHelper::success($result, 'Budget submitted for approval');
          })(),
 
          // REVIEW BUDGET (Approve/Reject)
@@ -86,7 +87,7 @@ class BudgetRoutes extends BaseRoute
                $payload['action'],
                $payload['remarks'] ?? null
             );
-            self::success($result, 'Budget reviewed');
+            ResponseHelper::success($result, 'Budget reviewed');
          })(),
 
          // VIEW SINGLE BUDGET (with items)
@@ -97,7 +98,7 @@ class BudgetRoutes extends BaseRoute
             $budgetId = self::getIdFromPath($pathParts, 2, 'Budget ID');
 
             $budget = Budget::get($budgetId);
-            self::success($budget);
+            ResponseHelper::success($budget);
          })(),
 
          // LIST ALL BUDGETS (Paginated + Filtered)
@@ -110,7 +111,7 @@ class BudgetRoutes extends BaseRoute
             $filters = self::getFilters(['fiscal_year_id', 'branch_id', 'status']);
 
             $result = Budget::getAll($page, $limit, $filters);
-            self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
          })(),
 
          // ADD BUDGET ITEM
@@ -123,7 +124,7 @@ class BudgetRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Budget::addItem($budgetId, $payload);
-            self::success($result, 'Budget item added');
+            ResponseHelper::success($result, 'Budget item added');
          })(),
 
          // UPDATE BUDGET ITEM
@@ -136,7 +137,7 @@ class BudgetRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Budget::updateItem($itemId, $payload);
-            self::success($result, 'Budget item updated');
+            ResponseHelper::success($result, 'Budget item updated');
          })(),
 
          // DELETE BUDGET ITEM
@@ -147,11 +148,11 @@ class BudgetRoutes extends BaseRoute
             $itemId = self::getIdFromPath($pathParts, 3, 'Item ID');
 
             $result = Budget::deleteItem($itemId);
-            self::success($result, 'Budget item deleted');
+            ResponseHelper::success($result, 'Budget item deleted');
          })(),
 
          // FALLBACK
-         default => self::error('Budget endpoint not found', 404),
+         default => ResponseHelper::notFound('Budget endpoint not found'),
       };
    }
 }

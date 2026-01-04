@@ -37,6 +37,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Volunteer.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class VolunteerRoutes extends BaseRoute
 {
@@ -56,7 +57,7 @@ class VolunteerRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Volunteer::createRole($payload);
-            self::success($result, 'Volunteer role created', 201);
+            ResponseHelper::created($result, 'Volunteer role created');
          })(),
 
          // LIST ALL VOLUNTEER ROLES
@@ -65,7 +66,7 @@ class VolunteerRoutes extends BaseRoute
             self::authenticate(false);
 
             $result = Volunteer::getRoles();
-            self::success(['data' => $result]);
+            ResponseHelper::success(['data' => $result]);
          })(),
 
          // ASSIGN VOLUNTEERS TO EVENT (Bulk)
@@ -80,7 +81,7 @@ class VolunteerRoutes extends BaseRoute
             ]);
 
             $result = Volunteer::assign($eventId, $payload['volunteers']);
-            self::success($result, 'Volunteers assigned');
+            ResponseHelper::success($result, 'Volunteers assigned');
          })(),
 
          // CONFIRM OR DECLINE ASSIGNMENT (Self-Service)
@@ -95,7 +96,7 @@ class VolunteerRoutes extends BaseRoute
             ]);
 
             $result = Volunteer::confirmAssignment($assignmentId, $payload['action']);
-            self::success($result, 'Assignment ' . $payload['action'] . 'ed');
+            ResponseHelper::success($result, 'Assignment ' . $payload['action'] . 'ed');
          })(),
 
          // MARK ASSIGNMENT AS COMPLETED
@@ -106,7 +107,7 @@ class VolunteerRoutes extends BaseRoute
             $assignmentId = self::getIdFromPath($pathParts, 2, 'Assignment ID');
 
             $result = Volunteer::completeAssignment($assignmentId);
-            self::success($result, 'Assignment marked as completed');
+            ResponseHelper::success($result, 'Assignment marked as completed');
          })(),
 
          // GET VOLUNTEERS FOR EVENT (Paginated)
@@ -119,7 +120,7 @@ class VolunteerRoutes extends BaseRoute
             [$page, $limit] = self::getPagination(50, 100);
 
             $result = Volunteer::getByEvent($eventId, $page, $limit);
-            self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
          })(),
 
          // REMOVE VOLUNTEER FROM EVENT
@@ -130,11 +131,11 @@ class VolunteerRoutes extends BaseRoute
             $assignmentId = self::getIdFromPath($pathParts, 2, 'Assignment ID');
 
             $result = Volunteer::remove($assignmentId);
-            self::success($result, 'Volunteer removed from event');
+            ResponseHelper::success($result, 'Volunteer removed from event');
          })(),
 
          // FALLBACK
-         default => self::error('Volunteer endpoint not found', 404),
+         default => ResponseHelper::notFound('Volunteer endpoint not found'),
       };
    }
 }

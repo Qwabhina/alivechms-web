@@ -21,6 +21,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Pledge.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class PledgeRoutes extends BaseRoute
 {
@@ -40,7 +41,7 @@ class PledgeRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Pledge::create($payload);
-            self::success($result, 'Pledge created', 201);
+            ResponseHelper::created($result, 'Pledge created');
          })(),
 
          // VIEW SINGLE PLEDGE (with payments & progress)
@@ -51,7 +52,7 @@ class PledgeRoutes extends BaseRoute
             $pledgeId = self::getIdFromPath($pathParts, 2, 'Pledge ID');
 
             $pledge = Pledge::get($pledgeId);
-            self::success($pledge);
+            ResponseHelper::success($pledge);
          })(),
 
          // LIST ALL PLEDGES (Paginated + Filtered)
@@ -64,7 +65,7 @@ class PledgeRoutes extends BaseRoute
             $filters = self::getFilters(['member_id', 'status', 'fiscal_year_id']);
 
             $result = Pledge::getAll($page, $limit, $filters);
-            self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
          })(),
 
          // RECORD PAYMENT AGAINST PLEDGE
@@ -77,7 +78,7 @@ class PledgeRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Pledge::recordPayment($pledgeId, $payload);
-            self::success($result, 'Payment recorded');
+            ResponseHelper::success($result, 'Payment recorded');
          })(),
 
          // GET PLEDGE FULFILLMENT PROGRESS (Percentage, Balance, Status)
@@ -112,11 +113,11 @@ class PledgeRoutes extends BaseRoute
                'last_payment_date' => !empty($pledge['payments']) ? $pledge['payments'][0]['PaymentDate'] : null
             ];
 
-            self::success($result);
+            ResponseHelper::success($result);
          })(),
 
          // FALLBACK
-         default => self::error('Pledge endpoint not found', 404),
+         default => ResponseHelper::notFound('Pledge endpoint not found'),
       };
    }
 }

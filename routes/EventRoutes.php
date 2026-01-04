@@ -20,6 +20,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Event.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class EventRoutes extends BaseRoute
 {
@@ -39,7 +40,7 @@ class EventRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Event::create($payload);
-            self::success($result, 'Event created', 201);
+            ResponseHelper::created($result, 'Event created');
          })(),
 
          // UPDATE EVENT
@@ -52,7 +53,7 @@ class EventRoutes extends BaseRoute
             $payload = self::getPayload();
 
             $result = Event::update($eventId, $payload);
-            self::success($result, 'Event updated');
+            ResponseHelper::success($result, 'Event updated');
          })(),
 
          // DELETE EVENT
@@ -63,7 +64,7 @@ class EventRoutes extends BaseRoute
             $eventId = self::getIdFromPath($pathParts, 2, 'Event ID');
 
             $result = Event::delete($eventId);
-            self::success($result, 'Event deleted');
+            ResponseHelper::success($result, 'Event deleted');
          })(),
 
          // VIEW SINGLE EVENT
@@ -74,7 +75,7 @@ class EventRoutes extends BaseRoute
             $eventId = self::getIdFromPath($pathParts, 2, 'Event ID');
 
             $event = Event::get($eventId);
-            self::success($event);
+            ResponseHelper::success($event);
          })(),
 
          // LIST ALL EVENTS (Paginated + Filtered)
@@ -87,7 +88,7 @@ class EventRoutes extends BaseRoute
             $filters = self::getFilters(['branch_id', 'start_date', 'end_date']);
 
             $result = Event::getAll($page, $limit, $filters);
-            self::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
          })(),
 
          // RECORD BULK ATTENDANCE
@@ -102,7 +103,7 @@ class EventRoutes extends BaseRoute
             ]);
 
             $result = Event::recordBulkAttendance($eventId, $payload);
-            self::success($result, 'Attendance recorded');
+            ResponseHelper::success($result, 'Attendance recorded');
          })(),
 
          // RECORD SINGLE ATTENDANCE (Mobile/Self-Check-in)
@@ -119,11 +120,11 @@ class EventRoutes extends BaseRoute
 
             $status = $payload['status'] ?? 'Present';
             $result = Event::recordSingleAttendance($eventId, (int)$payload['member_id'], $status);
-            self::success($result, 'Attendance recorded');
+            ResponseHelper::success($result, 'Attendance recorded');
          })(),
 
          // FALLBACK
-         default => self::error('Event endpoint not found', 404),
+         default => ResponseHelper::notFound('Event endpoint not found'),
       };
    }
 }
