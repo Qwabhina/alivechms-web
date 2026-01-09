@@ -206,6 +206,33 @@ class Expense
          $params[':end'] = $filters['end_date'];
       }
 
+      // Build ORDER BY with sorting support
+      $orderBy = ['e.ExpDate' => 'DESC']; // Default
+      if (!empty($filters['sort_by'])) {
+         $sortColumn = $filters['sort_by'];
+         $sortDir = strtoupper($filters['sort_dir'] ?? 'DESC');
+
+         // Map frontend column names to database columns
+         $columnMap = [
+            'ExpenseTitle' => 'e.ExpTitle',
+            'ExpenseAmount' => 'e.ExpAmount',
+            'ExpenseDate' => 'e.ExpDate',
+            'CategoryName' => 'ec.ExpCategoryName',
+            'BranchName' => 'b.BranchName',
+            'ExpenseStatus' => 'e.ExpStatus',
+            'title' => 'e.ExpTitle',
+            'amount' => 'e.ExpAmount',
+            'date' => 'e.ExpDate',
+            'category' => 'ec.ExpCategoryName',
+            'branch' => 'b.BranchName',
+            'status' => 'e.ExpStatus'
+         ];
+
+         if (isset($columnMap[$sortColumn])) {
+            $orderBy = [$columnMap[$sortColumn] => ($sortDir === 'ASC' ? 'ASC' : 'DESC')];
+         }
+      }
+
       $expenses = $orm->selectWithJoin(
             baseTable: 'expense e',
             joins: [
@@ -225,7 +252,7 @@ class Expense
             ],
             conditions: $conditions,
             params: $params,
-         orderBy: ['e.ExpDate' => 'DESC'],
+         orderBy: $orderBy,
             limit: $limit,
             offset: $offset
       );

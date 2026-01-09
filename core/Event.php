@@ -320,6 +320,29 @@ class Event
          $params[':end'] = $filters['end_date'];
       }
 
+      // Build ORDER BY with sorting support
+      $orderBy = ['e.EventDate' => 'DESC', 'e.StartTime' => 'ASC']; // Default
+      if (!empty($filters['sort_by'])) {
+         $sortColumn = $filters['sort_by'];
+         $sortDir = strtoupper($filters['sort_dir'] ?? 'DESC');
+
+         // Map frontend column names to database columns
+         $columnMap = [
+            'EventTitle' => 'e.EventTitle',
+            'EventDate' => 'e.EventDate',
+            'Location' => 'e.Location',
+            'BranchName' => 'b.BranchName',
+            'title' => 'e.EventTitle',
+            'date' => 'e.EventDate',
+            'location' => 'e.Location',
+            'branch' => 'b.BranchName'
+         ];
+
+         if (isset($columnMap[$sortColumn])) {
+            $orderBy = [$columnMap[$sortColumn] => ($sortDir === 'ASC' ? 'ASC' : 'DESC')];
+         }
+      }
+
       $events = $orm->selectWithJoin(
          baseTable: 'event e',
          joins: [['table' => 'branch b', 'on' => 'e.BranchID = b.BranchID']],
@@ -334,7 +357,7 @@ class Event
          ],
          conditions: $conditions,
          params: $params,
-         orderBy: ['e.EventDate' => 'DESC', 'e.StartTime' => 'ASC'],
+         orderBy: $orderBy,
          limit: $limit,
          offset: $offset
       );

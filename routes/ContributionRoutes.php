@@ -102,8 +102,18 @@ class ContributionRoutes extends BaseRoute
                     'member_id',
                     'fiscal_year_id',
                     'start_date',
-                    'end_date'
+                    'end_date',
+                    'search'
                 ]);
+
+                // Get sorting parameters with allowed columns
+                [$sortBy, $sortDir] = self::getSorting(
+                    'ContributionDate',
+                    'DESC',
+                    ['ContributionDate', 'ContributionAmount', 'MemberName', 'ContributionTypeName']
+                );
+                $filters['sort_by'] = $sortBy;
+                $filters['sort_dir'] = $sortDir;
 
                 $result = Contribution::getAll($page, $limit, $filters);
                 ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);

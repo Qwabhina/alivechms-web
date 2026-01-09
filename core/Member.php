@@ -132,18 +132,18 @@ class Member
         if ($createAuth) {
             $passwordCheck = Helpers::validatePasswordStrength($data['password']);
             if (!$passwordCheck['valid']) {
-                Helpers::sendError('Password does not meet requirements', 400, ['password' => $passwordCheck['errors']]);
+                ResponseHelper::error('Password does not meet requirements', 400, ['password' => $passwordCheck['errors']]);
             }
 
             // Uniqueness check for username
             if (!empty($orm->getWhere('userauthentication', ['Username' => $data['username']]))) {
-                Helpers::sendFeedback('Username already exists', 400);
+                ResponseHelper::error('Username already exists', 400);
             }
         }
 
         // Email uniqueness check
         if (!empty($orm->getWhere('churchmember', ['MbrEmailAddress' => $data['email_address']]))) {
-            Helpers::sendFeedback('Email address already in use', 400);
+            ResponseHelper::error('Email address already in use', 400);
         }
 
         $orm->beginTransaction();
@@ -152,6 +152,7 @@ class Member
                 'MbrFirstName'         => $data['first_name'],
                 'MbrFamilyName'        => $data['family_name'],
                 'MbrOtherNames'        => $data['other_names'] ?? null,
+                'MbrFullName'          => $data['first_name']($data['other_names'] ? ' ' . $data['other_names'] : '') . ' ' . $data['family_name'],
                 'MbrGender'            => $data['gender'] ?? 'Other',
                 'MbrEmailAddress'      => $data['email_address'],
                 'MbrResidentialAddress' => $data['address'] ?? null,
@@ -237,7 +238,7 @@ class Member
             [':email' => $data['email_address'], ':id' => $mbrId]
         );
         if (!empty($conflict)) {
-            Helpers::sendFeedback('Email address already in use by another member', 400);
+            ResponseHelper::error('Email address already in use by another member', 400);
         }
 
         $updateData = [
@@ -285,20 +286,33 @@ class Member
         try {
             $orm->update('churchmember', $updateData, ['MbrID' => $mbrId]);
 
-            // Replace phone numbers if provided
-            if (isset($data['phone_numbers']) && is_array($data['phone_numbers'])) {
-                $orm->delete('member_phone', ['MbrID' => $mbrId]);
-                foreach ($data['phone_numbers'] as $index => $phone) {
-                    $phone = trim($phone);
-                    if ($phone === '') {
-                        continue;
+            // Replace phone numbers if provided (handles both array and empty array)
+            if (isset($data['phone_numbers'])) {
+                $phoneNumbers = $data['phone_numbers'];
+
+                // Handle JSON string if not already decoded
+                if (is_string($phoneNumbers)) {
+                    $phoneNumbers = json_decode($phoneNumbers, true) ?? [];
+                }
+
+                // Ensure it's an array
+                if (is_array($phoneNumbers)) {
+                    // Delete existing phone numbers first
+                    $orm->delete('member_phone', ['MbrID' => $mbrId]);
+
+                    // Insert new phone numbers
+                    foreach ($phoneNumbers as $index => $phone) {
+                        $phone = is_string($phone) ? trim($phone) : '';
+                        if ($phone === '') {
+                            continue;
+                        }
+                        $isPrimary = $index === 0 ? 1 : 0;
+                        $orm->insert('member_phone', [
+                            'MbrID'       => $mbrId,
+                            'PhoneNumber' => $phone,
+                            'IsPrimary'   => $isPrimary
+                        ]);
                     }
-                    $isPrimary = $index === 0 ? 1 : 0;
-                    $orm->insert('member_phone', [
-                        'MbrID'      => $mbrId,
-                        'PhoneNumber' => $phone,
-                        'IsPrimary'  => $isPrimary
-                    ]);
                 }
             }
 
@@ -323,7 +337,7 @@ class Member
 
         $affected = $orm->softDelete('churchmember', $mbrId, 'MbrID');
         if ($affected === 0) {
-            Helpers::sendFeedback('Member not found or already deleted', 404);
+            ResponseHelper::error('Member not found or already deleted', 404);
         }
 
         Helpers::logError("Member soft-deleted: MbrID $mbrId");
@@ -352,7 +366,7 @@ class Member
         );
 
         if (empty($member)) {
-            Helpers::sendFeedback('Member not found', 404);
+            ResponseHelper::error('Member not found', 404);
         }
 
         $memberData = $member[0];
@@ -454,6 +468,30 @@ class Member
 
         $whereClause = implode(' AND ', $whereConditions);
 
+        // Build ORDER BY clause with sorting support
+        $orderBy = 'c.MbrRegistrationDate DESC'; // Default
+        if (!empty($filters['sort_by'])) {
+            $sortColumn = $filters['sort_by'];
+            $sortDir = strtoupper($filters['sort_dir'] ?? 'DESC');
+
+            // Map frontend column names to database columns
+            $columnMap = [
+                'MbrFirstName' => 'c.MbrFirstName',
+                'MbrFamilyName' => 'c.MbrFamilyName',
+                'MbrRegistrationDate' => 'c.MbrRegistrationDate',
+                'MbrEmailAddress' => 'c.MbrEmailAddress',
+                'MbrMembershipStatus' => 'c.MbrMembershipStatus',
+                'name' => 'c.MbrFirstName',
+                'email' => 'c.MbrEmailAddress',
+                'status' => 'c.MbrMembershipStatus',
+                'date' => 'c.MbrRegistrationDate'
+            ];
+
+            if (isset($columnMap[$sortColumn])) {
+                $orderBy = $columnMap[$sortColumn] . ' ' . ($sortDir === 'ASC' ? 'ASC' : 'DESC');
+            }
+        }
+
         // FIXED: Use single query with JOIN to get members and phones together (eliminates N+1 problem)
         $members = $orm->runQuery(
             "SELECT c.*, f.FamilyName,
@@ -464,7 +502,7 @@ class Member
              LEFT JOIN `member_phone` p ON c.MbrID = p.MbrID
              WHERE $whereClause
              GROUP BY c.MbrID
-             ORDER BY c.MbrRegistrationDate DESC
+             ORDER BY $orderBy
              LIMIT :limit OFFSET :offset",
             array_merge($params, [
                 ':limit' => $limit,
@@ -512,6 +550,105 @@ class Member
                 'total' => $total,
                 'pages' => (int)ceil($total / $limit)
             ]
+        ];
+    }
+
+    /**
+     * Get member statistics
+     *
+     * @return array Statistics data
+     */
+    public static function getStats(): array
+    {
+        $orm = new ORM();
+
+        // Get counts by status
+        $statusCounts = $orm->runQuery(
+            "SELECT 
+                MbrMembershipStatus,
+                COUNT(*) AS count
+             FROM churchmember
+             WHERE Deleted = 0
+             GROUP BY MbrMembershipStatus"
+        );
+
+        $total = 0;
+        $active = 0;
+        $inactive = 0;
+        foreach ($statusCounts as $row) {
+            $count = (int)$row['count'];
+            $total += $count;
+            if ($row['MbrMembershipStatus'] === 'Active') {
+                $active = $count;
+            } elseif ($row['MbrMembershipStatus'] === 'Inactive') {
+                $inactive += $count;
+            } else {
+            }
+        }
+
+        // Get new members this month
+        $monthStart = date('Y-m-01');
+        $newThisMonth = $orm->runQuery(
+            "SELECT COUNT(*) AS count 
+             FROM churchmember 
+             WHERE Deleted = 0 
+             AND MbrRegistrationDate >= :month_start",
+            [':month_start' => $monthStart]
+        )[0]['count'] ?? 0;
+
+        // Get gender distribution
+        $genderCounts = $orm->runQuery(
+            "SELECT 
+                MbrGender,
+                COUNT(*) AS count
+             FROM churchmember 
+             WHERE Deleted = 0 AND MbrMembershipStatus = 'Active'
+             GROUP BY MbrGender"
+        );
+
+        $genderDistribution = [];
+        foreach ($genderCounts as $row) {
+            $genderDistribution[$row['MbrGender'] ?? 'Unknown'] = (int)$row['count'];
+        }
+
+        // Get age distribution
+        $ageGroups = $orm->runQuery(
+            "SELECT 
+                CASE 
+                    WHEN TIMESTAMPDIFF(YEAR, MbrDateOfBirth, CURDATE()) < 18 THEN 'Under 18'
+                    WHEN TIMESTAMPDIFF(YEAR, MbrDateOfBirth, CURDATE()) BETWEEN 18 AND 30 THEN '18-30'
+                    WHEN TIMESTAMPDIFF(YEAR, MbrDateOfBirth, CURDATE()) BETWEEN 31 AND 45 THEN '31-45'
+                    WHEN TIMESTAMPDIFF(YEAR, MbrDateOfBirth, CURDATE()) BETWEEN 46 AND 60 THEN '46-60'
+                    WHEN TIMESTAMPDIFF(YEAR, MbrDateOfBirth, CURDATE()) > 60 THEN 'Over 60'
+                    ELSE 'Unknown'
+                END AS age_group,
+                COUNT(*) AS count
+             FROM churchmember 
+             WHERE Deleted = 0 AND MbrMembershipStatus = 'Active'
+             GROUP BY age_group
+             ORDER BY 
+                CASE age_group
+                    WHEN 'Under 18' THEN 1
+                    WHEN '18-30' THEN 2
+                    WHEN '31-45' THEN 3
+                    WHEN '46-60' THEN 4
+                    WHEN 'Over 60' THEN 5
+                    ELSE 6
+                END"
+        );
+
+        $ageDistribution = [];
+        foreach ($ageGroups as $row) {
+            $ageDistribution[$row['age_group']] = (int)$row['count'];
+        }
+
+        return [
+            'total' => $total,
+            'active' => $active,
+            'inactive' => $inactive,
+            'new_this_month' => (int)$newThisMonth,
+            'gender_distribution' => $genderDistribution,
+            'age_distribution' => $ageDistribution
         ];
     }
 }

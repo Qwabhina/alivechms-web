@@ -280,6 +280,15 @@ class MemberRoutes extends BaseRoute
 
                 $filters = self::getFilters(['status', 'family_id', 'date_from', 'date_to', 'search']);
 
+                // Get sorting parameters with allowed columns
+                [$sortBy, $sortDir] = self::getSorting(
+                    'MbrRegistrationDate',
+                    'DESC',
+                    ['MbrFirstName', 'MbrFamilyName', 'MbrRegistrationDate', 'MbrEmailAddress', 'MbrMembershipStatus']
+                );
+                $filters['sort_by'] = $sortBy;
+                $filters['sort_dir'] = $sortDir;
+
                 $result = Member::getAll($page, $limit, $filters);
                 ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
             })(),
@@ -291,6 +300,15 @@ class MemberRoutes extends BaseRoute
 
                 $members = Member::getRecent();
                 ResponseHelper::success(['data' => $members]);
+            })(),
+
+            // MEMBER STATISTICS
+            $method === 'GET' && $path === 'member/stats' => (function () {
+                self::authenticate();
+                self::authorize('view_members');
+
+                $stats = Member::getStats();
+                ResponseHelper::success($stats);
             })(),
 
             // FALLBACK

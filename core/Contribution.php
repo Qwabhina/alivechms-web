@@ -262,6 +262,29 @@ class Contribution
          $params[':end'] = $filters['end_date'];
       }
 
+      // Build ORDER BY with sorting support
+      $orderBy = ['c.ContributionDate' => 'DESC']; // Default
+      if (!empty($filters['sort_by'])) {
+         $sortColumn = $filters['sort_by'];
+         $sortDir = strtoupper($filters['sort_dir'] ?? 'DESC');
+
+         // Map frontend column names to database columns
+         $columnMap = [
+            'ContributionDate' => 'c.ContributionDate',
+            'ContributionAmount' => 'c.ContributionAmount',
+            'MemberName' => 'm.MbrFirstName',
+            'ContributionTypeName' => 'ct.ContributionTypeName',
+            'date' => 'c.ContributionDate',
+            'amount' => 'c.ContributionAmount',
+            'member' => 'm.MbrFirstName',
+            'type' => 'ct.ContributionTypeName'
+         ];
+
+         if (isset($columnMap[$sortColumn])) {
+            $orderBy = [$columnMap[$sortColumn] => ($sortDir === 'ASC' ? 'ASC' : 'DESC')];
+         }
+      }
+
       $contributions = $orm->selectWithJoin(
          baseTable: 'contribution c',
          joins: [
@@ -281,7 +304,7 @@ class Contribution
          ],
          conditions: $conditions,
          params: $params,
-         orderBy: ['c.ContributionDate' => 'DESC'],
+         orderBy: $orderBy,
          limit: $limit,
          offset: $offset
       );

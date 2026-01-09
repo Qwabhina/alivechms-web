@@ -202,6 +202,39 @@ abstract class BaseRoute
    }
 
    /**
+    * Get sorting parameters from query string
+    *
+    * @param string $defaultColumn Default column to sort by
+    * @param string $defaultDirection Default sort direction (ASC or DESC)
+    * @param array $allowedColumns List of allowed column names for sorting
+    * @return array [sort_by: string, sort_dir: string]
+    */
+   protected static function getSorting(string $defaultColumn = '', string $defaultDirection = 'ASC', array $allowedColumns = []): array
+   {
+      $sortBy = $_GET['sort_by'] ?? $defaultColumn;
+      $sortDir = strtoupper($_GET['sort_dir'] ?? $defaultDirection);
+
+      // Validate sort direction
+      if (!in_array($sortDir, ['ASC', 'DESC'], true)) {
+         $sortDir = $defaultDirection;
+      }
+
+      // Validate sort column if allowed columns specified
+      if (!empty($allowedColumns) && !empty($sortBy)) {
+         if (!in_array($sortBy, $allowedColumns, true)) {
+            $sortBy = $defaultColumn;
+         }
+      }
+
+      // Sanitize column name to prevent SQL injection
+      if (!empty($sortBy)) {
+         $sortBy = preg_replace('/[^a-zA-Z0-9_.]/', '', $sortBy);
+      }
+
+      return [$sortBy, $sortDir];
+   }
+
+   /**
     * Apply rate limiting to the current request
     *
     * @param string $identifier     Custom identifier (defaults to IP)

@@ -1,11 +1,11 @@
 /**
- * QMGridHelper
+ * QMGridHelper - Enhanced Implementation for AliveChMS
  * 
  * Optimized wrapper for QMGrid with proper server-side processing
  * and integration with AliveChMS API response structure
  * 
  * @package  AliveChMS
- * @version  1.0.0
+ * @version  5.0.0
  * @author   Qwabhina McFynn
  */
 
@@ -29,12 +29,20 @@
                // Add authentication headers
                const token = localStorage.getItem(Config.TOKEN_KEY);
                if (token) {
+                  // Check if this is a FormData upload (don't override Content-Type for multipart)
+                  const isFormData = options.body instanceof FormData;
+                  
                   options.headers = {
                      ...options.headers,
                      'Authorization': `Bearer ${token}`,
-                     'Content-Type': 'application/json',
                      'Accept': 'application/json'
                   };
+                  
+                  // Only set Content-Type for non-FormData requests
+                  // FormData needs the browser to set the boundary automatically
+                  if (!isFormData) {
+                     options.headers['Content-Type'] = 'application/json';
+                  }
                }
             }
             
@@ -159,10 +167,10 @@
             
             // Map AliveChMS API response structure to QMGrid format
             serverResponse: {
-               data: 'data',              // Path to data array in response
-               totalRecords: 'total',     // Path to total records count
-               error: 'error',            // Path to error message (if present)
-               draw: 'draw'               // Request identifier (optional)
+               data: 'data',                      // Path to data array in response
+               totalRecords: 'pagination.total',  // Path to total records count (nested in pagination object)
+               error: 'error',                    // Path to error message (if present)
+               draw: 'draw'                       // Request identifier (optional)
             },
             
             // Apply any additional configuration
@@ -214,6 +222,219 @@
                ...config.exportOptions
             }
          });
+      }
+
+      /**
+       * Initialize QMGrid with action buttons (alias for init with common button config)
+       * Supports both QMGrid native config and DataTables-style ajax config for compatibility
+       * 
+       * @param {string} selector - Table container selector
+       * @param {Object} config - Configuration object
+       * @returns {Object} QMGrid instance
+       */
+      static initWithButtons(selector, config = {}) {
+         // Setup fetch interceptor for authentication
+         QMGridHelper.setupFetchInterceptor();
+         
+         // Check if using DataTables-style ajax config (for backward compatibility)
+         if (config.ajax && typeof config.ajax === 'object' && config.ajax.url) {
+            return QMGridHelper.initDataTablesStyle(selector, config);
+         }
+         
+         // Use standard QMGrid init
+         return QMGridHelper.init(selector, {
+            ...config,
+            exportable: true
+         });
+      }
+
+      /**
+       * Initialize QMGrid with DataTables-style configuration
+       * Provides compatibility layer for pages using DataTables ajax format
+       * 
+       * @param {string} selector - Table container selector
+       * @param {Object} config - DataTables-style configuration
+       * @returns {Object} QMGrid instance
+       */
+      static initDataTablesStyle(selector, config = {}) {
+         const {
+            ajax = {},
+            columns = [],
+            order = [[0, 'asc']],
+            pageSize = 25,
+            ...additionalConfig
+         } = config;
+
+         // Extract sorting from DataTables order format
+         const defaultSortColumn = order[0] ? order[0][0] : 0;
+         const defaultSortDir = order[0] ? order[0][1] : 'asc';
+         const sortColumnKey = columns[defaultSortColumn]?.data || columns[defaultSortColumn]?.key;
+
+         // Convert DataTables columns to QMGrid format
+         const qmColumns = columns.map(col => ({
+            key: col.data || col.key,
+            title: col.title || col.data || col.key,
+            sortable: col.orderable !== false,
+            searchable: col.searchable !== false,
+            exportable: !col.className?.includes('no-export'),
+            render: col.render ? (value, row) => col.render(value, 'display', row) : undefined
+         }));
+
+         // QMGrid configuration
+         const qmConfig = {
+            columns: qmColumns,
+            pagination: true,
+            pageSize: pageSize,
+            sortable: true,
+            searchable: true,
+            exportable: true,
+            striped: true,
+            bordered: true,
+            hover: true,
+            responsive: true,
+            serverSide: true,
+            
+            ajax: {
+               url: ajax.url,
+               method: ajax.type || 'GET',
+               headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+               },
+               timeout: 30000,
+               
+               // Transform QMGrid parameters to API format
+               data: function(params) {
+                  // If custom data function provided, use it with DataTables-style params
+                  if (ajax.data && typeof ajax.data === 'function') {
+                     const dtParams = {
+                        start: (params.page - 1) * params.pageSize,
+                        length: params.pageSize,
+                        search: { value: params.search || '' },
+                        order: [{
+                           column: params.sortBy ? qmColumns.findIndex(c => c.key === params.sortBy) : defaultSortColumn,
+                           dir: params.sortDir || defaultSortDir
+                        }]
+                     };
+                     return ajax.data(dtParams);
+                  }
+                  
+                  // Default parameter mapping
+                  const apiParams = {
+                     page: params.page,
+                     limit: params.pageSize
+                  };
+                  
+                  if (params.search) {
+                     apiParams.search = params.search;
+                  }
+                  
+                  if (params.sortBy) {
+                     apiParams.sort_by = params.sortBy;
+                     apiParams.sort_dir = params.sortDir || 'asc';
+                  } else if (sortColumnKey) {
+                     apiParams.sort_by = sortColumnKey;
+                     apiParams.sort_dir = defaultSortDir;
+                  }
+                  
+                  return apiParams;
+               },
+               
+               // Process response - handle dataFilter if provided
+               processResponse: function(response) {
+                  // If dataFilter is provided, use it to transform the response
+                  if (ajax.dataFilter && typeof ajax.dataFilter === 'function') {
+                     try {
+                        const transformed = ajax.dataFilter(JSON.stringify(response));
+                        if (typeof transformed === 'string') {
+                           return JSON.parse(transformed);
+                        }
+                        return transformed;
+                     } catch (e) {
+                        console.error('QMGrid: dataFilter error', e);
+                        return response;
+                     }
+                  }
+                  return response;
+               }
+            },
+            
+            serverResponse: {
+               data: 'data',
+               totalRecords: 'pagination.total',
+               error: 'error'
+            },
+            
+            ...additionalConfig
+         };
+
+         // Initialize QMGrid
+         const grid = new QMGrid(selector, qmConfig);
+         
+         // Add event listeners
+         grid.on('serverDataLoaded', (data) => {
+            console.log('QMGrid: Data loaded', {
+               records: data.data?.length || 0,
+               total: data.pagination?.total || data.total || 0
+            });
+         });
+         
+         grid.on('serverError', (data) => {
+            console.error('QMGrid: Server error', data.error);
+            if (typeof Alerts !== 'undefined' && Alerts.error) {
+               Alerts.error(data.error || 'Failed to load data');
+            }
+         });
+
+         return grid;
+      }
+
+      /**
+       * Process server response for DataTables-style compatibility
+       * Transforms AliveChMS API response to DataTables format
+       * 
+       * @param {string|Object} data - Raw response data (JSON string or object)
+       * @param {Function} rowMapper - Function to transform each row
+       * @returns {string} JSON string in DataTables format
+       */
+      static processServerResponse(data, rowMapper = null) {
+         try {
+            // Parse if string
+            const response = typeof data === 'string' ? JSON.parse(data) : data;
+            
+            // Extract data array and pagination
+            let records = response.data || [];
+            const pagination = response.pagination || {};
+            const total = pagination.total || records.length;
+            
+            // Apply row mapper if provided
+            if (rowMapper && typeof rowMapper === 'function') {
+               records = records.map(rowMapper).filter(r => r !== null && r !== undefined);
+            }
+            
+            // Return DataTables-compatible format
+            const result = {
+               data: records,
+               recordsTotal: total,
+               recordsFiltered: total,
+               pagination: {
+                  total: total,
+                  current_page: pagination.current_page || pagination.page || 1,
+                  per_page: pagination.per_page || pagination.limit || records.length,
+                  total_pages: pagination.total_pages || pagination.pages || 1
+               }
+            };
+            
+            return JSON.stringify(result);
+         } catch (e) {
+            console.error('QMGrid: processServerResponse error', e);
+            return JSON.stringify({
+               data: [],
+               recordsTotal: 0,
+               recordsFiltered: 0,
+               pagination: { total: 0 }
+            });
+         }
       }
 
       /**
@@ -361,7 +582,7 @@
          if (profilePicture) {
             const imageUrl = profilePicture.startsWith('http') 
                ? profilePicture 
-               : `${Config.API_BASE_URL}/${profilePicture}`;
+               : `${Config.API_BASE_URL}/public/${profilePicture}`;
             
             return `<img src="${imageUrl}" alt="${name}" class="rounded-circle" 
                      style="width: ${size}px; height: ${size}px; object-fit: cover;" 
@@ -391,7 +612,7 @@
       }
 
       /**
-       * Format action buttons with proper icons
+       * Format action buttons with proper icons (filled style)
        * @param {number|string} id - Record ID
        * @param {Object} options - Button options
        * @returns {string} HTML buttons
@@ -407,19 +628,21 @@
             deleteFn = 'deleteRecord',
             viewPermission = true,
             editPermission = true,
-            deletePermission = true
+            deletePermission = true,
+            filled = true // Use filled buttons by default
          } = options;
 
+         const btnStyle = filled ? '' : 'outline-';
          let html = '<div class="btn-group btn-group-sm" role="group">';
 
          if (view && viewPermission) {
-            html += `<button class="btn btn-outline-primary" onclick="${viewFn}(${id})" title="View">
+            html += `<button class="btn btn-${btnStyle}primary btn-sm" onclick="${viewFn}(${id})" title="View">
                <i class="bi bi-eye"></i>
             </button>`;
          }
 
          if (edit && editPermission) {
-            html += `<button class="btn btn-outline-warning" onclick="${editFn}(${id})" title="Edit">
+            html += `<button class="btn btn-${btnStyle}warning btn-sm" onclick="${editFn}(${id})" title="Edit">
                <i class="bi bi-pencil"></i>
             </button>`;
          }
@@ -428,7 +651,7 @@
          if (custom && custom.length > 0) {
             custom.forEach(btn => {
                if (btn.permission !== false) {
-                  html += `<button class="btn btn-outline-${btn.color || 'secondary'}" 
+                  html += `<button class="btn btn-${btnStyle}${btn.color || 'secondary'} btn-sm" 
                            onclick="${btn.fn}(${id})" title="${btn.title || ''}">
                      <i class="bi bi-${btn.icon}"></i>
                   </button>`;
@@ -437,7 +660,7 @@
          }
 
          if (del && deletePermission) {
-            html += `<button class="btn btn-outline-danger" onclick="${deleteFn}(${id})" title="Delete">
+            html += `<button class="btn btn-${btnStyle}danger btn-sm" onclick="${deleteFn}(${id})" title="Delete">
                <i class="bi bi-trash"></i>
             </button>`;
          }
@@ -447,7 +670,7 @@
       }
 
       /**
-       * Create member-specific action buttons
+       * Create member-specific action buttons (filled style)
        * @param {Object} member - Member object
        * @param {Object} permissions - User permissions
        * @returns {string} HTML buttons
@@ -463,15 +686,7 @@
             viewPermission: permissions.view_members !== false,
             editPermission: permissions.edit_members !== false,
             deletePermission: permissions.delete_members !== false,
-            custom: [
-               {
-                  icon: 'person-badge',
-                  color: 'info',
-                  title: 'View Profile',
-                  fn: 'viewMemberProfile',
-                  permission: permissions.view_members !== false
-               }
-            ]
+            filled: true // Use filled buttons
          });
       }
 

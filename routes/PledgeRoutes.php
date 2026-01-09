@@ -62,7 +62,16 @@ class PledgeRoutes extends BaseRoute
 
             [$page, $limit] = self::getPagination(10, 100);
 
-            $filters = self::getFilters(['member_id', 'status', 'fiscal_year_id']);
+            $filters = self::getFilters(['member_id', 'status', 'fiscal_year_id', 'search']);
+
+            // Get sorting parameters with allowed columns
+            [$sortBy, $sortDir] = self::getSorting(
+               'PledgeDate',
+               'DESC',
+               ['PledgeDate', 'PledgeAmount', 'MemberName', 'PledgeStatus']
+            );
+            $filters['sort_by'] = $sortBy;
+            $filters['sort_dir'] = $sortDir;
 
             $result = Pledge::getAll($page, $limit, $filters);
             ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);

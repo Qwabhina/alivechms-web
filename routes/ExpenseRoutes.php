@@ -68,8 +68,18 @@ class ExpenseRoutes extends BaseRoute
                'category_id',
                'status',
                'start_date',
-               'end_date'
+               'end_date',
+               'search'
             ]);
+
+            // Get sorting parameters with allowed columns
+            [$sortBy, $sortDir] = self::getSorting(
+               'ExpenseDate',
+               'DESC',
+               ['ExpenseTitle', 'ExpenseAmount', 'ExpenseDate', 'CategoryName', 'BranchName', 'ExpenseStatus']
+            );
+            $filters['sort_by'] = $sortBy;
+            $filters['sort_dir'] = $sortDir;
 
             $result = Expense::getAll($page, $limit, $filters);
             ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);

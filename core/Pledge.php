@@ -306,6 +306,29 @@ class Pledge
          $params[':fy'] = (int)$filters['fiscal_year_id'];
       }
 
+      // Build ORDER BY with sorting support
+      $orderBy = ['p.PledgeDate' => 'DESC']; // Default
+      if (!empty($filters['sort_by'])) {
+         $sortColumn = $filters['sort_by'];
+         $sortDir = strtoupper($filters['sort_dir'] ?? 'DESC');
+
+         // Map frontend column names to database columns
+         $columnMap = [
+            'PledgeDate' => 'p.PledgeDate',
+            'PledgeAmount' => 'p.PledgeAmount',
+            'MemberName' => 'm.MbrFirstName',
+            'PledgeStatus' => 'p.PledgeStatus',
+            'date' => 'p.PledgeDate',
+            'amount' => 'p.PledgeAmount',
+            'member' => 'm.MbrFirstName',
+            'status' => 'p.PledgeStatus'
+         ];
+
+         if (isset($columnMap[$sortColumn])) {
+            $orderBy = [$columnMap[$sortColumn] => ($sortDir === 'ASC' ? 'ASC' : 'DESC')];
+         }
+      }
+
       $pledges = $orm->selectWithJoin(
          baseTable: 'pledge p',
          joins: [
@@ -326,7 +349,7 @@ class Pledge
          ],
          conditions: $conditions,
          params: $params,
-         orderBy: ['p.PledgeDate' => 'DESC'],
+         orderBy: $orderBy,
          limit: $limit,
          offset: $offset
       );

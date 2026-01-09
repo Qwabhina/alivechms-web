@@ -85,7 +85,16 @@ class EventRoutes extends BaseRoute
 
             [$page, $limit] = self::getPagination(10, 100);
 
-            $filters = self::getFilters(['branch_id', 'start_date', 'end_date']);
+            $filters = self::getFilters(['branch_id', 'start_date', 'end_date', 'search']);
+
+            // Get sorting parameters with allowed columns
+            [$sortBy, $sortDir] = self::getSorting(
+               'EventDate',
+               'DESC',
+               ['EventTitle', 'EventDate', 'Location', 'BranchName']
+            );
+            $filters['sort_by'] = $sortBy;
+            $filters['sort_dir'] = $sortDir;
 
             $result = Event::getAll($page, $limit, $filters);
             ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);

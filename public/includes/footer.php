@@ -4,7 +4,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <!-- QMGrid - Modern table library -->
-<script src="https://cdn.jsdelivr.net/gh/Qwabhina/qmgrid@latest/qmgrid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/Qwabhina/qmgrid/qmgrid.min.js"></script>
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -30,7 +30,6 @@
 <script src="../assets/js/core/api.js"></script>
 <script src="../assets/js/core/auth.js"></script>
 <script src="../assets/js/core/alerts.js"></script>
-<script src="../assets/js/core/qmgrid-helper.js"></script>
 <script src="../assets/js/core/components.js"></script>
 
 <!-- Layout Script -->
@@ -42,7 +41,7 @@
       if (isNaN(num)) return '-';
 
       const formatted = num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
-      const symbol = Config.getSetting('currency_symbol', 'GH₵');
+      const symbol = Config.getSetting('currency_symbol', '₵');
 
       return `${symbol} ${formatted}`;
    };
@@ -56,7 +55,7 @@
       const formatted = num.toLocaleString('en-US', {
          minimumFractionDigits: 2
       });
-      const symbol = Config.getSetting('currency_symbol', 'GH₵');
+      const symbol = Config.getSetting('currency_symbol', '₵');
 
       return `${symbol} ${formatted}`;
    };

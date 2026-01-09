@@ -115,6 +115,15 @@ class GroupRoutes extends BaseRoute
                $filters['name'] = trim($_GET['name']);
             }
 
+            // Get sorting parameters with allowed columns
+            [$sortBy, $sortDir] = self::getSorting(
+               'GroupName',
+               'ASC',
+               ['GroupName', 'GroupTypeName', 'BranchName', 'member_count']
+            );
+            $filters['sort_by'] = $sortBy;
+            $filters['sort_dir'] = $sortDir;
+
             $result = Group::getAll($page, $limit, $filters);
             ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
          })(),

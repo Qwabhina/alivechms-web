@@ -228,6 +228,27 @@ class Group
          $params[':name'] = '%' . $filters['name'] . '%';
       }
 
+      // Build ORDER BY with sorting support
+      $orderBy = ['g.GroupName' => 'ASC']; // Default
+      if (!empty($filters['sort_by'])) {
+         $sortColumn = $filters['sort_by'];
+         $sortDir = strtoupper($filters['sort_dir'] ?? 'ASC');
+
+         // Map frontend column names to database columns
+         $columnMap = [
+            'GroupName' => 'g.GroupName',
+            'GroupTypeName' => 't.GroupTypeName',
+            'BranchName' => 'l.BranchID',
+            'member_count' => 'MemberCount',
+            'name' => 'g.GroupName',
+            'type' => 't.GroupTypeName'
+         ];
+
+         if (isset($columnMap[$sortColumn])) {
+            $orderBy = [$columnMap[$sortColumn] => ($sortDir === 'ASC' ? 'ASC' : 'DESC')];
+         }
+      }
+
       $groups = $orm->selectWithJoin(
             baseTable: 'churchgroup g',
             joins: [
@@ -246,7 +267,7 @@ class Group
             ],
             conditions: $conditions,
             params: $params,
-         orderBy: ['g.GroupName' => 'ASC'],
+         orderBy: $orderBy,
             limit: $limit,
             offset: $offset
       );
