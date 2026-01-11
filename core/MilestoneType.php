@@ -1,0 +1,164 @@
+<?php
+
+/**
+ * Milestone Type Management
+ *
+ * CRUD operations for milestone types (Baptism, Marriage, Salvation, etc.)
+ *
+ * @package  AliveChMS\Core
+ * @version  1.0.0
+ * @author   Benjamin Ebo Yankson
+ * @since    2025-November
+ */
+
+declare(strict_types=1);
+
+class MilestoneType
+{
+   /**
+    * Create a new milestone type
+    */
+   public static function create(array $data): array
+   {
+      $orm = new ORM();
+
+      Helpers::validateInput($data, [
+         'name' => 'required|max:100',
+         'description' => 'max:500|nullable',
+         'icon' => 'max:50|nullable',
+         'color' => 'max:20|nullable'
+      ]);
+
+      $name = trim($data['name']);
+
+      // Check for duplicate name
+      $existing = $orm->runQuery(
+         "SELECT MilestoneTypeID FROM milestone_type WHERE MilestoneTypeName = :name",
+         [':name' => $name]
+      );
+      if (!empty($existing)) {
+         ResponseHelper::error('Milestone type name already exists', 400);
+      }
+
+      // Get max display order
+      $maxOrder = $orm->runQuery("SELECT MAX(DisplayOrder) AS max_order FROM milestone_type")[0]['max_order'] ?? 0;
+
+      $typeId = $orm->insert('milestone_type', [
+         'MilestoneTypeName' => $name,
+         'Description' => $data['description'] ?? null,
+         'Icon' => $data['icon'] ?? 'trophy',
+         'Color' => $data['color'] ?? 'primary',
+         'DisplayOrder' => $maxOrder + 1,
+         'IsActive' => 1,
+         'CreatedAt' => date('Y-m-d H:i:s')
+      ])['id'];
+
+      return ['status' => 'success', 'milestone_type_id' => $typeId];
+   }
+
+   /**
+    * Update an existing milestone type
+    */
+   public static function update(int $typeId, array $data): array
+   {
+      $orm = new ORM();
+
+      $type = $orm->getWhere('milestone_type', ['MilestoneTypeID' => $typeId]);
+      if (empty($type)) {
+         ResponseHelper::error('Milestone type not found', 404);
+      }
+
+      $update = [];
+
+      if (!empty($data['name'])) {
+         $name = trim($data['name']);
+         $existing = $orm->runQuery(
+            "SELECT MilestoneTypeID FROM milestone_type WHERE MilestoneTypeName = :name AND MilestoneTypeID != :id",
+            [':name' => $name, ':id' => $typeId]
+         );
+         if (!empty($existing)) {
+            ResponseHelper::error('Milestone type name already exists', 400);
+         }
+         $update['MilestoneTypeName'] = $name;
+      }
+
+      if (isset($data['description'])) {
+         $update['Description'] = $data['description'] ?: null;
+      }
+
+      if (!empty($data['icon'])) {
+         $update['Icon'] = $data['icon'];
+      }
+
+      if (!empty($data['color'])) {
+         $update['Color'] = $data['color'];
+      }
+
+      if (isset($data['is_active'])) {
+         $update['IsActive'] = $data['is_active'] ? 1 : 0;
+      }
+
+      if (!empty($update)) {
+         $orm->update('milestone_type', $update, ['MilestoneTypeID' => $typeId]);
+      }
+
+      return ['status' => 'success', 'milestone_type_id' => $typeId];
+   }
+
+   /**
+    * Delete a milestone type (only if unused)
+    */
+   public static function delete(int $typeId): array
+   {
+      $orm = new ORM();
+
+      $type = $orm->getWhere('milestone_type', ['MilestoneTypeID' => $typeId]);
+      if (empty($type)) {
+         ResponseHelper::error('Milestone type not found', 404);
+      }
+
+      // Check if type is in use
+      $inUse = $orm->runQuery(
+         "SELECT COUNT(*) AS cnt FROM member_milestone WHERE MilestoneTypeID = :id",
+         [':id' => $typeId]
+      )[0]['cnt'];
+
+      if ($inUse > 0) {
+         ResponseHelper::error('Cannot delete milestone type that is in use', 400);
+      }
+
+      $orm->delete('milestone_type', ['MilestoneTypeID' => $typeId]);
+      return ['status' => 'success'];
+   }
+
+   /**
+    * Get a single milestone type
+    */
+   public static function get(int $typeId): array
+   {
+      $orm = new ORM();
+
+      $type = $orm->getWhere('milestone_type', ['MilestoneTypeID' => $typeId]);
+      if (empty($type)) {
+         ResponseHelper::error('Milestone type not found', 404);
+      }
+
+      return $type[0];
+   }
+
+   /**
+    * Get all milestone types
+    */
+   public static function getAll(bool $activeOnly = false): array
+   {
+      $orm = new ORM();
+
+      $where = $activeOnly ? "WHERE IsActive = 1" : "";
+      $types = $orm->runQuery(
+         "SELECT MilestoneTypeID, MilestoneTypeName, Description, Icon, Color, DisplayOrder, IsActive, CreatedAt 
+          FROM milestone_type $where ORDER BY DisplayOrder ASC, MilestoneTypeName ASC"
+      );
+
+      return ['data' => $types];
+   }
+}

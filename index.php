@@ -132,6 +132,7 @@ $routes = [
     'group'           => 'GroupRoutes.php',
     'grouptype'       => 'GroupRoutes.php',
     'membershiptype'  => 'MembershipTypeRoutes.php',
+    'milestone'       => 'MilestoneRoutes.php',
     'role'            => 'RoleRoutes.php',
     'settings'        => 'SettingsRoutes.php',
     'permission'      => 'PermissionRoutes.php',

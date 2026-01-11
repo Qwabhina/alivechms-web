@@ -1,29 +1,21 @@
 </main>
 
 <!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+<script src="../assets/js/vendor/bootstrap.bundle.min.js"></script>
 <!-- QMGrid - Modern table library -->
-<script src="https://cdn.jsdelivr.net/gh/Qwabhina/qmgrid/qmgrid.min.js"></script>
-
+<script src="../assets/js/vendor/qmgrid.min.js"></script>
 <!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
+<script src="../assets/js/vendor/chart.umd.min.js"></script>
 <!-- Choices.js -->
-<script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
-
+<script src="../assets/js/vendor/choices.min.js"></script>
 <!-- Flatpickr -->
-<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
-
+<script src="../assets/js/vendor/flatpickr.min.js"></script>
 <!-- FullCalendar -->
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
-
+<script src="../assets/js/vendor/index.global.min.js"></script>
 <!-- Dropzone -->
-<script src="https://cdn.jsdelivr.net/npm/dropzone@5.9.3/dist/min/dropzone.min.js"></script>
-
+<script src="../assets/js/vendor/dropzone.min.js"></script>
 <!-- SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.4/dist/sweetalert2.all.min.js"></script>
-
+<script src="../assets/js/vendor/sweetalert2.all.min.js"></script>
 <!-- Core JS -->
 <script src="../assets/js/core/config.js"></script>
 <script src="../assets/js/core/utils.js"></script>

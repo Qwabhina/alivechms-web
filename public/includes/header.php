@@ -50,28 +50,25 @@ $pageTitle = $pageTitle ?? 'Dashboard';
    <title><?= htmlspecialchars($pageTitle) ?> - <?= htmlspecialchars($churchName) ?></title>
 
    <!-- Bootstrap CSS -->
-   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+   <link href="../assets/css/vendor/bootstrap.min.css" rel="stylesheet">
 
    <!-- Bootstrap Icons -->
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+   <link rel="stylesheet" href="../assets/css/vendor/bootstrap-icons.min.css">
 
    <!-- QMGrid - Modern table library -->
-   <link href="https://cdn.jsdelivr.net/gh/Qwabhina/qmgrid/qmgrid.min.css" rel="stylesheet">
+   <link href="../assets/css/vendor/qmgrid.min.css" rel="stylesheet">
 
    <!-- Choices.js -->
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/styles/choices.min.css">
+   <link rel="stylesheet" href="../assets/css/vendor/choices.min.css">
 
    <!-- Flatpickr -->
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
-
-   <!-- FullCalendar -->
-   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+   <link rel="stylesheet" href="../assets/css/vendor/flatpickr.min.css">
 
    <!-- Dropzone -->
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropzone@5.9.3/dist/min/dropzone.min.css">
+   <link rel="stylesheet" href="../assets/css/vendor/dropzone.min.css">
 
    <!-- SweetAlert2 -->
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.4/dist/sweetalert2.min.css">
+   <link rel="stylesheet" href="../assets/css/vendor/sweetalert2.min.css">
 
    <!-- Custom CSS -->
    <link rel="stylesheet" href="../assets/css/app.css">

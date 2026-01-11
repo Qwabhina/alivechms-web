@@ -1,5 +1,5 @@
 body {
-   background: #667eea;
+   background: #00026d;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -29,12 +29,12 @@ body {
 
 .form-floating>.form-control:focus~label,
 .form-floating>.form-control:not(:placeholder-shown)~label {
-   color: #667eea;
+   color: #00026d;
 }
 
 .btn-primary {
-   background-color: #667eea;
-   border-color: #667eea;
+   background-color: #00026d;
+      border-color: #00026d;
 }
 
 .btn-primary:hover {
