@@ -87,209 +87,271 @@ require_once '../includes/sidebar.php';
 <div class="modal fade" id="memberModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
    <div class="modal-dialog modal-xl modal-dialog-scrollable">
       <div class="modal-content">
-         <div class="modal-header border-0 pb-0">
-            <h5 class="modal-title" id="memberModalTitle">Add New Member</h5>
+         <div class="modal-header bg-primary bg-opacity-10 border-0">
+            <h5 class="modal-title" id="memberModalTitle">
+               <i class="bi bi-person-plus me-2"></i>Add New Member
+            </h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
          </div>
-         <div class="modal-body">
+         <div class="modal-body px-4">
             <div id="memberStepper">
-               <!-- Stepper Header -->
+               <!-- Stepper Header - Reduced to 3 steps -->
                <div class="stepper mb-4">
                   <div class="stepper-step active" data-step="0">
                      <div class="step-number">1</div>
-                     <div class="step-label">Basic Info</div>
+                     <div class="step-label">Personal Details</div>
                   </div>
                   <div class="stepper-step" data-step="1">
                      <div class="step-number">2</div>
-                     <div class="step-label">Contact</div>
+                     <div class="step-label">Contact & Family</div>
                   </div>
                   <div class="stepper-step" data-step="2">
                      <div class="step-number">3</div>
-                     <div class="step-label">Personal</div>
-                  </div>
-                  <div class="stepper-step" data-step="3">
-                     <div class="step-number">4</div>
-                     <div class="step-label">Family</div>
-                  </div>
-                  <div class="stepper-step" data-step="4">
-                     <div class="step-number">5</div>
-                     <div class="step-label">Login</div>
+                     <div class="step-label">Account Setup</div>
                   </div>
                </div>
 
                <form id="memberForm" novalidate>
                   <input type="hidden" id="memberId" name="memberId">
 
-                  <!-- Step 1: Basic Info -->
+                  <!-- Step 1: Personal Details (Basic + Personal Info combined) -->
                   <div class="stepper-content" data-step="0">
-                     <div class="row">
-                        <div class="col-12 text-center mb-4">
-                           <div class="profile-upload-zone" id="profileDropzone">
-                              <div class="upload-placeholder" id="uploadPlaceholder">
-                                 <i class="bi bi-camera fs-1"></i>
-                                 <div class="small mt-2">Click or drag to upload photo</div>
-                                 <div class="text-muted" style="font-size: 0.75rem;">Max 5MB • JPG, PNG, GIF</div>
-                              </div>
-                              <img id="profilePreview" class="d-none" alt="Profile">
+                     <!-- Profile Photo Section -->
+                     <div class="text-center mb-4 pb-3 border-bottom">
+                        <div class="profile-upload-zone mx-auto" id="profileDropzone">
+                           <div class="upload-placeholder" id="uploadPlaceholder">
+                              <i class="bi bi-camera fs-1 text-primary"></i>
+                              <div class="small mt-2 fw-medium">Upload Photo</div>
+                              <div class="text-muted" style="font-size: 0.7rem;">JPG, PNG, GIF • Max 5MB</div>
                            </div>
-                           <input type="file" id="profilePictureInput" accept="image/*" class="d-none">
-                           <button type="button" class="btn btn-sm btn-outline-danger mt-2 d-none" id="removePhotoBtn">
-                              <i class="bi bi-trash me-1"></i>Remove Photo
-                           </button>
+                           <img id="profilePreview" class="d-none" alt="Profile">
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <input type="file" id="profilePictureInput" accept="image/*" class="d-none">
+                        <button type="button" class="btn btn-sm btn-outline-danger mt-2 d-none" id="removePhotoBtn">
+                           <i class="bi bi-x-circle me-1"></i>Remove
+                        </button>
+                     </div>
+
+                     <!-- Name Fields -->
+                     <div class="section-header mb-3">
+                        <i class="bi bi-person-badge text-primary me-2"></i>
+                        <span class="fw-semibold">Name Information</span>
+                     </div>
+                     <div class="row g-3 mb-4">
+                        <div class="col-md-4">
                            <label class="form-label">First Name <span class="text-danger">*</span></label>
-                           <input type="text" class="form-control" id="firstName" required>
+                           <input type="text" class="form-control" id="firstName" placeholder="Enter first name" required>
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-4">
                            <label class="form-label">Family Name <span class="text-danger">*</span></label>
-                           <input type="text" class="form-control" id="familyName" required>
+                           <input type="text" class="form-control" id="familyName" placeholder="Enter family name" required>
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-4">
                            <label class="form-label">Other Names</label>
-                           <input type="text" class="form-control" id="otherNames">
+                           <input type="text" class="form-control" id="otherNames" placeholder="Middle name, etc.">
                         </div>
-                        <div class="col-md-6 mb-3">
+                     </div>
+
+                     <!-- Personal Details -->
+                     <div class="section-header mb-3">
+                        <i class="bi bi-info-circle text-primary me-2"></i>
+                        <span class="fw-semibold">Personal Information</span>
+                     </div>
+                     <div class="row g-3">
+                        <div class="col-md-4">
                            <label class="form-label">Gender <span class="text-danger">*</span></label>
                            <select class="form-select" id="gender" required>
-                              <option value="">Select Gender</option>
+                              <option value="">Select gender</option>
                               <option value="Male">Male</option>
                               <option value="Female">Female</option>
                               <option value="Other">Other</option>
                            </select>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4">
                            <label class="form-label">Date of Birth</label>
-                           <input type="text" class="form-control" id="dateOfBirth" placeholder="YYYY-MM-DD">
-                           <div class="form-text">Optional: Used to calculate age</div>
+                           <input type="text" class="form-control" id="dateOfBirth" placeholder="Select date">
                         </div>
-                     </div>
-                  </div>
-
-                  <!-- Step 2: Contact Info -->
-                  <div class="stepper-content d-none" data-step="1">
-                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                           <label class="form-label">Email Address <span class="text-danger">*</span></label>
-                           <input type="email" class="form-control" id="email" required>
-                           <div class="form-text">Used for communication and login</div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                           <label class="form-label">Residential Address</label>
-                           <input type="text" class="form-control" id="address" placeholder="Street, City, Region">
-                        </div>
-                        <div class="col-12 mb-3">
-                           <label class="form-label">Phone Numbers</label>
-                           <div id="phoneContainer">
-                              <div class="phone-row mb-2">
-                                 <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-telephone"></i></span>
-                                    <input type="text" class="form-control phone-input" placeholder="e.g., 0241234567">
-                                    <button type="button" class="btn btn-outline-danger remove-phone d-none">
-                                       <i class="bi bi-trash"></i>
-                                    </button>
-                                 </div>
-                              </div>
-                           </div>
-                           <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addPhoneBtn">
-                              <i class="bi bi-plus-circle me-1"></i>Add Another Phone
-                           </button>
-                        </div>
-                     </div>
-                  </div>
-
-                  <!-- Step 3: Personal Info -->
-                  <div class="stepper-content d-none" data-step="2">
-                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                           <label class="form-label">Occupation</label>
-                           <input type="text" class="form-control" id="occupation" placeholder="e.g., Teacher, Engineer">
-                        </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4">
                            <label class="form-label">Marital Status</label>
                            <select class="form-select" id="maritalStatus">
-                              <option value="">Select Status</option>
+                              <option value="">Select status</option>
                               <option value="Single">Single</option>
                               <option value="Married">Married</option>
                               <option value="Divorced">Divorced</option>
                               <option value="Widowed">Widowed</option>
                            </select>
                         </div>
-                        <div class="col-md-12 mb-3">
-                           <label class="form-label">Highest Education Level</label>
-                           <input type="text" class="form-control" id="educationLevel" placeholder="e.g., Bachelor's Degree, High School">
+                        <div class="col-md-6">
+                           <label class="form-label">Occupation</label>
+                           <input type="text" class="form-control" id="occupation" placeholder="e.g., Teacher, Engineer">
                         </div>
-                     </div>
-                  </div>
-
-                  <!-- Step 4: Family Info -->
-                  <div class="stepper-content d-none" data-step="3">
-                     <div class="row">
-                        <div class="col-12 mb-3">
-                           <div class="alert alert-info">
-                              <i class="bi bi-info-circle me-2"></i>
-                              <strong>Family Assignment:</strong> Assign this member to an existing family or leave unassigned.
-                           </div>
-                        </div>
-                        <div class="col-md-12 mb-3">
-                           <label class="form-label">Family</label>
-                           <select class="form-select" id="familySelect">
-                              <option value="">No Family</option>
+                        <div class="col-md-6">
+                           <label class="form-label">Education Level</label>
+                           <select class="form-select" id="educationLevel">
+                              <option value="">Select education level</option>
+                              <option value="No Formal Education">No Formal Education</option>
+                              <option value="Primary School">Primary School</option>
+                              <option value="Junior High School">Junior High School</option>
+                              <option value="Senior High School">Senior High School</option>
+                              <option value="Vocational/Technical">Vocational/Technical</option>
+                              <option value="Diploma">Diploma</option>
+                              <option value="Bachelor's Degree">Bachelor's Degree</option>
+                              <option value="Master's Degree">Master's Degree</option>
+                              <option value="Doctorate">Doctorate</option>
+                              <option value="Other">Other</option>
                            </select>
-                           <div class="form-text">Members can be grouped into families for better organization</div>
                         </div>
                      </div>
                   </div>
 
-                  <!-- Step 5: Login Info -->
-                  <div class="stepper-content d-none" data-step="4">
-                     <div class="row">
-                        <div class="col-12 mb-3">
-                           <div class="alert alert-info">
-                              <i class="bi bi-info-circle me-2"></i>
-                              <strong>Optional:</strong> Login credentials allow the member to access the system. You can add these later if needed.
+                  <!-- Step 2: Contact & Family Info -->
+                  <div class="stepper-content d-none" data-step="1">
+                     <!-- Contact Information -->
+                     <div class="section-header mb-3">
+                        <i class="bi bi-telephone text-primary me-2"></i>
+                        <span class="fw-semibold">Contact Information</span>
+                     </div>
+                     <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                           <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                           <div class="input-group">
+                              <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                              <input type="email" class="form-control" id="email" placeholder="member@example.com" required>
                            </div>
+                        </div>
+                        <div class="col-md-6">
+                           <label class="form-label">Residential Address</label>
+                           <div class="input-group">
+                              <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                              <input type="text" class="form-control" id="address" placeholder="Street, City, Region">
+                           </div>
+                        </div>
+                        <div class="col-12">
+                           <label class="form-label">Phone Numbers</label>
+                           <div id="phoneContainer">
+                              <div class="phone-row mb-2">
+                                 <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                                    <input type="text" class="form-control phone-input" placeholder="e.g., 0241234567">
+                                    <span class="input-group-text bg-success text-white" title="Primary">
+                                       <i class="bi bi-star-fill" style="font-size: 0.7rem;"></i>
+                                    </span>
+                                 </div>
+                              </div>
+                           </div>
+                           <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addPhoneBtn">
+                              <i class="bi bi-plus-circle me-1"></i>Add Phone
+                           </button>
+                        </div>
+                     </div>
+
+                     <!-- Family Assignment -->
+                     <div class="section-header mb-3">
+                        <i class="bi bi-people text-primary me-2"></i>
+                        <span class="fw-semibold">Family Assignment</span>
+                     </div>
+                     <div class="row g-3">
+                        <div class="col-12">
+                           <div class="alert alert-light border mb-3">
+                              <i class="bi bi-lightbulb text-warning me-2"></i>
+                              Assign this member to an existing family for better organization, or leave unassigned.
+                           </div>
+                        </div>
+                        <div class="col-md-12">
+                           <label class="form-label">Select Family</label>
+                           <select class="form-select" id="familySelect">
+                              <option value="">No Family Assignment</option>
+                           </select>
+                        </div>
+                     </div>
+                  </div>
+
+                  <!-- Step 3: Account Setup (Login Info) -->
+                  <div class="stepper-content d-none" data-step="2">
+                     <div class="section-header mb-3">
+                        <i class="bi bi-shield-lock text-primary me-2"></i>
+                        <span class="fw-semibold">System Access</span>
+                     </div>
+
+                     <div class="card bg-light border-0 mb-4">
+                        <div class="card-body">
                            <div class="form-check form-switch">
-                              <input class="form-check-input" type="checkbox" id="enableLogin">
-                              <label class="form-check-label fw-semibold" for="enableLogin">
-                                 Enable login access for this member
+                              <input class="form-check-input" type="checkbox" id="enableLogin" style="width: 3em; height: 1.5em;">
+                              <label class="form-check-label ms-2" for="enableLogin">
+                                 <span class="fw-semibold">Enable System Login</span>
+                                 <div class="text-muted small">Allow this member to log into the church management system</div>
                               </label>
                            </div>
                         </div>
-                        <div id="loginFields" class="row d-none">
-                           <div class="col-md-6 mb-3">
-                              <label class="form-label">Username</label>
-                              <input type="text" class="form-control" id="username" autocomplete="off">
-                              <div class="form-text">Unique username for login</div>
+                     </div>
+
+                     <div id="loginFields" class="d-none">
+                        <div class="row g-3">
+                           <div class="col-md-6">
+                              <label class="form-label">Username <span class="text-danger">*</span></label>
+                              <div class="input-group">
+                                 <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                 <input type="text" class="form-control" id="username" placeholder="Choose a username" autocomplete="off">
+                              </div>
+                              <div class="form-text">Must be unique across all users</div>
                            </div>
-                           <div class="col-md-6 mb-3">
-                              <label class="form-label">Password</label>
-                              <input type="password" class="form-control" id="password" autocomplete="new-password">
-                              <div class="form-text">Minimum 8 characters</div>
+                           <div class="col-md-6">
+                              <label class="form-label">Password <span class="text-danger">*</span></label>
+                              <div class="input-group">
+                                 <span class="input-group-text"><i class="bi bi-key"></i></span>
+                                 <input type="password" class="form-control" id="password" placeholder="Create a password" autocomplete="new-password">
+                                 <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="bi bi-eye"></i>
+                                 </button>
+                              </div>
+                              <div class="form-text">Minimum 8 characters recommended</div>
                            </div>
-                           <div class="col-md-12 mb-3">
-                              <label class="form-label">Role</label>
+                           <div class="col-md-12">
+                              <label class="form-label">System Role <span class="text-danger">*</span></label>
                               <select class="form-select" id="roleSelect">
-                                 <option value="">Select Role</option>
+                                 <option value="">Select a role</option>
                               </select>
-                              <div class="form-text">Determines member's permissions in the system</div>
+                              <div class="form-text">Determines what the member can access and do in the system</div>
                            </div>
+                        </div>
+                     </div>
+
+                     <div id="noLoginMessage" class="text-center py-4">
+                        <i class="bi bi-person-badge fs-1 text-muted"></i>
+                        <p class="text-muted mt-2 mb-0">This member will be registered without system login access.</p>
+                        <p class="text-muted small">You can enable login access later by editing the member.</p>
+                     </div>
+
+                     <!-- Summary Preview -->
+                     <div class="mt-4 pt-3 border-top">
+                        <div class="section-header mb-3">
+                           <i class="bi bi-check-circle text-success me-2"></i>
+                           <span class="fw-semibold">Ready to Save</span>
+                        </div>
+                        <div class="alert alert-success border-0">
+                           <i class="bi bi-info-circle me-2"></i>
+                           Review the information and click <strong>Save Member</strong> to complete registration.
                         </div>
                      </div>
                   </div>
                </form>
             </div>
          </div>
-         <div class="modal-footer border-0">
-            <button type="button" class="btn btn-outline-secondary" id="prevStepBtn" disabled>
-               <i class="bi bi-arrow-left me-1"></i>Previous
-            </button>
-            <button type="button" class="btn btn-primary" id="nextStepBtn">
-               Next<i class="bi bi-arrow-right ms-1"></i>
-            </button>
-            <button type="button" class="btn btn-success d-none" id="submitBtn">
-               <i class="bi bi-check-circle me-1"></i>Save Member
-            </button>
+         <div class="modal-footer bg-light border-0">
+            <div class="d-flex justify-content-between w-100">
+               <button type="button" class="btn btn-outline-secondary" id="prevStepBtn" disabled>
+                  <i class="bi bi-arrow-left me-1"></i>Previous
+               </button>
+               <div>
+                  <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+                  <button type="button" class="btn btn-primary" id="nextStepBtn">
+                     Next<i class="bi bi-arrow-right ms-1"></i>
+                  </button>
+                  <button type="button" class="btn btn-success d-none" id="submitBtn">
+                     <i class="bi bi-check-circle me-1"></i>Save Member
+                  </button>
+               </div>
+            </div>
          </div>
       </div>
    </div>
@@ -468,6 +530,37 @@ require_once '../includes/sidebar.php';
       font-size: 1.5rem;
    }
 
+   /* Section Header Styles */
+   .section-header {
+      display: flex;
+      align-items: center;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #e9ecef;
+      color: #495057;
+   }
+
+   .section-header i {
+      font-size: 1.1rem;
+   }
+
+   /* Form Improvements */
+   .form-label {
+      font-weight: 500;
+      color: #495057;
+      margin-bottom: 0.4rem;
+   }
+
+   .form-control:focus,
+   .form-select:focus {
+      border-color: var(--bs-primary);
+      box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+   }
+
+   .input-group-text {
+      background-color: #f8f9fa;
+      border-color: #dee2e6;
+   }
+
    /* Responsive adjustments */
    @media (max-width: 768px) {
       .stepper {
@@ -481,6 +574,11 @@ require_once '../includes/sidebar.php';
 
       .stepper::before {
          display: none;
+      }
+
+      .profile-upload-zone {
+         width: 120px;
+         height: 120px;
       }
    }
 </style>

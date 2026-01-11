@@ -39,21 +39,17 @@ class MemberRoutes extends BaseRoute
                 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
                 $isMultipart = strpos($contentType, 'multipart/form-data') !== false;
 
-                // Log for debugging
-                Helpers::logError("Member create - Content-Type: $contentType, isMultipart: " . ($isMultipart ? 'true' : 'false'));
-
                 if ($isMultipart) {
                     // Handle FormData submission with file upload
                     $payload = $_POST;
 
                     // Parse phone_numbers if it's a JSON string
                     if (isset($payload['phone_numbers']) && is_string($payload['phone_numbers'])) {
-                        $payload['phone_numbers'] = json_decode($payload['phone_numbers'], true);
+                        // Decode HTML entities first (FormData can encode quotes as &quot;)
+                        $phoneJson = html_entity_decode($payload['phone_numbers'], ENT_QUOTES, 'UTF-8');
+                        $decoded = json_decode($phoneJson, true);
+                        $payload['phone_numbers'] = is_array($decoded) ? $decoded : [];
                     }
-
-                    // Log received data for debugging
-                    Helpers::logError("Member create - Received POST data: " . json_encode(array_keys($payload)));
-                    Helpers::logError("Member create - Has file: " . (isset($_FILES['profile_picture']) ? 'yes' : 'no'));
 
                     // Handle file upload if present
                     if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
@@ -207,7 +203,10 @@ class MemberRoutes extends BaseRoute
 
                     // Parse phone_numbers if it's a JSON string
                     if (isset($payload['phone_numbers']) && is_string($payload['phone_numbers'])) {
-                        $payload['phone_numbers'] = json_decode($payload['phone_numbers'], true);
+                        // Decode HTML entities first (FormData can encode quotes as &quot;)
+                        $phoneJson = html_entity_decode($payload['phone_numbers'], ENT_QUOTES, 'UTF-8');
+                        $decoded = json_decode($phoneJson, true);
+                        $payload['phone_numbers'] = is_array($decoded) ? $decoded : [];
                     }
 
                     // Check if profile picture should be removed (explicit removal flag)

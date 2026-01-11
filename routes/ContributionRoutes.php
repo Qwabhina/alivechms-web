@@ -10,11 +10,12 @@
  * - View single contribution
  * - Paginated listing with powerful filtering
  * - Totals reporting
+ * - Contribution type CRUD
  *
  * All operations strictly permission-controlled.
  *
  * @package  AliveChMS\Routes
- * @version  1.0.0
+ * @version  1.1.0
  * @author   Benjamin Ebo Yankson
  * @since    2025-November
  */
@@ -22,6 +23,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Contribution.php';
+require_once __DIR__ . '/../core/ContributionType.php';
 require_once __DIR__ . '/../core/ResponseHelper.php';
 
 class ContributionRoutes extends BaseRoute
@@ -141,7 +143,8 @@ class ContributionRoutes extends BaseRoute
                 self::authenticate();
                 self::authorize('view_contribution');
 
-                $result = Contribution::getStats();
+                $fiscalYearId = !empty($_GET['fiscal_year_id']) ? (int)$_GET['fiscal_year_id'] : null;
+                $result = Contribution::getStats($fiscalYearId);
                 ResponseHelper::success($result);
             })(),
 
@@ -150,8 +153,39 @@ class ContributionRoutes extends BaseRoute
                 self::authenticate();
                 self::authorize('view_contribution');
 
-                $result = Contribution::getTypes();
-                ResponseHelper::success(['data' => $result]);
+                $result = ContributionType::getAll();
+                ResponseHelper::success($result['data']);
+            })(),
+
+            // CREATE CONTRIBUTION TYPE
+            $method === 'POST' && $path === 'contribution/type/create' => (function () {
+                self::authenticate();
+                self::authorize('manage_contribution_types');
+
+                $payload = self::getPayload();
+                $result = ContributionType::create($payload);
+                ResponseHelper::created($result, 'Contribution type created');
+            })(),
+
+            // UPDATE CONTRIBUTION TYPE
+            $method === 'PUT' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'type' && ($pathParts[2] ?? '') === 'update' && isset($pathParts[3]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('manage_contribution_types');
+
+                $typeId = self::getIdFromPath($pathParts, 3, 'Contribution Type ID');
+                $payload = self::getPayload();
+                $result = ContributionType::update($typeId, $payload);
+                ResponseHelper::success($result, 'Contribution type updated');
+            })(),
+
+            // DELETE CONTRIBUTION TYPE
+            $method === 'DELETE' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'type' && ($pathParts[2] ?? '') === 'delete' && isset($pathParts[3]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('manage_contribution_types');
+
+                $typeId = self::getIdFromPath($pathParts, 3, 'Contribution Type ID');
+                $result = ContributionType::delete($typeId);
+                ResponseHelper::success($result, 'Contribution type deleted');
             })(),
 
             // GET PAYMENT OPTIONS
@@ -161,6 +195,29 @@ class ContributionRoutes extends BaseRoute
 
                 $result = Contribution::getPaymentOptions();
                 ResponseHelper::success(['data' => $result]);
+            })(),
+
+            // GET CONTRIBUTION RECEIPT
+            $method === 'GET' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'receipt' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
+
+                $result = Contribution::getReceipt($contributionId);
+                ResponseHelper::success($result);
+            })(),
+
+            // GET MEMBER CONTRIBUTION STATEMENT
+            $method === 'GET' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'statement' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
+                $fiscalYearId = !empty($_GET['fiscal_year_id']) ? (int)$_GET['fiscal_year_id'] : null;
+
+                $result = Contribution::getMemberStatement($memberId, $fiscalYearId);
+                ResponseHelper::success($result);
             })(),
 
             // FALLBACK

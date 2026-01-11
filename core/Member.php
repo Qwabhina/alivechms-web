@@ -152,7 +152,6 @@ class Member
                 'MbrFirstName'         => $data['first_name'],
                 'MbrFamilyName'        => $data['family_name'],
                 'MbrOtherNames'        => $data['other_names'] ?? null,
-                'MbrFullName'          => $data['first_name']($data['other_names'] ? ' ' . $data['other_names'] : '') . ' ' . $data['family_name'],
                 'MbrGender'            => $data['gender'] ?? 'Other',
                 'MbrEmailAddress'      => $data['email_address'],
                 'MbrResidentialAddress' => $data['address'] ?? null,
@@ -292,27 +291,32 @@ class Member
 
                 // Handle JSON string if not already decoded
                 if (is_string($phoneNumbers)) {
-                    $phoneNumbers = json_decode($phoneNumbers, true) ?? [];
+                    // Decode HTML entities first (FormData can encode quotes as &quot;)
+                    $phoneJson = html_entity_decode($phoneNumbers, ENT_QUOTES, 'UTF-8');
+                    $decoded = json_decode($phoneJson, true);
+                    $phoneNumbers = is_array($decoded) ? $decoded : [];
                 }
 
-                // Ensure it's an array
-                if (is_array($phoneNumbers)) {
-                    // Delete existing phone numbers first
-                    $orm->delete('member_phone', ['MbrID' => $mbrId]);
+                // Ensure it's an array (could be null if json_decode failed)
+                if (!is_array($phoneNumbers)) {
+                    $phoneNumbers = [];
+                }
 
-                    // Insert new phone numbers
-                    foreach ($phoneNumbers as $index => $phone) {
-                        $phone = is_string($phone) ? trim($phone) : '';
-                        if ($phone === '') {
-                            continue;
-                        }
-                        $isPrimary = $index === 0 ? 1 : 0;
-                        $orm->insert('member_phone', [
-                            'MbrID'       => $mbrId,
-                            'PhoneNumber' => $phone,
-                            'IsPrimary'   => $isPrimary
-                        ]);
+                // Delete existing phone numbers first
+                $orm->delete('member_phone', ['MbrID' => $mbrId]);
+
+                // Insert new phone numbers
+                foreach ($phoneNumbers as $index => $phone) {
+                    $phone = is_string($phone) ? trim($phone) : '';
+                    if ($phone === '') {
+                        continue;
                     }
+                    $isPrimary = $index === 0 ? 1 : 0;
+                    $orm->insert('member_phone', [
+                        'MbrID'       => $mbrId,
+                        'PhoneNumber' => $phone,
+                        'IsPrimary'   => $isPrimary
+                    ]);
                 }
             }
 
@@ -476,6 +480,7 @@ class Member
 
             // Map frontend column names to database columns
             $columnMap = [
+                'MbrFullName' => 'CONCAT_WS(c.MbrFirstName, c.MbrOtherNames, c.MbrFamilyName)',
                 'MbrFirstName' => 'c.MbrFirstName',
                 'MbrFamilyName' => 'c.MbrFamilyName',
                 'MbrRegistrationDate' => 'c.MbrRegistrationDate',

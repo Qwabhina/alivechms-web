@@ -86,8 +86,8 @@ class ExpenseCategoryRoutes extends BaseRoute
             ResponseHelper::success($category);
          })(),
 
-         // LIST ALL EXPENSE CATEGORIES
-         $method === 'GET' && $path === 'expensecategory/all' => (function () {
+         // LIST ALL EXPENSE CATEGORIES (also handle expense-category path)
+         $method === 'GET' && ($path === 'expensecategory/all' || $path === 'expense-category/all') => (function () {
             self::authenticate();
             self::authorize('view_expense');
 

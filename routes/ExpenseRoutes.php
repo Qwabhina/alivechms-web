@@ -85,6 +85,16 @@ class ExpenseRoutes extends BaseRoute
             ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
          })(),
 
+         // GET EXPENSE STATISTICS
+         $method === 'GET' && $path === 'expense/stats' => (function () {
+            self::authenticate();
+            self::authorize('view_expenses');
+
+            $fiscalYearId = !empty($_GET['fiscal_year_id']) ? (int)$_GET['fiscal_year_id'] : null;
+            $result = Expense::getStats($fiscalYearId);
+            ResponseHelper::success($result);
+         })(),
+
          // REVIEW EXPENSE (Approve/Reject)
          $method === 'POST' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'review' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
@@ -118,6 +128,32 @@ class ExpenseRoutes extends BaseRoute
 
             $result = Expense::cancel($expenseId, $payload['reason']);
             ResponseHelper::success($result, 'Expense cancelled');
+         })(),
+
+         // UPLOAD PROOF FILE
+         $method === 'POST' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'upload-proof' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('create_expense');
+
+            $expenseId = self::getIdFromPath($pathParts, 2, 'Expense ID');
+
+            if (empty($_FILES['proof'])) {
+               ResponseHelper::error('No file uploaded', 400);
+            }
+
+            $result = Expense::uploadProof($expenseId, $_FILES['proof']);
+            ResponseHelper::success($result, 'Proof file uploaded');
+         })(),
+
+         // DELETE PROOF FILE
+         $method === 'DELETE' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'delete-proof' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('create_expense');
+
+            $expenseId = self::getIdFromPath($pathParts, 2, 'Expense ID');
+
+            $result = Expense::deleteProof($expenseId);
+            ResponseHelper::success($result, 'Proof file deleted');
          })(),
 
          // FALLBACK

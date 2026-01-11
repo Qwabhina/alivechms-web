@@ -117,6 +117,7 @@ global $method, $path, $pathParts;
 $routes = [
     'auth'            => 'AuthRoutes.php',
     'audit'           => 'AuditRoutes.php',
+    'branch'          => 'BranchRoutes.php',
     'member'          => 'MemberRoutes.php',
     'family'          => 'FamilyRoutes.php',
     'contribution'    => 'ContributionRoutes.php',

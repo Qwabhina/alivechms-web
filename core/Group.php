@@ -44,17 +44,17 @@ class Group
          'Deleted'            => 0
       ]);
       if (empty($leader)) {
-         Helpers::sendFeedback('Invalid or inactive group leader', 400);
+         ResponseHelper::error('Invalid or inactive group leader', 400);
       }
 
       // Validate group type
       if (empty($orm->getWhere('grouptype', ['GroupTypeID' => $typeId]))) {
-         Helpers::sendFeedback('Invalid group type', 400);
+         ResponseHelper::error('Invalid group type', 400);
       }
 
       // Check duplicate name
       if (!empty($orm->getWhere('churchgroup', ['GroupName' => $data['name']]))) {
-         Helpers::sendFeedback('Group name already exists', 400);
+         ResponseHelper::error('Group name already exists', 400);
       }
 
       $orm->beginTransaction();
@@ -97,14 +97,14 @@ class Group
 
       $group = $orm->getWhere('churchgroup', ['GroupID' => $groupId]);
       if (empty($group)) {
-         Helpers::sendFeedback('Group not found', 404);
+         ResponseHelper::error('Group not found', 404);
       }
 
       $update = [];
 
       if (!empty($data['name'])) {
          if (!empty($orm->getWhere('churchgroup', ['GroupName' => $data['name'], 'GroupID!=' => $groupId]))) {
-            Helpers::sendFeedback('Group name already exists', 400);
+            ResponseHelper::error('Group name already exists', 400);
          }
          $update['GroupName'] = $data['name'];
       }
@@ -116,14 +116,14 @@ class Group
             'Deleted'            => 0
          ]);
          if (empty($leader)) {
-            Helpers::sendFeedback('Invalid or inactive leader', 400);
+            ResponseHelper::error('Invalid or inactive leader', 400);
          }
          $update['GroupLeaderID'] = (int)$data['leader_id'];
       }
 
       if (!empty($data['type_id'])) {
          if (empty($orm->getWhere('grouptype', ['GroupTypeID' => (int)$data['type_id']]))) {
-            Helpers::sendFeedback('Invalid group type', 400);
+            ResponseHelper::error('Invalid group type', 400);
          }
          $update['GroupTypeID'] = (int)$data['type_id'];
       }
@@ -151,14 +151,14 @@ class Group
 
       $group = $orm->getWhere('churchgroup', ['GroupID' => $groupId]);
       if (empty($group)) {
-         Helpers::sendFeedback('Group not found', 404);
+         ResponseHelper::error('Group not found', 404);
       }
 
       $members   = $orm->getWhere('groupmember', ['GroupID' => $groupId]);
       $messages  = $orm->getWhere('communication', ['TargetGroupID' => $groupId]);
 
       if (!empty($members) || !empty($messages)) {
-         Helpers::sendFeedback('Cannot delete group with members or messages', 400);
+         ResponseHelper::error('Cannot delete group with members or messages', 400);
       }
 
       $orm->delete('churchgroup', ['GroupID' => $groupId]);
@@ -193,7 +193,7 @@ class Group
       );
 
       if (empty($result)) {
-         Helpers::sendFeedback('Group not found', 404);
+         ResponseHelper::error('Group not found', 404);
       }
 
       return $result[0];
@@ -302,7 +302,7 @@ class Group
 
       $group = $orm->getWhere('churchgroup', ['GroupID' => $groupId]);
       if (empty($group)) {
-         Helpers::sendFeedback('Group not found', 404);
+         ResponseHelper::error('Group not found', 404);
       }
 
       $member = $orm->getWhere('churchmember', [
@@ -311,12 +311,12 @@ class Group
          'Deleted'            => 0
       ]);
       if (empty($member)) {
-         Helpers::sendFeedback('Invalid or inactive member', 400);
+         ResponseHelper::error('Invalid or inactive member', 400);
       }
 
       $existing = $orm->getWhere('groupmember', ['GroupID' => $groupId, 'MbrID' => $memberId]);
       if (!empty($existing)) {
-         Helpers::sendFeedback('Member already in group', 400);
+         ResponseHelper::error('Member already in group', 400);
       }
 
       $orm->insert('groupmember', [
@@ -341,16 +341,16 @@ class Group
 
       $group = $orm->getWhere('churchgroup', ['GroupID' => $groupId]);
       if (empty($group)) {
-         Helpers::sendFeedback('Group not found', 404);
+         ResponseHelper::error('Group not found', 404);
       }
 
       if ($memberId === (int)$group[0]['GroupLeaderID']) {
-         Helpers::sendFeedback('Cannot remove group leader', 400);
+         ResponseHelper::error('Cannot remove group leader', 400);
       }
 
       $existing = $orm->getWhere('groupmember', ['GroupID' => $groupId, 'MbrID' => $memberId]);
       if (empty($existing)) {
-         Helpers::sendFeedback('Member not in group', 400);
+         ResponseHelper::error('Member not in group', 400);
       }
 
       $orm->delete('groupmember', ['GroupID' => $groupId, 'MbrID' => $memberId]);

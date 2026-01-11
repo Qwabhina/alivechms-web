@@ -7,7 +7,7 @@
  * status tracking, fulfillment detection, and reporting.
  *
  * @package  AliveChMS\Core
- * @version  1.0.0
+ * @version  1.1.0
  * @author   Benjamin Ebo Yankson
  * @since    2025-November
  */
@@ -19,6 +19,145 @@ class Pledge
    private const STATUS_ACTIVE     = 'Active';
    private const STATUS_FULFILLED  = 'Fulfilled';
    private const STATUS_CANCELLED  = 'Cancelled';
+
+   /**
+    * Get pledge statistics for a fiscal year
+    */
+   public static function getStats(?int $fiscalYearId = null): array
+   {
+      $orm = new ORM();
+
+      // Get fiscal year
+      if ($fiscalYearId) {
+         $fy = $orm->runQuery(
+            "SELECT FiscalYearID, FiscalYearName, Status FROM fiscalyear WHERE FiscalYearID = :id",
+            [':id' => $fiscalYearId]
+         );
+      } else {
+         $fy = $orm->runQuery(
+            "SELECT FiscalYearID, FiscalYearName, Status FROM fiscalyear WHERE Status = 'Active' LIMIT 1"
+         );
+      }
+
+      $fiscalYear = $fy[0] ?? null;
+      $fyId = $fiscalYear['FiscalYearID'] ?? null;
+      $fyCondition = $fyId ? "AND p.FiscalYearID = :fy_id" : "";
+      $fyParams = $fyId ? [':fy_id' => $fyId] : [];
+
+      // Total pledges
+      $totalResult = $orm->runQuery(
+         "SELECT COALESCE(SUM(PledgeAmount), 0) AS total, COUNT(*) AS count FROM pledge p WHERE 1=1 $fyCondition",
+         $fyParams
+      )[0];
+
+      // By status
+      $activeResult = $orm->runQuery(
+         "SELECT COALESCE(SUM(PledgeAmount), 0) AS total, COUNT(*) AS count FROM pledge p WHERE PledgeStatus = 'Active' $fyCondition",
+         $fyParams
+      )[0];
+
+      $fulfilledResult = $orm->runQuery(
+         "SELECT COALESCE(SUM(PledgeAmount), 0) AS total, COUNT(*) AS count FROM pledge p WHERE PledgeStatus = 'Fulfilled' $fyCondition",
+         $fyParams
+      )[0];
+
+      $cancelledResult = $orm->runQuery(
+         "SELECT COALESCE(SUM(PledgeAmount), 0) AS total, COUNT(*) AS count FROM pledge p WHERE PledgeStatus = 'Cancelled' $fyCondition",
+         $fyParams
+      )[0];
+
+      // Total payments made
+      $paymentsResult = $orm->runQuery(
+         "SELECT COALESCE(SUM(pp.PaymentAmount), 0) AS total, COUNT(*) AS count 
+          FROM pledge_payment pp 
+          JOIN pledge p ON pp.PledgeID = p.PledgeID 
+          WHERE 1=1 $fyCondition",
+         $fyParams
+      )[0];
+
+      // Outstanding balance (active pledges - payments)
+      $outstandingResult = $orm->runQuery(
+         "SELECT COALESCE(SUM(p.PledgeAmount), 0) - COALESCE((
+            SELECT SUM(pp.PaymentAmount) FROM pledge_payment pp 
+            JOIN pledge p2 ON pp.PledgeID = p2.PledgeID 
+            WHERE p2.PledgeStatus = 'Active' " . ($fyId ? "AND p2.FiscalYearID = :fy_id2" : "") . "
+         ), 0) AS outstanding
+          FROM pledge p WHERE p.PledgeStatus = 'Active' $fyCondition",
+         $fyId ? array_merge($fyParams, [':fy_id2' => $fyId]) : []
+      )[0];
+
+      // By pledge type
+      $byType = $orm->runQuery(
+         "SELECT pt.PledgeTypeID, pt.PledgeTypeName, 
+                 COALESCE(SUM(p.PledgeAmount), 0) AS total, COUNT(p.PledgeID) AS count
+          FROM pledge p
+          JOIN pledge_type pt ON p.PledgeTypeID = pt.PledgeTypeID
+          WHERE 1=1 $fyCondition
+          GROUP BY pt.PledgeTypeID, pt.PledgeTypeName
+          ORDER BY total DESC",
+         $fyParams
+      );
+
+      // Monthly trend
+      $monthlyTrend = $orm->runQuery(
+         "SELECT DATE_FORMAT(PledgeDate, '%Y-%m') AS month,
+                 DATE_FORMAT(PledgeDate, '%b %Y') AS month_label,
+                 COALESCE(SUM(PledgeAmount), 0) AS total, COUNT(*) AS count
+          FROM pledge p
+          WHERE PledgeDate >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH) $fyCondition
+          GROUP BY DATE_FORMAT(PledgeDate, '%Y-%m')
+          ORDER BY month ASC",
+         $fyParams
+      );
+
+      // Top pledgers
+      $topPledgers = $orm->runQuery(
+         "SELECT m.MbrID, m.MbrFirstName, m.MbrFamilyName,
+                 COALESCE(SUM(p.PledgeAmount), 0) AS total_pledged,
+                 COUNT(p.PledgeID) AS pledge_count
+          FROM pledge p
+          JOIN churchmember m ON p.MbrID = m.MbrID
+          WHERE 1=1 $fyCondition
+          GROUP BY m.MbrID, m.MbrFirstName, m.MbrFamilyName
+          ORDER BY total_pledged DESC
+          LIMIT 10",
+         $fyParams
+      );
+
+      // Overdue pledges (active with due date passed)
+      $overdueResult = $orm->runQuery(
+         "SELECT COALESCE(SUM(PledgeAmount), 0) AS total, COUNT(*) AS count 
+          FROM pledge p 
+          WHERE PledgeStatus = 'Active' AND DueDate IS NOT NULL AND DueDate < CURDATE() $fyCondition",
+         $fyParams
+      )[0];
+
+      // Fulfillment rate
+      $totalCount = (int)$totalResult['count'];
+      $fulfilledCount = (int)$fulfilledResult['count'];
+      $fulfillmentRate = $totalCount > 0 ? round(($fulfilledCount / $totalCount) * 100, 1) : 0;
+
+      return [
+         'fiscal_year' => $fiscalYear ? ['id' => $fyId, 'name' => $fiscalYear['FiscalYearName'], 'status' => $fiscalYear['Status']] : null,
+         'total_amount' => (float)$totalResult['total'],
+         'total_count' => $totalCount,
+         'active_amount' => (float)$activeResult['total'],
+         'active_count' => (int)$activeResult['count'],
+         'fulfilled_amount' => (float)$fulfilledResult['total'],
+         'fulfilled_count' => $fulfilledCount,
+         'cancelled_amount' => (float)$cancelledResult['total'],
+         'cancelled_count' => (int)$cancelledResult['count'],
+         'payments_total' => (float)$paymentsResult['total'],
+         'payments_count' => (int)$paymentsResult['count'],
+         'outstanding_amount' => (float)$outstandingResult['outstanding'],
+         'overdue_amount' => (float)$overdueResult['total'],
+         'overdue_count' => (int)$overdueResult['count'],
+         'fulfillment_rate' => $fulfillmentRate,
+         'by_type' => $byType,
+         'monthly_trend' => $monthlyTrend,
+         'top_pledgers' => $topPledgers
+      ];
+   }
 
    /**
     * Create a new pledge
@@ -47,7 +186,7 @@ class Pledge
       $amount       = (float)$data['amount'];
 
       if ($amount <= 0) {
-         Helpers::sendFeedback('Pledge amount must be greater than zero', 400);
+         ResponseHelper::error('Pledge amount must be greater than zero', 400);
       }
 
       // Validate foreign keys
@@ -59,9 +198,9 @@ class Pledge
          [':mid' => $memberId, ':tid' => $typeId, ':fyid' => $fiscalYearId]
       )[0];
 
-      if ($valid['member_ok'] == 0) Helpers::sendFeedback('Invalid member', 400);
-      if ($valid['type_ok'] == 0)   Helpers::sendFeedback('Invalid pledge type', 400);
-      if ($valid['fy_ok'] == 0)     Helpers::sendFeedback('Invalid fiscal year', 400);
+      if ($valid['member_ok'] == 0) ResponseHelper::error('Invalid member', 400);
+      if ($valid['type_ok'] == 0)   ResponseHelper::error('Invalid pledge type', 400);
+      if ($valid['fy_ok'] == 0)     ResponseHelper::error('Invalid fiscal year', 400);
 
       $pledgeId = $orm->insert('pledge', [
          'MbrID'          => $memberId,
@@ -94,7 +233,7 @@ class Pledge
 
       $pledge = $orm->getWhere('pledge', ['PledgeID' => $pledgeId, 'PledgeStatus' => self::STATUS_ACTIVE])[0] ?? null;
       if (!$pledge) {
-         Helpers::sendFeedback('Active pledge not found', 404);
+         ResponseHelper::error('Active pledge not found', 404);
       }
 
       Helpers::validateInput($data, [
@@ -105,7 +244,7 @@ class Pledge
 
       $paymentAmount = (float)$data['amount'];
       if ($paymentAmount <= 0) {
-         Helpers::sendFeedback('Payment amount must be greater than zero', 400);
+         ResponseHelper::error('Payment amount must be greater than zero', 400);
       }
 
       $orm->beginTransaction();
@@ -159,15 +298,15 @@ class Pledge
 
       $pledge = $orm->getWhere('pledge', ['PledgeID' => $pledgeId])[0] ?? null;
       if (!$pledge) {
-         Helpers::sendFeedback('Pledge not found', 404);
+         ResponseHelper::error('Pledge not found', 404);
       }
 
       if ($pledge['PledgeStatus'] === self::STATUS_FULFILLED) {
-         Helpers::sendFeedback('Cannot modify a fulfilled pledge', 400);
+         ResponseHelper::error('Cannot modify a fulfilled pledge', 400);
       }
 
       if ($pledge['PledgeStatus'] === self::STATUS_CANCELLED) {
-         Helpers::sendFeedback('Cannot modify a cancelled pledge', 400);
+         ResponseHelper::error('Cannot modify a cancelled pledge', 400);
       }
 
       $update = [];
@@ -176,7 +315,7 @@ class Pledge
       if (isset($data['amount'])) {
          $newAmount = (float)$data['amount'];
          if ($newAmount <= 0) {
-            Helpers::sendFeedback('Pledge amount must be greater than zero', 400);
+            ResponseHelper::error('Pledge amount must be greater than zero', 400);
          }
 
          $paid = $orm->runQuery(
@@ -185,7 +324,7 @@ class Pledge
          )[0]['paid'];
 
          if ($paid > 0 && $newAmount < $paid) {
-            Helpers::sendFeedback('Cannot reduce amount below total paid', 400);
+            ResponseHelper::error('Cannot reduce amount below total paid', 400);
          }
 
          $update['PledgeAmount'] = $newAmount;
@@ -206,7 +345,7 @@ class Pledge
       if (!empty($data['pledge_type_id'])) {
          $typeExists = $orm->getWhere('pledge_type', ['PledgeTypeID' => (int)$data['pledge_type_id']]);
          if (empty($typeExists)) {
-            Helpers::sendFeedback('Invalid pledge type', 400);
+            ResponseHelper::error('Invalid pledge type', 400);
          }
          $update['PledgeTypeID'] = (int)$data['pledge_type_id'];
       }
@@ -236,137 +375,180 @@ class Pledge
 
    /**
     * Retrieve a single pledge with payment progress
-    *
-    * @param int $pledgeId Pledge ID
-    * @return array Pledge details with payments
     */
    public static function get(int $pledgeId): array
    {
       $orm = new ORM();
 
-      $result = $orm->selectWithJoin(
-         baseTable: 'pledge p',
-         joins: [
-            ['table' => 'churchmember m',  'on' => 'p.MbrID = m.MbrID'],
-            ['table' => 'pledge_type pt',  'on' => 'p.PledgeTypeID = pt.PledgeTypeID'],
-            ['table' => 'fiscalyear fy',   'on' => 'p.FiscalYearID = fy.FiscalYearID']
-         ],
-         fields: [
-            'p.*',
-            'm.MbrFirstName',
-            'm.MbrFamilyName',
-            'pt.PledgeTypeName',
-            'fy.YearName AS FiscalYear'
-         ],
-         conditions: ['p.PledgeID' => ':id'],
-         params: [':id' => $pledgeId]
+      $result = $orm->runQuery(
+         "SELECT p.*, 
+                 m.MbrFirstName, m.MbrFamilyName,
+                 pt.PledgeTypeName,
+                 fy.FiscalYearName,
+                 c.MbrFirstName AS CreatorFirstName, c.MbrFamilyName AS CreatorFamilyName
+          FROM pledge p
+          JOIN churchmember m ON p.MbrID = m.MbrID
+          JOIN pledge_type pt ON p.PledgeTypeID = pt.PledgeTypeID
+          JOIN fiscalyear fy ON p.FiscalYearID = fy.FiscalYearID
+          LEFT JOIN churchmember c ON p.CreatedBy = c.MbrID
+          WHERE p.PledgeID = :id",
+         [':id' => $pledgeId]
       );
 
       if (empty($result)) {
-         Helpers::sendFeedback('Pledge not found', 404);
+         ResponseHelper::error('Pledge not found', 404);
       }
 
-      $payments = $orm->getWhere('pledge_payment', ['PledgeID' => $pledgeId]);
+      $payments = $orm->runQuery(
+         "SELECT pp.*, r.MbrFirstName AS RecorderFirstName, r.MbrFamilyName AS RecorderFamilyName
+          FROM pledge_payment pp
+          LEFT JOIN churchmember r ON pp.RecordedBy = r.MbrID
+          WHERE pp.PledgeID = :id
+          ORDER BY pp.PaymentDate DESC",
+         [':id' => $pledgeId]
+      );
+
       $totalPaid = array_sum(array_column($payments, 'PaymentAmount'));
 
       $pledge = $result[0];
-      $pledge['total_paid'] = $totalPaid;
-      $pledge['balance']    = (float)$pledge['PledgeAmount'] - $totalPaid;
-      $pledge['payments']   = $payments;
+      $pledgeAmount = (float)$pledge['PledgeAmount'];
+      $balance = $pledgeAmount - $totalPaid;
+      $progress = $pledgeAmount > 0 ? round(($totalPaid / $pledgeAmount) * 100, 1) : 0;
 
-      return $pledge;
+      return [
+         'PledgeID' => $pledge['PledgeID'],
+         'MbrID' => $pledge['MbrID'],
+         'MemberName' => $pledge['MbrFirstName'] . ' ' . $pledge['MbrFamilyName'],
+         'MbrFirstName' => $pledge['MbrFirstName'],
+         'MbrFamilyName' => $pledge['MbrFamilyName'],
+         'PledgeTypeID' => $pledge['PledgeTypeID'],
+         'PledgeTypeName' => $pledge['PledgeTypeName'],
+         'FiscalYearID' => $pledge['FiscalYearID'],
+         'FiscalYearName' => $pledge['FiscalYearName'],
+         'PledgeAmount' => $pledgeAmount,
+         'PledgeDate' => $pledge['PledgeDate'],
+         'DueDate' => $pledge['DueDate'],
+         'PledgeStatus' => $pledge['PledgeStatus'],
+         'Description' => $pledge['Description'],
+         'CreatedBy' => $pledge['CreatedBy'],
+         'CreatorName' => $pledge['CreatorFirstName'] ? $pledge['CreatorFirstName'] . ' ' . $pledge['CreatorFamilyName'] : null,
+         'CreatedAt' => $pledge['CreatedAt'],
+         'total_paid' => $totalPaid,
+         'balance' => $balance,
+         'progress' => $progress,
+         'payments' => $payments
+      ];
    }
 
    /**
     * Retrieve paginated pledges with filters
-    *
-    * @param int   $page    Page number
-    * @param int   $limit   Items per page
-    * @param array $filters Optional filters
-    * @return array Paginated result
     */
    public static function getAll(int $page = 1, int $limit = 10, array $filters = []): array
    {
-      $orm    = new ORM();
+      $orm = new ORM();
       $offset = ($page - 1) * $limit;
 
-      $conditions = [];
-      $params     = [];
+      $where = [];
+      $params = [];
 
       if (!empty($filters['member_id'])) {
-         $conditions['p.MbrID'] = ':mid';
+         $where[] = 'p.MbrID = :mid';
          $params[':mid'] = (int)$filters['member_id'];
       }
       if (!empty($filters['status'])) {
-         $conditions['p.PledgeStatus'] = ':status';
+         $where[] = 'p.PledgeStatus = :status';
          $params[':status'] = $filters['status'];
       }
       if (!empty($filters['fiscal_year_id'])) {
-         $conditions['p.FiscalYearID'] = ':fy';
+         $where[] = 'p.FiscalYearID = :fy';
          $params[':fy'] = (int)$filters['fiscal_year_id'];
       }
+      if (!empty($filters['pledge_type_id'])) {
+         $where[] = 'p.PledgeTypeID = :type';
+         $params[':type'] = (int)$filters['pledge_type_id'];
+      }
+      if (!empty($filters['start_date'])) {
+         $where[] = 'p.PledgeDate >= :start';
+         $params[':start'] = $filters['start_date'];
+      }
+      if (!empty($filters['end_date'])) {
+         $where[] = 'p.PledgeDate <= :end';
+         $params[':end'] = $filters['end_date'];
+      }
 
-      // Build ORDER BY with sorting support
-      $orderBy = ['p.PledgeDate' => 'DESC']; // Default
+      $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+      // Sorting
+      $orderBy = 'p.PledgeDate DESC';
       if (!empty($filters['sort_by'])) {
-         $sortColumn = $filters['sort_by'];
-         $sortDir = strtoupper($filters['sort_dir'] ?? 'DESC');
-
-         // Map frontend column names to database columns
          $columnMap = [
             'PledgeDate' => 'p.PledgeDate',
             'PledgeAmount' => 'p.PledgeAmount',
             'MemberName' => 'm.MbrFirstName',
             'PledgeStatus' => 'p.PledgeStatus',
-            'date' => 'p.PledgeDate',
-            'amount' => 'p.PledgeAmount',
-            'member' => 'm.MbrFirstName',
-            'status' => 'p.PledgeStatus'
+            'DueDate' => 'p.DueDate'
          ];
-
-         if (isset($columnMap[$sortColumn])) {
-            $orderBy = [$columnMap[$sortColumn] => ($sortDir === 'ASC' ? 'ASC' : 'DESC')];
-         }
+         $sortCol = $columnMap[$filters['sort_by']] ?? 'p.PledgeDate';
+         $sortDir = strtoupper($filters['sort_dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
+         $orderBy = "$sortCol $sortDir";
       }
 
-      $pledges = $orm->selectWithJoin(
-         baseTable: 'pledge p',
-         joins: [
-            ['table' => 'churchmember m', 'on' => 'p.MbrID = m.MbrID'],
-            ['table' => 'pledge_type pt', 'on' => 'p.PledgeTypeID = pt.PledgeTypeID'],
-            ['table' => 'fiscalyear fy',  'on' => 'p.FiscalYearID = fy.FiscalYearID']
-         ],
-         fields: [
-            'p.PledgeID',
-            'p.PledgeAmount',
-            'p.PledgeDate',
-            'p.DueDate',
-            'p.PledgeStatus',
-            'm.MbrFirstName',
-            'm.MbrFamilyName',
-            'pt.PledgeTypeName',
-            'fy.FiscalYearName'
-         ],
-         conditions: $conditions,
-         params: $params,
-         orderBy: $orderBy,
-         limit: $limit,
-         offset: $offset
+      $pledges = $orm->runQuery(
+         "SELECT p.PledgeID, p.PledgeAmount, p.PledgeDate, p.DueDate, p.PledgeStatus, p.Description,
+                 p.MbrID, m.MbrFirstName, m.MbrFamilyName,
+                 p.PledgeTypeID, pt.PledgeTypeName,
+                 p.FiscalYearID, fy.FiscalYearName,
+                 COALESCE((SELECT SUM(PaymentAmount) FROM pledge_payment WHERE PledgeID = p.PledgeID), 0) AS TotalPaid
+          FROM pledge p
+          JOIN churchmember m ON p.MbrID = m.MbrID
+          JOIN pledge_type pt ON p.PledgeTypeID = pt.PledgeTypeID
+          JOIN fiscalyear fy ON p.FiscalYearID = fy.FiscalYearID
+          $whereClause
+          ORDER BY $orderBy
+          LIMIT :limit OFFSET :offset",
+         array_merge($params, [':limit' => $limit, ':offset' => $offset])
       );
 
+      // Calculate balance and progress for each pledge
+      $mapped = array_map(function ($p) {
+         $amount = (float)$p['PledgeAmount'];
+         $paid = (float)$p['TotalPaid'];
+         $balance = $amount - $paid;
+         $progress = $amount > 0 ? round(($paid / $amount) * 100, 1) : 0;
+
+         return [
+            'PledgeID' => $p['PledgeID'],
+            'MbrID' => $p['MbrID'],
+            'MemberName' => $p['MbrFirstName'] . ' ' . $p['MbrFamilyName'],
+            'MbrFirstName' => $p['MbrFirstName'],
+            'MbrFamilyName' => $p['MbrFamilyName'],
+            'PledgeTypeID' => $p['PledgeTypeID'],
+            'PledgeTypeName' => $p['PledgeTypeName'],
+            'FiscalYearID' => $p['FiscalYearID'],
+            'FiscalYearName' => $p['FiscalYearName'],
+            'PledgeAmount' => $amount,
+            'PledgeDate' => $p['PledgeDate'],
+            'DueDate' => $p['DueDate'],
+            'PledgeStatus' => $p['PledgeStatus'],
+            'Description' => $p['Description'],
+            'TotalPaid' => $paid,
+            'Balance' => $balance,
+            'Progress' => $progress
+         ];
+      }, $pledges);
+
       $total = $orm->runQuery(
-         "SELECT COUNT(*) AS total FROM pledge p" .
-            (!empty($conditions) ? ' WHERE ' . implode(' AND ', array_keys($conditions)) : ''),
+         "SELECT COUNT(*) AS total FROM pledge p $whereClause",
          $params
       )[0]['total'];
 
       return [
-         'data' => $pledges,
+         'data' => $mapped,
          'pagination' => [
-            'page'   => $page,
-            'limit'  => $limit,
-            'total'  => (int)$total,
-            'pages'  => (int)ceil($total / $limit)
+            'page' => $page,
+            'limit' => $limit,
+            'total' => (int)$total,
+            'pages' => (int)ceil($total / $limit)
          ]
       ];
    }

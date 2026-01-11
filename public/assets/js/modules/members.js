@@ -16,7 +16,7 @@
    const State = {
       membersTable: null,
       currentStep: 0,
-      totalSteps: 5,
+      totalSteps: 3,
       currentMemberId: null,
       isEditMode: false,
       profilePictureFile: null,
@@ -552,8 +552,10 @@
          updateStepperUI();
 
          // Initialize selects when reaching their steps
-         if (State.currentStep === 3) initFamilySelect();
-         if (State.currentStep === 4) initRoleSelect();
+         // Step 1 now has Family select (was step 3)
+         if (State.currentStep === 1) initFamilySelect();
+         // Step 2 now has Role select (was step 4)
+         if (State.currentStep === 2) initRoleSelect();
       }
    }
 
@@ -677,6 +679,20 @@
       // Login toggle
       document.getElementById('enableLogin')?.addEventListener('change', (e) => {
          document.getElementById('loginFields').classList.toggle('d-none', !e.target.checked);
+         document.getElementById('noLoginMessage')?.classList.toggle('d-none', e.target.checked);
+      });
+
+      // Password visibility toggle
+      document.getElementById('togglePassword')?.addEventListener('click', () => {
+         const passwordInput = document.getElementById('password');
+         const toggleBtn = document.getElementById('togglePassword');
+         if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleBtn.innerHTML = '<i class="bi bi-eye-slash"></i>';
+         } else {
+            passwordInput.type = 'password';
+            toggleBtn.innerHTML = '<i class="bi bi-eye"></i>';
+         }
       });
 
       // Edit from view modal
@@ -761,6 +777,7 @@
       row.className = 'phone-row mb-2';
       row.innerHTML = `
          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-telephone"></i></span>
             <input type="text" class="form-control phone-input" placeholder="e.g., 0241234567">
             <button type="button" class="btn btn-outline-danger remove-phone">
                <i class="bi bi-trash"></i>
@@ -823,25 +840,28 @@
       document.getElementById('removePhotoBtn').classList.add('d-none');
       document.getElementById('loginFields').classList.add('d-none');
       document.getElementById('enableLogin').checked = false;
+      document.getElementById('noLoginMessage')?.classList.remove('d-none');
 
-      document.getElementById('familySelect').innerHTML = '<option value="">No Family</option>';
-      document.getElementById('roleSelect').innerHTML = '<option value="">Select Role</option>';
+      document.getElementById('familySelect').innerHTML = '<option value="">No Family Assignment</option>';
+      document.getElementById('roleSelect').innerHTML = '<option value="">Select a role</option>';
 
       document.getElementById('phoneContainer').innerHTML = `
          <div class="phone-row mb-2">
             <div class="input-group">
+               <span class="input-group-text"><i class="bi bi-telephone"></i></span>
                <input type="text" class="form-control phone-input" placeholder="e.g., 0241234567">
-               <button type="button" class="btn btn-outline-danger remove-phone d-none">
-                  <i class="bi bi-trash"></i>
-               </button>
+               <span class="input-group-text bg-success text-white" title="Primary">
+                  <i class="bi bi-star-fill" style="font-size: 0.7rem;"></i>
+               </span>
             </div>
          </div>
       `;
 
       updateStepperUI();
 
-      document.getElementById('memberModalTitle').textContent = 
-         State.isEditMode ? 'Edit Member' : 'Add New Member';
+      document.getElementById('memberModalTitle').innerHTML = State.isEditMode 
+         ? '<i class="bi bi-pencil-square me-2"></i>Edit Member' 
+         : '<i class="bi bi-person-plus me-2"></i>Add New Member';
 
       const modal = new bootstrap.Modal(document.getElementById('memberModal'));
       modal.show();
@@ -885,14 +905,28 @@
             member.phones.forEach((phone, idx) => {
                const row = document.createElement('div');
                row.className = 'phone-row mb-2';
-               row.innerHTML = `
-                  <div class="input-group">
-                     <input type="text" class="form-control phone-input" value="${phone.PhoneNumber}" placeholder="e.g., 0241234567">
-                     <button type="button" class="btn btn-outline-danger remove-phone ${idx === 0 ? 'd-none' : ''}">
-                        <i class="bi bi-trash"></i>
-                     </button>
-                  </div>
-               `;
+               if (idx === 0) {
+                  // First phone is primary
+                  row.innerHTML = `
+                     <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                        <input type="text" class="form-control phone-input" value="${phone.PhoneNumber}" placeholder="e.g., 0241234567">
+                        <span class="input-group-text bg-success text-white" title="Primary">
+                           <i class="bi bi-star-fill" style="font-size: 0.7rem;"></i>
+                        </span>
+                     </div>
+                  `;
+               } else {
+                  row.innerHTML = `
+                     <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                        <input type="text" class="form-control phone-input" value="${phone.PhoneNumber}" placeholder="e.g., 0241234567">
+                        <button type="button" class="btn btn-outline-danger remove-phone">
+                           <i class="bi bi-trash"></i>
+                        </button>
+                     </div>
+                  `;
+               }
                container.appendChild(row);
             });
          }
