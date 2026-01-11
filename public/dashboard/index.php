@@ -59,16 +59,16 @@
             <div class="mt-3">
                <div class="d-flex justify-content-between mb-2">
                   <span class="text-muted">Income:</span>
-                  <strong class="text-success" id="totalIncome">₵0.00</strong>
+                  <strong class="text-success" id="totalIncome">-</strong>
                </div>
                <div class="d-flex justify-content-between mb-2">
                   <span class="text-muted">Expenses:</span>
-                  <strong class="text-danger" id="totalExpenses">₵0.00</strong>
+                  <strong class="text-danger" id="totalExpenses">-</strong>
                </div>
                <hr>
                <div class="d-flex justify-content-between">
                   <span class="fw-bold">Net:</span>
-                  <strong id="netBalance">₵0.00</strong>
+                  <strong id="netBalance">-</strong>
                </div>
             </div>
          </div>
@@ -287,13 +287,18 @@
          financeChart.destroy();
       }
 
-      const income = data.income.toFixed(2);
-      const expenses = data.expenses.toFixed(2);
-      const net = data.net.toFixed(2);
-      console.log({
-         income,
-         expenses,
-         net
+      // Safely parse numeric values with fallbacks
+      const income = parseFloat(data.income || 0);
+      const expenses = parseFloat(data.expenses || 0);
+      const net = parseFloat(data.net || (income - expenses));
+
+      console.log('Finance data:', {
+         raw: data,
+         parsed: {
+            income,
+            expenses,
+            net
+         }
       });
 
       // Update text values

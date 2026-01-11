@@ -117,7 +117,7 @@ class Role
       }
 
       // Check if role is assigned to any member
-      $assigned = $orm->getWhere('churchmember', ['ChurchRoleID' => $roleId]);
+      $assigned = $orm->getWhere('memberrole', ['ChurchRoleID' => $roleId]);
       if (!empty($assigned)) {
          Helpers::sendFeedback('Cannot delete role assigned to one or more members', 400);
       }
@@ -232,7 +232,7 @@ class Role
    /**
     * Retrieve all roles with their permissions
     *
-    * @return array{data:array} List of all roles with nested permissions
+    * @return array List of all roles with nested permissions
     */
    public static function getAll(): array
    {
@@ -244,7 +244,7 @@ class Role
             ['table' => 'rolepermission rp', 'on' => 'r.RoleID = rp.ChurchRoleID', 'type' => 'LEFT'],
             ['table' => 'permission p',      'on' => 'rp.PermissionID = p.PermissionID', 'type' => 'LEFT']
          ],
-         fields: ['r.RoleID', 'r.RoleName', 'r.Description', 'p.PermissionID', 'p.PermissionName'],
+         fields: ['r.RoleID', 'r.RoleName', 'p.PermissionID', 'p.PermissionName'],
          orderBy: ['r.RoleName' => 'ASC']
       );
 
@@ -253,21 +253,20 @@ class Role
          $id = $row['RoleID'];
          if (!isset($roles[$id])) {
             $roles[$id] = [
-               'role_id'     => $id,
-               'role_name'   => $row['RoleName'],
-               'description' => $row['Description'],
+               'RoleID'      => $id,
+               'RoleName'    => $row['RoleName'],
                'permissions' => []
             ];
          }
          if ($row['PermissionID']) {
             $roles[$id]['permissions'][] = [
-               'permission_id'   => (int)$row['PermissionID'],
-               'permission_name' => $row['PermissionName']
+               'PermissionID'   => (int)$row['PermissionID'],
+               'PermissionName' => $row['PermissionName']
             ];
          }
       }
 
-      return ['data' => array_values($roles)];
+      return array_values($roles);
    }
 
    /**

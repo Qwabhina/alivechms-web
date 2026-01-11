@@ -4,16 +4,16 @@
  * Pledge API Routes – v1
  *
  * Complete pledge management:
- * - Create pledge
+ * - Create/update pledge
  * - View single pledge with payment history
  * - List pledges with filters
  * - Record payment
- * - Track fulfillment progress (percentage, balance, status)
- *
- * All operations fully permission-controlled.
+ * - Track fulfillment progress
+ * - Pledge types CRUD
+ * - Statistics
  *
  * @package  AliveChMS\Routes
- * @version  1.0.0
+ * @version  1.1.0
  * @author   Benjamin Ebo Yankson
  * @since    2025-November
  */
@@ -21,119 +21,120 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Pledge.php';
+require_once __DIR__ . '/../core/PledgeType.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
-// ---------------------------------------------------------------------
-// AUTHENTICATION & AUTHORIZATION
-// ---------------------------------------------------------------------
-$token = Auth::getBearerToken();
-if (!$token || Auth::verify($token) === false) {
-   Helpers::sendFeedback('Unauthorized: Valid token required', 401);
+class PledgeRoutes extends BaseRoute
+{
+   public static function handle(): void
+   {
+      global $method, $path, $pathParts;
+
+      self::rateLimit(maxAttempts: 60, windowSeconds: 60);
+
+      match (true) {
+         // CREATE PLEDGE
+         $method === 'POST' && $path === 'pledge/create' => (function () {
+            self::authenticate();
+            self::authorize('manage_pledges');
+            $payload = self::getPayload();
+            $result = Pledge::create($payload);
+            ResponseHelper::created($result, 'Pledge created');
+         })(),
+
+         // UPDATE PLEDGE
+         $method === 'PUT' && $pathParts[0] === 'pledge' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('manage_pledges');
+            $pledgeId = self::getIdFromPath($pathParts, 2, 'Pledge ID');
+            $payload = self::getPayload();
+            $result = Pledge::update($pledgeId, $payload);
+            ResponseHelper::success($result, 'Pledge updated');
+         })(),
+
+         // VIEW SINGLE PLEDGE
+         $method === 'GET' && $pathParts[0] === 'pledge' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('view_pledges');
+            $pledgeId = self::getIdFromPath($pathParts, 2, 'Pledge ID');
+            $pledge = Pledge::get($pledgeId);
+            ResponseHelper::success($pledge);
+         })(),
+
+         // LIST ALL PLEDGES
+         $method === 'GET' && $path === 'pledge/all' => (function () {
+            self::authenticate();
+            self::authorize('view_pledges');
+            [$page, $limit] = self::getPagination(10, 100);
+            $filters = self::getFilters(['member_id', 'status', 'fiscal_year_id', 'pledge_type_id', 'start_date', 'end_date', 'search']);
+            [$sortBy, $sortDir] = self::getSorting('PledgeDate', 'DESC', ['PledgeDate', 'PledgeAmount', 'MemberName', 'PledgeStatus', 'DueDate']);
+            $filters['sort_by'] = $sortBy;
+            $filters['sort_dir'] = $sortDir;
+            $result = Pledge::getAll($page, $limit, $filters);
+            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+         })(),
+
+         // GET PLEDGE STATISTICS
+         $method === 'GET' && $path === 'pledge/stats' => (function () {
+            self::authenticate();
+            self::authorize('view_pledges');
+            $fiscalYearId = !empty($_GET['fiscal_year_id']) ? (int)$_GET['fiscal_year_id'] : null;
+            $result = Pledge::getStats($fiscalYearId);
+            ResponseHelper::success($result);
+         })(),
+
+         // RECORD PAYMENT
+         $method === 'POST' && $pathParts[0] === 'pledge' && ($pathParts[1] ?? '') === 'payment' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('record_pledge_payments');
+            $pledgeId = self::getIdFromPath($pathParts, 2, 'Pledge ID');
+            $payload = self::getPayload();
+            $result = Pledge::recordPayment($pledgeId, $payload);
+            ResponseHelper::success($result, 'Payment recorded');
+         })(),
+
+         // === PLEDGE TYPES ===
+
+         // LIST PLEDGE TYPES
+         $method === 'GET' && $path === 'pledge/types' => (function () {
+            self::authenticate();
+            self::authorize('view_pledges');
+            $result = PledgeType::getAll();
+            ResponseHelper::success($result['data']);
+         })(),
+
+         // CREATE PLEDGE TYPE
+         $method === 'POST' && $path === 'pledge/type/create' => (function () {
+            self::authenticate();
+            self::authorize('manage_pledge_types');
+            $payload = self::getPayload();
+            $result = PledgeType::create($payload);
+            ResponseHelper::created($result, 'Pledge type created');
+         })(),
+
+         // UPDATE PLEDGE TYPE
+         $method === 'PUT' && $pathParts[0] === 'pledge' && ($pathParts[1] ?? '') === 'type' && ($pathParts[2] ?? '') === 'update' && isset($pathParts[3]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('manage_pledge_types');
+            $typeId = self::getIdFromPath($pathParts, 3, 'Pledge Type ID');
+            $payload = self::getPayload();
+            $result = PledgeType::update($typeId, $payload);
+            ResponseHelper::success($result, 'Pledge type updated');
+         })(),
+
+         // DELETE PLEDGE TYPE
+         $method === 'DELETE' && $pathParts[0] === 'pledge' && ($pathParts[1] ?? '') === 'type' && ($pathParts[2] ?? '') === 'delete' && isset($pathParts[3]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('manage_pledge_types');
+            $typeId = self::getIdFromPath($pathParts, 3, 'Pledge Type ID');
+            $result = PledgeType::delete($typeId);
+            ResponseHelper::success($result, 'Pledge type deleted');
+         })(),
+
+         // FALLBACK
+         default => ResponseHelper::notFound('Pledge endpoint not found'),
+      };
+   }
 }
 
-// ---------------------------------------------------------------------
-// ROUTE DISPATCHER
-// ---------------------------------------------------------------------
-match (true) {
-
-   // CREATE PLEDGE
-   $method === 'POST' && $path === 'pledge/create' => (function () use ($token) {
-      Auth::checkPermission($token, 'manage_pledges');
-
-      $payload = json_decode(file_get_contents('php://input'), true);
-      if (!is_array($payload)) {
-         Helpers::sendFeedback('Invalid JSON payload', 400);
-      }
-
-      $result = Pledge::create($payload);
-      echo json_encode($result);
-   })(),
-
-   // VIEW SINGLE PLEDGE (with payments & progress)
-   $method === 'GET' && $pathParts[0] === 'pledge' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($token, $pathParts) {
-      Auth::checkPermission($token, 'view_pledges');
-
-      $pledgeId = $pathParts[2];
-      if (!is_numeric($pledgeId)) {
-         Helpers::sendFeedback('Valid Pledge ID required', 400);
-      }
-
-      $pledge = Pledge::get((int)$pledgeId);
-      echo json_encode($pledge);
-   })(),
-
-   // LIST ALL PLEDGES (Paginated + Filtered)
-   $method === 'GET' && $path === 'pledge/all' => (function () use ($token) {
-      Auth::checkPermission($token, 'view_pledges');
-
-      $page  = max(1, (int)($_GET['page'] ?? 1));
-      $limit = max(1, min(100, (int)($_GET['limit'] ?? 10)));
-
-      $filters = [];
-      foreach (['member_id', 'status', 'fiscal_year_id'] as $key) {
-         if (isset($_GET[$key]) && $_GET[$key] !== '') {
-            $filters[$key] = $_GET[$key];
-         }
-      }
-
-      $result = Pledge::getAll($page, $limit, $filters);
-      echo json_encode($result);
-   })(),
-
-   // RECORD PAYMENT AGAINST PLEDGE
-   $method === 'POST' && $pathParts[0] === 'pledge' && ($pathParts[1] ?? '') === 'payment' && ($pathParts[2] ?? '') === 'add' && isset($pathParts[3]) => (function () use ($token, $pathParts) {
-      Auth::checkPermission($token, 'record_pledge_payments');
-
-      $pledgeId = $pathParts[3];
-      if (!is_numeric($pledgeId)) {
-         Helpers::sendFeedback('Valid Pledge ID required', 400);
-      }
-
-      $payload = json_decode(file_get_contents('php://input'), true);
-      if (!is_array($payload)) {
-         Helpers::sendFeedback('Invalid JSON payload', 400);
-      }
-
-      $result = Pledge::recordPayment((int)$pledgeId, $payload);
-      echo json_encode($result);
-   })(),
-
-   // GET PLEDGE FULFILLMENT PROGRESS (Percentage, Balance, Status)
-   $method === 'GET' && $pathParts[0] === 'pledge' && ($pathParts[1] ?? '') === 'progress' && isset($pathParts[2]) => (function () use ($token, $pathParts) {
-      Auth::checkPermission($token, 'view_pledges');
-
-      $pledgeId = $pathParts[2];
-      if (!is_numeric($pledgeId)) {
-         Helpers::sendFeedback('Valid Pledge ID required', 400);
-      }
-
-      $pledge = Pledge::get((int)$pledgeId);
-
-      $pledgeAmount = (float)$pledge['PledgeAmount'];
-      $totalPaid    = (float)$pledge['total_paid'];
-      $balance      = (float)$pledge['balance'];
-
-      $progress = $pledgeAmount > 0 ? round(($totalPaid / $pledgeAmount) * 100, 2) : 0;
-
-      $status = match (true) {
-         $progress >= 100 => 'Fulfilled',
-         $progress > 0    => 'In Progress',
-         default          => 'Not Started'
-      };
-
-      $result = [
-         'pledge_id'        => (int)$pledge['PledgeID'],
-         'pledge_amount'    => number_format($pledgeAmount, 2),
-         'total_paid'       => number_format($totalPaid, 2),
-         'balance'          => number_format($balance, 2),
-         'progress_percent' => $progress,
-         'status'           => $status,
-         'payments_count'   => count($pledge['payments']),
-         'last_payment_date' => !empty($pledge['payments']) ? $pledge['payments'][0]['PaymentDate'] : null
-      ];
-
-      echo json_encode($result);
-   })(),
-
-   // FALLBACK
-   default => Helpers::sendFeedback('Pledge endpoint not found', 404),
-};
+PledgeRoutes::handle();

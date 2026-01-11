@@ -38,121 +38,107 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Role.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
-// ---------------------------------------------------------------------
-// AUTHENTICATION & AUTHORIZATION
-// ---------------------------------------------------------------------
-$token = Auth::getBearerToken();
-if (!$token || Auth::verify($token) === false) {
-   Helpers::sendFeedback('Unauthorized: Valid token required', 401);
+class RoleRoutes extends BaseRoute
+{
+   public static function handle(): void
+   {
+      // Get route variables from global scope
+      global $method, $path, $pathParts;
+
+      self::rateLimit(maxAttempts: 60, windowSeconds: 60);
+
+      match (true) {
+         // CREATE ROLE
+         $method === 'POST' && $path === 'role/create' => (function () {
+            self::authenticate();
+            self::authorize('manage_roles');
+
+            $payload = self::getPayload();
+
+            $result = Role::create($payload);
+            ResponseHelper::created($result, 'Role created');
+         })(),
+
+         // UPDATE ROLE
+         $method === 'PUT' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('manage_roles');
+
+            $roleId = self::getIdFromPath($pathParts, 2, 'Role ID');
+
+            $payload = self::getPayload();
+
+            $result = Role::update($roleId, $payload);
+            ResponseHelper::success($result, 'Role updated');
+         })(),
+
+         // DELETE ROLE
+         $method === 'DELETE' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('manage_roles');
+
+            $roleId = self::getIdFromPath($pathParts, 2, 'Role ID');
+
+            $result = Role::delete($roleId);
+            ResponseHelper::success($result, 'Role deleted');
+         })(),
+
+         // VIEW SINGLE ROLE (with full permission tree)
+         $method === 'GET' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('view_roles');
+
+            $roleId = self::getIdFromPath($pathParts, 2, 'Role ID');
+
+            $role = Role::get($roleId);
+            ResponseHelper::success($role);
+         })(),
+
+         // LIST ALL ROLES (with permissions) - For dropdowns, no auth required
+         $method === 'GET' && $path === 'role/all' => (function () {
+            self::authenticate(false); // Allow public access for dropdowns
+
+            $result = Role::getAll();
+            ResponseHelper::success($result);
+         })(),
+
+         // ASSIGN PERMISSIONS TO ROLE (Replace All)
+         $method === 'POST' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'permissions' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('manage_roles');
+
+            $roleId = self::getIdFromPath($pathParts, 2, 'Role ID');
+
+            $payload = self::getPayload([
+               'permission_ids' => 'required|array'
+            ]);
+
+            $result = Role::assignPermissions($roleId, $payload['permission_ids']);
+            ResponseHelper::success($result, 'Permissions assigned to role');
+         })(),
+
+         // ASSIGN ROLE TO MEMBER
+         $method === 'POST' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'assign' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('manage_roles');
+
+            $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
+
+            $payload = self::getPayload([
+               'role_id' => 'required|numeric'
+            ]);
+
+            $result = Role::assignToMember($memberId, (int)$payload['role_id']);
+            ResponseHelper::success($result, 'Role assigned to member');
+         })(),
+
+         // FALLBACK
+         default => ResponseHelper::notFound('Role endpoint not found'),
+      };
+   }
 }
 
-// ---------------------------------------------------------------------
-// ROUTE DISPATCHER
-// ---------------------------------------------------------------------
-match (true) {
-
-   // CREATE ROLE
-   $method === 'POST' && $path === 'role/create' => (function () use ($token) {
-      Auth::checkPermission('manage_roles');
-
-      $payload = json_decode(file_get_contents('php://input'), true);
-      if (!is_array($payload)) {
-         Helpers::sendFeedback('Invalid JSON payload', 400);
-      }
-
-      $result = Role::create($payload);
-      echo json_encode($result);
-   })(),
-
-   // UPDATE ROLE
-   $method === 'PUT' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
-      Auth::checkPermission('manage_roles');
-
-      $roleId = $pathParts[2];
-      if (!is_numeric($roleId)) {
-         Helpers::sendFeedback('Valid Role ID required', 400);
-      }
-
-      $payload = json_decode(file_get_contents('php://input'), true);
-      if (!is_array($payload)) {
-         Helpers::sendFeedback('Invalid JSON payload', 400);
-      }
-
-      $result = Role::update((int)$roleId, $payload);
-      echo json_encode($result);
-   })(),
-
-   // DELETE ROLE
-   $method === 'DELETE' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
-      Auth::checkPermission('manage_roles');
-
-      $roleId = $pathParts[2];
-      if (!is_numeric($roleId)) {
-         Helpers::sendFeedback('Valid Role ID required', 400);
-      }
-
-      $result = Role::delete((int)$roleId);
-      echo json_encode($result);
-   })(),
-
-   // VIEW SINGLE ROLE (with full permission tree)
-   $method === 'GET' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
-      Auth::checkPermission('view_roles');
-
-      $roleId = $pathParts[2];
-      if (!is_numeric($roleId)) {
-         Helpers::sendFeedback('Valid Role ID required', 400);
-      }
-
-      $role = Role::get((int)$roleId);
-      echo json_encode($role);
-   })(),
-
-   // LIST ALL ROLES (with permissions)
-   $method === 'GET' && $path === 'role/all' => (function () use ($token) {
-      Auth::checkPermission('view_roles');
-
-      $result = Role::getAll();
-      echo json_encode($result);
-   })(),
-
-   // ASSIGN PERMISSIONS TO ROLE (Replace All)
-   $method === 'POST' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'permissions' && isset($pathParts[2]) => (function () use ($pathParts) {
-      Auth::checkPermission('manage_roles');
-
-      $roleId = $pathParts[2];
-      if (!is_numeric($roleId)) {
-         Helpers::sendFeedback('Valid Role ID required', 400);
-      }
-
-      $payload = json_decode(file_get_contents('php://input'), true);
-      if (!is_array($payload) || empty($payload['permission_ids']) || !is_array($payload['permission_ids'])) {
-         Helpers::sendFeedback('permission_ids array is required', 400);
-      }
-
-      $result = Role::assignPermissions((int)$roleId, $payload['permission_ids']);
-      echo json_encode($result);
-   })(),
-
-   // ASSIGN ROLE TO MEMBER
-   $method === 'POST' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'assign' && isset($pathParts[2]) => (function () use ($pathParts) {
-      Auth::checkPermission('manage_roles');
-
-      $memberId = $pathParts[2];
-      if (!is_numeric($memberId)) {
-         Helpers::sendFeedback('Valid Member ID required', 400);
-      }
-
-      $payload = json_decode(file_get_contents('php://input'), true);
-      if (!is_array($payload) || empty($payload['role_id'])) {
-         Helpers::sendFeedback('role_id is required', 400);
-      }
-
-      $result = Role::assignToMember((int)$memberId, (int)$payload['role_id']);
-      echo json_encode($result);
-   })(),
-
-   // FALLBACK
-   default => Helpers::sendFeedback('Role endpoint not found', 404),
-};
+// Dispatch
+RoleRoutes::handle();

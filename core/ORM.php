@@ -358,9 +358,11 @@ class ORM
                 if (is_null($placeholder)) {
                     $where[] = $this->quoteIdentifier($column) . " IS NULL";
                 }
-                // Handle operators in column name (e.g., "column >=")
-                elseif (preg_match('/^(.+?)\s*(!=|>=|<=|>|<|LIKE)$/', $column, $matches)) {
-                    $where[] = $this->quoteIdentifier(trim($matches[1])) . " {$matches[2]} $placeholder";
+                // Handle operators in column name (e.g., "column >=", "column <=", "column !=")
+                elseif (preg_match('/^(.+?)\s*(!=|>=|<=|>|<|LIKE|IN)\s*$/i', $column, $matches)) {
+                    $colName = trim($matches[1]);
+                    $operator = strtoupper(trim($matches[2]));
+                    $where[] = $this->quoteIdentifier($colName) . " $operator $placeholder";
                 } else {
                     $where[] = $this->quoteIdentifier($column) . " = $placeholder";
                 }

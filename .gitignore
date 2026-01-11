@@ -1,5 +1,6 @@
 # Ignore Composer dependencies
 /vendor/
+/cache/
 
 # Ignore environment configuration
 .env
@@ -29,3 +30,7 @@ composer.lock
 
 # Ignore XAMPP-specific backups or config (if any)
 xampp-control.ini
+
+# Ignore uploaded files (keep directory structure)
+/uploads/**/*
+!/uploads/**/.gitkeep

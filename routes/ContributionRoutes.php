@@ -10,11 +10,12 @@
  * - View single contribution
  * - Paginated listing with powerful filtering
  * - Totals reporting
+ * - Contribution type CRUD
  *
  * All operations strictly permission-controlled.
  *
  * @package  AliveChMS\Routes
- * @version  1.0.0
+ * @version  1.1.0
  * @author   Benjamin Ebo Yankson
  * @since    2025-November
  */
@@ -22,139 +23,208 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Contribution.php';
+require_once __DIR__ . '/../core/ContributionType.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
 
-// ---------------------------------------------------------------------
-// AUTHENTICATION & AUTHORIZATION
-// ---------------------------------------------------------------------
-$token = Auth::getBearerToken();
-if (!$token || Auth::verify($token) === false) {
-    Helpers::sendFeedback('Unauthorized: Valid token required', 401);
+class ContributionRoutes extends BaseRoute
+{
+    public static function handle(): void
+    {
+        // Get route variables from global scope
+        global $method, $path, $pathParts;
+
+        self::rateLimit(maxAttempts: 60, windowSeconds: 60);
+
+        match (true) {
+            // CREATE CONTRIBUTION
+            $method === 'POST' && $path === 'contribution/create' => (function () {
+                self::authenticate();
+                self::authorize('create_contribution');
+
+                $payload = self::getPayload();
+
+                $result = Contribution::create($payload);
+                ResponseHelper::created($result, 'Contribution created');
+            })(),
+
+            // UPDATE CONTRIBUTION
+            $method === 'PUT' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('edit_contribution');
+
+                $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
+                $payload = self::getPayload();
+
+                $result = Contribution::update($contributionId, $payload);
+                ResponseHelper::success($result, 'Contribution updated');
+            })(),
+
+            // SOFT DELETE CONTRIBUTION
+            $method === 'DELETE' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('delete_contribution');
+
+                $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
+
+                $result = Contribution::delete($contributionId);
+                ResponseHelper::success($result, 'Contribution deleted');
+            })(),
+
+            // RESTORE SOFT-DELETED CONTRIBUTION
+            $method === 'POST' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'restore' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('delete_contribution');
+
+                $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
+
+                $result = Contribution::restore($contributionId);
+                ResponseHelper::success($result, 'Contribution restored');
+            })(),
+
+            // VIEW SINGLE CONTRIBUTION
+            $method === 'GET' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
+
+                $result = Contribution::get($contributionId);
+                ResponseHelper::success($result);
+            })(),
+
+            // LIST ALL CONTRIBUTIONS (Paginated + Filtered)
+            $method === 'GET' && $path === 'contribution/all' => (function () {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                [$page, $limit] = self::getPagination(10, 100);
+
+                $filters = self::getFilters([
+                    'contribution_type_id',
+                    'member_id',
+                    'fiscal_year_id',
+                    'start_date',
+                    'end_date',
+                    'search'
+                ]);
+
+                // Get sorting parameters with allowed columns
+                [$sortBy, $sortDir] = self::getSorting(
+                    'ContributionDate',
+                    'DESC',
+                    ['ContributionDate', 'ContributionAmount', 'MemberName', 'ContributionTypeName']
+                );
+                $filters['sort_by'] = $sortBy;
+                $filters['sort_dir'] = $sortDir;
+
+                $result = Contribution::getAll($page, $limit, $filters);
+                ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+            })(),
+
+            // TOTAL CONTRIBUTIONS (Reporting)
+            $method === 'GET' && $path === 'contribution/total' => (function () {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $filters = self::getFilters([
+                    'contribution_type_id',
+                    'member_id',
+                    'fiscal_year_id',
+                    'start_date',
+                    'end_date'
+                ]);
+
+                $result = Contribution::getTotal($filters);
+                ResponseHelper::success($result);
+            })(),
+
+            // GET CONTRIBUTION STATISTICS
+            $method === 'GET' && $path === 'contribution/stats' => (function () {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $fiscalYearId = !empty($_GET['fiscal_year_id']) ? (int)$_GET['fiscal_year_id'] : null;
+                $result = Contribution::getStats($fiscalYearId);
+                ResponseHelper::success($result);
+            })(),
+
+            // GET CONTRIBUTION TYPES
+            $method === 'GET' && $path === 'contribution/types' => (function () {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $result = ContributionType::getAll();
+                ResponseHelper::success($result['data']);
+            })(),
+
+            // CREATE CONTRIBUTION TYPE
+            $method === 'POST' && $path === 'contribution/type/create' => (function () {
+                self::authenticate();
+                self::authorize('manage_contribution_types');
+
+                $payload = self::getPayload();
+                $result = ContributionType::create($payload);
+                ResponseHelper::created($result, 'Contribution type created');
+            })(),
+
+            // UPDATE CONTRIBUTION TYPE
+            $method === 'PUT' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'type' && ($pathParts[2] ?? '') === 'update' && isset($pathParts[3]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('manage_contribution_types');
+
+                $typeId = self::getIdFromPath($pathParts, 3, 'Contribution Type ID');
+                $payload = self::getPayload();
+                $result = ContributionType::update($typeId, $payload);
+                ResponseHelper::success($result, 'Contribution type updated');
+            })(),
+
+            // DELETE CONTRIBUTION TYPE
+            $method === 'DELETE' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'type' && ($pathParts[2] ?? '') === 'delete' && isset($pathParts[3]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('manage_contribution_types');
+
+                $typeId = self::getIdFromPath($pathParts, 3, 'Contribution Type ID');
+                $result = ContributionType::delete($typeId);
+                ResponseHelper::success($result, 'Contribution type deleted');
+            })(),
+
+            // GET PAYMENT OPTIONS
+            $method === 'GET' && $path === 'contribution/payment-options' => (function () {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $result = Contribution::getPaymentOptions();
+                ResponseHelper::success(['data' => $result]);
+            })(),
+
+            // GET CONTRIBUTION RECEIPT
+            $method === 'GET' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'receipt' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
+
+                $result = Contribution::getReceipt($contributionId);
+                ResponseHelper::success($result);
+            })(),
+
+            // GET MEMBER CONTRIBUTION STATEMENT
+            $method === 'GET' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'statement' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('view_contribution');
+
+                $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
+                $fiscalYearId = !empty($_GET['fiscal_year_id']) ? (int)$_GET['fiscal_year_id'] : null;
+
+                $result = Contribution::getMemberStatement($memberId, $fiscalYearId);
+                ResponseHelper::success($result);
+            })(),
+
+            // FALLBACK
+            default => ResponseHelper::notFound('Contribution endpoint not found'),
+        };
+    }
 }
 
-// ---------------------------------------------------------------------
-// ROUTE DISPATCHER
-// ---------------------------------------------------------------------
-match (true) {
-
-    // CREATE CONTRIBUTION
-    $method === 'POST' && $path === 'contribution/create' => (function () use ($token) {
-        Auth::checkPermission($token, 'create_contribution');
-
-        $payload = json_decode(file_get_contents('php://input'), true);
-        if (!is_array($payload)) {
-            Helpers::sendFeedback('Invalid JSON payload', 400);
-        }
-
-        $result = Contribution::create($payload);
-        echo json_encode($result);
-    })(),
-
-    // UPDATE CONTRIBUTION
-    $method === 'PUT' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($token, $pathParts) {
-        Auth::checkPermission($token, 'edit_contribution');
-
-        $contributionId = $pathParts[2];
-        if (!is_numeric($contributionId)) {
-            Helpers::sendFeedback('Valid Contribution ID required', 400);
-        }
-
-        $payload = json_decode(file_get_contents('php://input'), true);
-        if (!is_array($payload)) {
-            Helpers::sendFeedback('Invalid JSON payload', 400);
-        }
-
-        $result = Contribution::update((int)$contributionId, $payload);
-        echo json_encode($result);
-    })(),
-
-    // SOFT DELETE CONTRIBUTION
-    $method === 'DELETE' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($token, $pathParts) {
-        Auth::checkPermission($token, 'delete_contribution');
-
-        $contributionId = $pathParts[2];
-        if (!is_numeric($contributionId)) {
-            Helpers::sendFeedback('Valid Contribution ID required', 400);
-        }
-
-        $result = Contribution::delete((int)$contributionId);
-        echo json_encode($result);
-    })(),
-
-    // RESTORE SOFT-DELETED CONTRIBUTION
-    $method === 'POST' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'restore' && isset($pathParts[2]) => (function () use ($token, $pathParts) {
-        Auth::checkPermission($token, 'delete_contribution');
-
-        $contributionId = $pathParts[2];
-        if (!is_numeric($contributionId)) {
-            Helpers::sendFeedback('Valid Contribution ID required', 400);
-        }
-
-        $result = Contribution::restore((int)$contributionId);
-        echo json_encode($result);
-    })(),
-
-    // VIEW SINGLE CONTRIBUTION
-    $method === 'GET' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($token, $pathParts) {
-        Auth::checkPermission($token, 'view_contribution');
-
-        $contributionId = $pathParts[2];
-        if (!is_numeric($contributionId)) {
-            Helpers::sendFeedback('Valid Contribution ID required', 400);
-        }
-
-        $result = Contribution::get((int)$contributionId);
-        echo json_encode($result);
-    })(),
-
-    // LIST ALL CONTRIBUTIONS (Paginated + Filtered)
-    $method === 'GET' && $path === 'contribution/all' => (function () use ($token) {
-        Auth::checkPermission($token, 'view_contribution');
-
-        $page  = max(1, (int)($_GET['page'] ?? 1));
-        $limit = max(1, min(100, (int)($_GET['limit'] ?? 10)));
-
-        $filters = [];
-        foreach (
-            [
-                'contribution_type_id',
-                'member_id',
-                'fiscal_year_id',
-                'start_date',
-                'end_date'
-            ] as $key
-        ) {
-            if (isset($_GET[$key]) && $_GET[$key] !== '') {
-                $filters[$key] = $_GET[$key];
-            }
-        }
-
-        $result = Contribution::getAll($page, $limit, $filters);
-        echo json_encode($result);
-    })(),
-
-    // TOTAL CONTRIBUTIONS (Reporting)
-    $method === 'GET' && $path === 'contribution/total' => (function () use ($token) {
-        Auth::checkPermission($token, 'view_contribution');
-
-        $filters = [];
-        foreach (
-            [
-                'contribution_type_id',
-                'member_id',
-                'fiscal_year_id',
-                'start_date',
-                'end_date'
-            ] as $key
-        ) {
-            if (isset($_GET[$key]) && $_GET[$key] !== '') {
-                $filters[$key] = $_GET[$key];
-            }
-        }
-
-        $result = Contribution::getTotal($filters);
-        echo json_encode($result);
-    })(),
-
-    // FALLBACK
-    default => Helpers::sendFeedback('Contribution endpoint not found', 404),
-};
+// Dispatch
+ContributionRoutes::handle();

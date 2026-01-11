@@ -15,60 +15,76 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../core/Auth.php';
+require_once __DIR__ . '/../core/ResponseHelper.php';
+class AuthRoutes extends BaseRoute
+{
+    public static function handle(): void
+    {
+        // Get route variables from global scope
+        global $method, $path;
 
-match (true) {
+        // Rate limit to prevent brute-force (IP-based)
+        self::rateLimit(maxAttempts: 20, windowSeconds: 300);
 
-    // =================================================================
-    // LOGIN
-    // =================================================================
-    $method === 'POST' && $path === 'auth/login' => (function () {
-        $payload = json_decode(file_get_contents('php://input'), true);
+        // No required auth for public endpoints
+        self::authenticate(false);
 
-        if (!is_array($payload) || empty($payload['userid']) || empty($payload['passkey'])) Helpers::sendError('Username and password required', 400);
+        match (true) {
+            // LOGIN
+            $method === 'POST' && $path === 'auth/login' => (function () {
+                $payload = self::getPayload([
+                    'userid' => 'required|max:50',
+                    'passkey' => 'required'
+                ]);
 
-        try {
-            $result = Auth::login($payload['userid'], $payload['passkey']);
-            echo json_encode($result);
-        } catch (Exception $e) {
-            Helpers::logError("Login failed for user {$payload['userid']}: " . $e->getMessage());
-            Helpers::sendError('Invalid credentials', 401);
-        }
-    })(),
+                try {
+                    $result = Auth::login($payload['userid'], $payload['passkey']);
+                    // Clear rate limit on successful login
+                    RateLimiter::clear(Helpers::getClientIp());
 
-    // =================================================================
-    // REFRESH TOKEN
-    // =================================================================
-    $method === 'POST' && $path === 'auth/refresh' => (function () {
-        $payload = json_decode(file_get_contents('php://input'), true);
+                    // FIXED: Use standard response format (consistent with other endpoints)
+                    ResponseHelper::success($result, 'Login successful');
+                } catch (Exception $e) {
+                    Helpers::logError("Login failed for user {$payload['userid']}: " . $e->getMessage());
+                    ResponseHelper::unauthorized('Invalid credentials');
+                }
+            })(),
 
-        $refreshToken = $payload['refresh_token'] ?? '';
-        if ($refreshToken === '') {
-            Helpers::sendError('Refresh token required', 400);
-        }
-        try {
-            $result = Auth::refreshAccessToken($refreshToken);
-            echo json_encode($result);
-        } catch (Exception $e) {
-            Helpers::logError("Token refresh failed: " . $e->getMessage());
-            Helpers::sendError('Invalid or expired refresh token', 401);
-        }
-    })(),
+            // REFRESH TOKEN
+            $method === 'POST' && $path === 'auth/refresh' => (function () {
+                $payload = self::getPayload([
+                    'refresh_token' => 'required'
+                ]);
 
-    // =================================================================
-    // LOGOUT
-    // =================================================================
-    $method === 'POST' && $path === 'auth/logout' => (function () {
-        $payload = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $result = Auth::refreshAccessToken($payload['refresh_token']);
+                    ResponseHelper::success($result, 'Token refreshed');
+                } catch (Exception $e) {
+                    Helpers::logError("Token refresh failed: " . $e->getMessage());
+                    ResponseHelper::unauthorized('Invalid or expired refresh token');
+                }
+            })(),
 
-        $refreshToken = $payload['refresh_token'] ?? '';
-        if ($refreshToken === '') {
-            Helpers::sendError('Refresh token required', 400);
-        }
-        Auth::logout($refreshToken);
-    })(),
+            // LOGOUT
+            $method === 'POST' && $path === 'auth/logout' => (function () {
+                $payload = self::getPayload([
+                    'refresh_token' => 'required'
+                ]);
 
-    // =================================================================
-    // FALLBACK
-    // =================================================================
-    default => Helpers::sendError('Auth endpoint not found', 404),
-};
+                try {
+                    Auth::logout($payload['refresh_token']);
+                    ResponseHelper::success(null, 'Logged out successfully');
+                } catch (Exception $e) {
+                    Helpers::logError("Logout failed: " . $e->getMessage());
+                    ResponseHelper::error('Logout failed', 400);
+                }
+            })(),
+
+            // FALLBACK
+            default => ResponseHelper::notFound('Auth endpoint not found'),
+        };
+    }
+}
+
+// Dispatch the routes
+AuthRoutes::handle();

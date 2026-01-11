@@ -1,7 +1,21 @@
-<FilesMatch "\.(css|js|jpg|png|gif)$">
+# Public Directory Configuration
+DirectoryIndex index.php index.html
+
+# Static files - no rewrite
+<FilesMatch "\.(css|js|jpg|png|gif|svg|ico|woff|woff2|ttf|eot)$">
 RewriteEngine Off
 SetHandler default-handler
 </FilesMatch>
 
+# MIME types
 AddType text/css .css
 AddType application/javascript .js
+AddType image/svg+xml .svg
+
+# PHP files
+<FilesMatch "\.php$">
+    SetHandler application/x-httpd-php
+</FilesMatch>
+
+# Prevent directory listing
+Options -Indexes

@@ -1,10 +1,31 @@
+<?php
+// Load settings helper with error handling
+try {
+   require_once __DIR__ . '/../../vendor/autoload.php';
+
+   // Load environment
+   $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
+   $dotenv->load();
+
+   require_once __DIR__ . '/../../core/Database.php';
+   require_once __DIR__ . '/../../core/ORM.php';
+   require_once __DIR__ . '/../../core/Helpers.php';
+   require_once __DIR__ . '/../../core/Settings.php';
+   require_once __DIR__ . '/../../core/SettingsHelper.php';
+
+   $churchName = SettingsHelper::getChurchName();
+} catch (Exception $e) {
+   // Fallback if settings can't be loaded
+   $churchName = 'AliveChMS Church';
+}
+?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= isset($churchName) ? SettingsHelper::getLanguage() : 'en' ?>">
 
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>Login - AliveChMS</title>
+   <title>Login - <?= htmlspecialchars($churchName) ?></title>
 
    <!-- Bootstrap CSS -->
    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -30,8 +51,12 @@
                <div class="card login-card">
                   <div class="card-body p-4 p-sm-5">
                      <div class="logo-container">
-                        <img src="../assets/img/logo.png" alt="Church Logo" onerror="this.style.display='none'">
-                        <h3>AliveChMS</h3>
+                        <?php if (isset($churchName) && SettingsHelper::hasChurchLogo()): ?>
+                           <img src="<?= SettingsHelper::getChurchLogoUrl() ?>" alt="<?= htmlspecialchars($churchName) ?> Logo" style="max-width: 120px; max-height: 120px; margin-bottom: 15px;">
+                        <?php else: ?>
+                           <img src="../assets/img/logo.png" alt="<?= htmlspecialchars($churchName) ?> Logo" onerror="this.style.display='none'">
+                        <?php endif; ?>
+                        <h3><?= htmlspecialchars($churchName) ?></h3>
                         <p class="mb-0">Church Management System</p>
                      </div>
 
@@ -101,7 +126,7 @@
                      <div class="footer-text">
                         <small>
                            <i class="bi bi-shield-check me-1"></i>
-                           Secure Login &middot; &copy; <?= date('Y') ?> AliveChMS
+                           Secure Login &middot; &copy; <?= date('Y') ?> <?= htmlspecialchars($churchName) ?>
                         </small>
                      </div>
                   </div>

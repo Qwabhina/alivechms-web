@@ -51,7 +51,7 @@ class Budget
 
       $orm->beginTransaction();
       try {
-         $budgetId = $orm->insert('budget', [
+         $budgetId = $orm->insert('churchbudget', [
             'FiscalYearID'      => $fiscalYearId,
             'BranchID'          => $branchId,
             'BudgetTitle'       => $data['title'],
@@ -64,7 +64,7 @@ class Budget
 
          $total = self::saveItemsAndRecalculate($budgetId, $data['items'], $orm);
 
-         $orm->update('budget', ['TotalAmount' => $total], ['BudgetID' => $budgetId]);
+         $orm->update('churchbudget', ['TotalAmount' => $total], ['BudgetID' => $budgetId]);
          $orm->commit();
 
          // Return success response
@@ -91,7 +91,7 @@ class Budget
       $update = [];
       if (!empty($data['title']))       $update['BudgetTitle']       = $data['title'];
       if (isset($data['description']))  $update['BudgetDescription'] = $data['description'];
-      if (!empty($update))  $orm->update('budget', $update, ['BudgetID' => $budgetId]);
+      if (!empty($update))  $orm->update('churchbudget', $update, ['BudgetID' => $budgetId]);
 
       Helpers::sendSuccess('', 200, 'Budget updated successfully');
    }
@@ -107,7 +107,7 @@ class Budget
       $orm = new ORM();
       self::ensureDraft($budgetId);
 
-      $orm->update('budget', [
+      $orm->update('churchbudget', [
          'BudgetStatus'  => self::STATUS_SUBMITTED,
          'SubmittedAt'   => date('Y-m-d H:i:s')
       ], ['BudgetID' => $budgetId]);
@@ -128,14 +128,14 @@ class Budget
    {
       $orm = new ORM();
 
-      $budget = $orm->getWhere('budget', ['BudgetID' => $budgetId])[0] ?? null;
+      $budget = $orm->getWhere('churchbudget', ['BudgetID' => $budgetId])[0] ?? null;
       if (!$budget || $budget['BudgetStatus'] !== self::STATUS_SUBMITTED) {
          Helpers::sendError('Only submitted budgets can be reviewed', 400);
       }
 
       $newStatus = $action === 'approve' ? self::STATUS_APPROVED : self::STATUS_REJECTED;
 
-      $orm->update('budget', [
+      $orm->update('churchbudget', [
          'BudgetStatus'    => $newStatus,
          'ApprovedBy'      => Auth::getCurrentUserId(),
          'ApprovedAt'      => date('Y-m-d H:i:s'),
@@ -156,7 +156,7 @@ class Budget
       $orm = new ORM();
 
       $result = $orm->selectWithJoin(
-         baseTable: 'budget b',
+         baseTable: 'churchbudget b',
          joins: [
             ['table' => 'fiscalyear f',   'on' => 'b.FiscalYearID = f.FiscalYearID'],
             ['table' => 'branch br',      'on' => 'b.BranchID = br.BranchID'],
@@ -217,7 +217,7 @@ class Budget
       }
 
       $budgets = $orm->selectWithJoin(
-         baseTable: 'budget b',
+         baseTable: 'churchbudget b',
          joins: [
             ['table' => 'fiscalyear f', 'on' => 'b.FiscalYearID = f.FiscalYearID'],
             ['table' => 'branch br',    'on' => 'b.BranchID = br.BranchID']
@@ -228,7 +228,7 @@ class Budget
             'b.TotalAmount',
             'b.BudgetStatus',
             'b.CreatedAt',
-            'f.YearName',
+            'f.FiscalYearName',
             'br.BranchName'
          ],
          conditions: $conditions,
@@ -239,7 +239,7 @@ class Budget
       );
 
       $total = $orm->runQuery(
-         "SELECT COUNT(*) AS total FROM budget b" .
+         "SELECT COUNT(*) AS total FROM churchbudget b" .
             (!empty($conditions) ? ' WHERE ' . implode(' AND ', array_keys($conditions)) : ''),
          $params
       )[0]['total'];
@@ -357,7 +357,7 @@ class Budget
    private static function ensureDraft(int $budgetId): void
    {
       $orm = new ORM();
-      $b   = $orm->getWhere('budget', ['BudgetID' => $budgetId])[0] ?? null;
+      $b   = $orm->getWhere('churchbudget', ['BudgetID' => $budgetId])[0] ?? null;
       if (!$b) {
          Helpers::sendError('Budget not found', 404);
       }
@@ -389,6 +389,6 @@ class Budget
       $items = $orm->getWhere('budget_items', ['BudgetID' => $budgetId]);
       $total = array_sum(array_column($items, 'Amount'));
 
-      $orm->update('budget', ['TotalAmount' => $total], ['BudgetID' => $budgetId]);
+      $orm->update('churchbudget', ['TotalAmount' => $total], ['BudgetID' => $budgetId]);
    }
 }

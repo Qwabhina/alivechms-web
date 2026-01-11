@@ -1,0 +1,15 @@
+# Dashboard Directory Configuration
+DirectoryIndex index.php
+
+# Allow PHP files
+<FilesMatch "\.php$">
+    SetHandler application/x-httpd-php
+</FilesMatch>
+
+# Prevent directory listing
+Options -Indexes
+
+# Allow access to all files in this directory
+<FilesMatch "\.(php|css|js|jpg|jpeg|png|gif|svg|ico)$">
+    Require all granted
+</FilesMatch>
