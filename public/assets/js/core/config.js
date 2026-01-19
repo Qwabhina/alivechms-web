@@ -178,8 +178,8 @@ const Config = {
         reverseButtons: true
     },
     
-    // Development Mode
-    DEBUG: window.location.hostname === 'localhost',
+    // Development Mode - temporarily enabled for debugging
+    DEBUG: true, // window.location.hostname === 'localhost',
     
     // Helper Methods
     log: function(...args) {

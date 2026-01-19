@@ -142,7 +142,7 @@ try {
    <script src="../assets/js/core/alerts.js"></script>
 
    <script>
-      // Check if already logged in
+      // Check if already logged in (simple check, no API calls)
       if (Auth.isAuthenticated()) {
          window.location.href = '../dashboard/';
       }
@@ -185,7 +185,7 @@ try {
          buttonText.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging in...';
 
          try {
-            // Attempt login
+            // Attempt login - tokens are now stored securely
             await Auth.login(username, password, remember);
 
             // Show success message

@@ -24,6 +24,9 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/PermissionCache.php';
+require_once __DIR__ . '/PermissionAudit.php';
+
 class Role
 {
    /**
@@ -54,6 +57,17 @@ class Role
          'RoleName'    => $name,
          'Description' => $data['description'] ?? null
       ])['id'];
+
+      // Audit log
+      try {
+         $performedBy = Auth::getCurrentUserId();
+         PermissionAudit::log('role_created', $performedBy, [
+            'role_id' => $roleId,
+            'new_value' => ['name' => $name, 'description' => $data['description'] ?? null]
+         ]);
+      } catch (Exception $e) {
+         // Don't fail if audit logging fails
+      }
 
       Helpers::logError("New role created: ID $roleId – $name");
       return ['status' => 'success', 'role_id' => $roleId];
@@ -93,6 +107,19 @@ class Role
 
       if (!empty($update)) {
          $orm->update('churchrole', $update, ['RoleID' => $roleId]);
+
+         // Audit log
+         try {
+            $performedBy = Auth::getCurrentUserId();
+            PermissionAudit::log('role_updated', $performedBy, [
+               'role_id' => $roleId,
+               'old_value' => $role[0],
+               'new_value' => $update
+            ]);
+         } catch (Exception $e) {
+            // Don't fail if audit logging fails
+         }
+
          Helpers::logError("Role updated: ID $roleId");
       }
 
@@ -127,6 +154,17 @@ class Role
          $orm->delete('rolepermission', ['ChurchRoleID' => $roleId]);  // Clean up permissions
          $orm->delete('churchrole', ['RoleID' => $roleId]);
          $orm->commit();
+
+         // Audit log
+         try {
+            $performedBy = Auth::getCurrentUserId();
+            PermissionAudit::log('role_deleted', $performedBy, [
+               'role_id' => $roleId,
+               'old_value' => $role[0]
+            ]);
+         } catch (Exception $e) {
+            // Don't fail if audit logging fails
+         }
 
          Helpers::logError("Role deleted: ID $roleId – {$role[0]['RoleName']}");
       } catch (Exception $e) {
@@ -177,6 +215,21 @@ class Role
          }
 
          $orm->commit();
+
+         // Invalidate permission cache for all users with this role
+         RBAC::invalidateRoleCache($roleId);
+
+         // Audit log
+         try {
+            $performedBy = Auth::getCurrentUserId();
+            PermissionAudit::log('permissions_assigned', $performedBy, [
+               'role_id' => $roleId,
+               'new_value' => ['permission_ids' => $permissionIds]
+            ]);
+         } catch (Exception $e) {
+            // Don't fail if audit logging fails
+         }
+
          Helpers::logError("Permissions updated for Role ID $roleId");
       } catch (Exception $e) {
          $orm->rollBack();
@@ -294,6 +347,20 @@ class Role
       }
 
       $orm->update('churchmember', ['ChurchRoleID' => $roleId], ['MbrID' => $memberId]);
+
+      // Invalidate permission cache for this user
+      RBAC::invalidateUserCache($memberId);
+
+      // Audit log
+      try {
+         $performedBy = Auth::getCurrentUserId();
+         PermissionAudit::log('role_assigned_to_member', $performedBy, [
+            'role_id' => $roleId,
+            'member_id' => $memberId
+         ]);
+      } catch (Exception $e) {
+         // Don't fail if audit logging fails
+      }
 
       Helpers::logError("Role $roleId assigned to Member ID $memberId");
       return ['status' => 'success'];

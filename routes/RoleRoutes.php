@@ -96,12 +96,23 @@ class RoleRoutes extends BaseRoute
             ResponseHelper::success($role);
          })(),
 
-         // LIST ALL ROLES (with permissions) - For dropdowns, no auth required
+         // LIST ALL ROLES (with permissions) - Requires authentication
          $method === 'GET' && $path === 'role/all' => (function () {
-            self::authenticate(false); // Allow public access for dropdowns
+            self::authenticate(); // SECURITY FIX: Require authentication
+            // No specific permission required - any authenticated user can see roles for dropdowns
 
             $result = Role::getAll();
             ResponseHelper::success($result);
+         })(),
+
+         // LIST ROLE NAMES ONLY (for dropdowns) - Public endpoint
+         $method === 'GET' && $path === 'role/names' => (function () {
+            self::authenticate(false); // Public access for dropdowns
+
+            $orm = new ORM();
+            $roles = $orm->runQuery("SELECT RoleID, RoleName FROM churchrole ORDER BY RoleName ASC", []);
+
+            ResponseHelper::success($roles);
          })(),
 
          // ASSIGN PERMISSIONS TO ROLE (Replace All)
