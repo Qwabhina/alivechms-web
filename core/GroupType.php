@@ -34,13 +34,15 @@ class GroupType
       $name = trim($data['name']);
 
       // Enforce uniqueness
-      $existing = $orm->getWhere('grouptype', ['GroupTypeName' => $name]);
+      $existing = $orm->getWhere('group_type', ['GroupTypeName' => $name, 'IsActive' => 1]);
       if (!empty($existing)) {
-         Helpers::sendFeedback('Group type name already exists', 400);
+         ResponseHelper::error('Group type name already exists', 400);
       }
 
-      $typeId = $orm->insert('grouptype', [
-         'GroupTypeName' => $name
+      $typeId = $orm->insert('group_type', [
+         'GroupTypeName' => $name,
+         'GroupTypeDescription' => $data['description'] ?? null,
+         'IsActive' => 1
       ])['id'];
 
       return ['status' => 'success', 'type_id' => $typeId];
@@ -57,9 +59,9 @@ class GroupType
    {
       $orm = new ORM();
 
-      $type = $orm->getWhere('grouptype', ['GroupTypeID' => $typeId]);
+      $type = $orm->getWhere('group_type', ['GroupTypeID' => $typeId, 'IsActive' => 1]);
       if (empty($type)) {
-         Helpers::sendFeedback('Group type not found', 404);
+         ResponseHelper::error('Group type not found', 404);
       }
 
       if (empty($data['name'])) {
@@ -69,15 +71,21 @@ class GroupType
       $name = trim($data['name']);
       Helpers::validateInput(['name' => $name], ['name' => 'required|max:100']);
 
-      $existing = $orm->getWhere('grouptype', [
+      $existing = $orm->getWhere('group_type', [
          'GroupTypeName'   => $name,
-         'GroupTypeID!='   => $typeId
+         'GroupTypeID!='   => $typeId,
+         'IsActive' => 1
       ]);
       if (!empty($existing)) {
-         Helpers::sendFeedback('Group type name already exists', 400);
+         ResponseHelper::error('Group type name already exists', 400);
       }
 
-      $orm->update('grouptype', ['GroupTypeName' => $name], ['GroupTypeID' => $typeId]);
+      $update = ['GroupTypeName' => $name];
+      if (isset($data['description'])) {
+         $update['GroupTypeDescription'] = $data['description'];
+      }
+
+      $orm->update('group_type', $update, ['GroupTypeID' => $typeId]);
 
       return ['status' => 'success', 'type_id' => $typeId];
    }
@@ -92,17 +100,18 @@ class GroupType
    {
       $orm = new ORM();
 
-      $type = $orm->getWhere('grouptype', ['GroupTypeID' => $typeId]);
+      $type = $orm->getWhere('group_type', ['GroupTypeID' => $typeId, 'IsActive' => 1]);
       if (empty($type)) {
-         Helpers::sendFeedback('Group type not found', 404);
+         ResponseHelper::error('Group type not found', 404);
       }
 
-      $used = $orm->getWhere('churchgroup', ['GroupTypeID' => $typeId]);
+      $used = $orm->getWhere('churchgroup', ['GroupTypeID' => $typeId, 'Deleted' => 0]);
       if (!empty($used)) {
-         Helpers::sendFeedback('Cannot delete group type in use', 400);
+         ResponseHelper::error('Cannot delete group type in use', 400);
       }
 
-      $orm->delete('grouptype', ['GroupTypeID' => $typeId]);
+      // Soft delete
+      $orm->update('group_type', ['IsActive' => 0], ['GroupTypeID' => $typeId]);
 
       return ['status' => 'success'];
    }
@@ -117,9 +126,9 @@ class GroupType
    {
       $orm = new ORM();
 
-      $type = $orm->getWhere('grouptype', ['GroupTypeID' => $typeId]);
+      $type = $orm->getWhere('group_type', ['GroupTypeID' => $typeId, 'IsActive' => 1]);
       if (empty($type)) {
-         Helpers::sendFeedback('Group type not found', 404);
+         ResponseHelper::error('Group type not found', 404);
       }
 
       return $type[0];
@@ -137,9 +146,16 @@ class GroupType
       $orm = new ORM();
       $offset = ($page - 1) * $limit;
 
-      $types = $orm->getAll('grouptype', $limit, $offset);
+      $types = $orm->runQuery(
+         "SELECT GroupTypeID, GroupTypeName, GroupTypeDescription, IsActive 
+          FROM group_type 
+          WHERE IsActive = 1
+          ORDER BY GroupTypeName ASC 
+          LIMIT :limit OFFSET :offset",
+         [':limit' => $limit, ':offset' => $offset]
+      );
 
-      $total = $orm->runQuery('SELECT COUNT(*) AS total FROM grouptype')[0]['total'];
+      $total = $orm->runQuery('SELECT COUNT(*) AS total FROM group_type WHERE IsActive = 1')[0]['total'];
 
       return [
          'data' => $types,

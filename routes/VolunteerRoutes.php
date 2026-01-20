@@ -52,7 +52,7 @@ class VolunteerRoutes extends BaseRoute
          // CREATE VOLUNTEER ROLE
          $method === 'POST' && $pathParts[0] === 'volunteer' && ($pathParts[1] ?? '') === 'role' && ($pathParts[2] ?? '') === 'create' => (function () {
             self::authenticate();
-            self::authorize('manage_volunteer_roles');
+            self::authorize('settings.edit');
 
             $payload = self::getPayload();
 
@@ -72,7 +72,7 @@ class VolunteerRoutes extends BaseRoute
          // ASSIGN VOLUNTEERS TO EVENT (Bulk)
          $method === 'POST' && $pathParts[0] === 'volunteer' && ($pathParts[1] ?? '') === 'assign' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('assign_volunteers');
+            self::authorize('events.edit');
 
             $eventId = self::getIdFromPath($pathParts, 2, 'Event ID');
 
@@ -102,7 +102,7 @@ class VolunteerRoutes extends BaseRoute
          // MARK ASSIGNMENT AS COMPLETED
          $method === 'POST' && $pathParts[0] === 'volunteer' && ($pathParts[1] ?? '') === 'complete' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_volunteers');
+            self::authorize('events.edit');
 
             $assignmentId = self::getIdFromPath($pathParts, 2, 'Assignment ID');
 
@@ -113,7 +113,7 @@ class VolunteerRoutes extends BaseRoute
          // GET VOLUNTEERS FOR EVENT (Paginated)
          $method === 'GET' && $pathParts[0] === 'volunteer' && ($pathParts[1] ?? '') === 'event' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('view_volunteers');
+            self::authorize('events.view');
 
             $eventId = self::getIdFromPath($pathParts, 2, 'Event ID');
 
@@ -126,7 +126,7 @@ class VolunteerRoutes extends BaseRoute
          // REMOVE VOLUNTEER FROM EVENT
          $method === 'DELETE' && $pathParts[0] === 'volunteer' && ($pathParts[1] ?? '') === 'remove' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_volunteers');
+            self::authorize('events.edit');
 
             $assignmentId = self::getIdFromPath($pathParts, 2, 'Assignment ID');
 

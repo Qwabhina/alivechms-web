@@ -4,11 +4,11 @@
  * Comprehensive RBAC System
  *
  * Complete Role-Based Access Control implementation with:
- * - Role hierarchy and inheritance
- * - Permission caching with automatic invalidation
- * - Temporal role assignments
+ * - Direct role-to-permission mapping (simplified from 6 to 4 tables)
+ * - Temporal role assignments (StartDate/EndDate support)
  * - Comprehensive audit logging
- * - High performance with database-level caching
+ * - High performance with stored procedure caching
+ * - Uses: church_role, member_role, permission, role_permission tables
  *
  * @package  AliveChMS\Core
  * @version  2.0.0
@@ -82,7 +82,7 @@ class RBAC
    }
 
    /**
-    * Get user permissions with details (role source, inheritance info)
+    * Get user permissions with details (role source)
     *
     * @param int $userId User ID
     * @return array Array of permission details
@@ -98,14 +98,10 @@ class RBAC
                 p.PermissionDescription,
                 pc.CategoryName as PermissionCategory,
                 cr.RoleID,
-                cr.RoleName,
-                CASE WHEN rh.ParentRoleID IS NOT NULL THEN 1 ELSE 0 END as IsInherited,
-                CASE WHEN rh.ParentRoleID IS NOT NULL THEN parent_role.RoleName ELSE NULL END as InheritedFrom
-            FROM memberrole mr
-            JOIN churchrole cr ON mr.ChurchRoleID = cr.RoleID
-            LEFT JOIN role_hierarchy rh ON cr.RoleID = rh.ChildRoleID
-            LEFT JOIN churchrole parent_role ON rh.ParentRoleID = parent_role.RoleID
-            JOIN rolepermission rp ON (rp.ChurchRoleID = cr.RoleID OR rp.ChurchRoleID = parent_role.RoleID)
+                cr.RoleName
+            FROM member_role mr
+            JOIN church_role cr ON mr.RoleID = cr.RoleID
+            JOIN role_permission rp ON rp.RoleID = cr.RoleID
             JOIN permission p ON rp.PermissionID = p.PermissionID
             LEFT JOIN permission_category pc ON p.CategoryID = pc.CategoryID
             WHERE mr.MbrID = :user_id
@@ -132,7 +128,7 @@ class RBAC
             SELECT 
                 cr.RoleID,
                 cr.RoleName,
-                cr.Description,
+                cr.RoleDescription as Description,
                 mr.StartDate,
                 mr.EndDate,
                 mr.AssignedAt,
@@ -141,8 +137,8 @@ class RBAC
                     WHEN mr.StartDate IS NOT NULL AND mr.StartDate > CURDATE() THEN 'Pending'
                     ELSE 'Active'
                 END as Status
-            FROM memberrole mr
-            JOIN churchrole cr ON mr.ChurchRoleID = cr.RoleID
+            FROM member_role mr
+            JOIN church_role cr ON mr.RoleID = cr.RoleID
             WHERE mr.MbrID = :user_id
             AND mr.IsActive = 1
             AND cr.IsActive = 1
@@ -178,16 +174,16 @@ class RBAC
       }
 
       // Validate role exists
-      $role = $orm->getWhere('churchrole', ['RoleID' => $roleId, 'IsActive' => 1]);
+      $role = $orm->getWhere('church_role', ['RoleID' => $roleId, 'IsActive' => 1]);
       if (empty($role)) {
          throw new Exception('Role not found or inactive');
       }
 
       // Check if already assigned
       $existing = $orm->runQuery("
-            SELECT MemberRoleID FROM memberrole 
+            SELECT MemberRoleID FROM member_role 
             WHERE MbrID = :user_id 
-            AND ChurchRoleID = :role_id 
+            AND RoleID = :role_id 
             AND IsActive = 1
             AND (EndDate IS NULL OR EndDate >= CURDATE())
         ", [':user_id' => $userId, ':role_id' => $roleId]);
@@ -197,13 +193,14 @@ class RBAC
       }
 
       // Insert role assignment
-      $memberRoleId = $orm->insert('memberrole', [
+      $memberRoleId = $orm->insert('member_role', [
          'MbrID' => $userId,
-         'ChurchRoleID' => $roleId,
+         'RoleID' => $roleId,
          'StartDate' => $startDate,
          'EndDate' => $endDate,
          'IsActive' => 1,
          'AssignedBy' => $assignedBy,
+         'AssignedAt' => date('Y-m-d H:i:s'),
          'Notes' => $notes
       ])['id'];
 
@@ -246,10 +243,10 @@ class RBAC
       // Get role assignment
       $assignment = $orm->runQuery("
             SELECT mr.*, cr.RoleName 
-            FROM memberrole mr
-            JOIN churchrole cr ON mr.ChurchRoleID = cr.RoleID
+            FROM member_role mr
+            JOIN church_role cr ON mr.RoleID = cr.RoleID
             WHERE mr.MbrID = :user_id 
-            AND mr.ChurchRoleID = :role_id 
+            AND mr.RoleID = :role_id 
             AND mr.IsActive = 1
         ", [':user_id' => $userId, ':role_id' => $roleId]);
 
@@ -258,12 +255,12 @@ class RBAC
       }
 
       // Deactivate (don't delete for audit trail)
-      $orm->update('memberrole', [
+      $orm->update('member_role', [
          'IsActive' => 0,
          'EndDate' => date('Y-m-d')
       ], [
          'MbrID' => $userId,
-         'ChurchRoleID' => $roleId
+         'RoleID' => $roleId
       ]);
 
       // Audit log
@@ -282,39 +279,7 @@ class RBAC
       return ['status' => 'success'];
    }
 
-   /**
-    * Get role hierarchy (parent-child relationships)
-    *
-    * @param int|null $roleId Get hierarchy for specific role, or all if null
-    * @return array Hierarchy data
-    */
-   public static function getRoleHierarchy(?int $roleId = null): array
-   {
-      $orm = new ORM();
 
-      $query = "
-            SELECT 
-                c.RoleID as ChildRoleID,
-                c.RoleName as ChildRoleName,
-                p.RoleID as ParentRoleID,
-                p.RoleName as ParentRoleName,
-                rh.InheritanceLevel
-            FROM role_hierarchy rh
-            JOIN churchrole c ON rh.ChildRoleID = c.RoleID
-            JOIN churchrole p ON rh.ParentRoleID = p.RoleID
-            WHERE c.IsActive = 1 AND p.IsActive = 1
-        ";
-
-      $params = [];
-      if ($roleId !== null) {
-         $query .= " AND (c.RoleID = :role_id OR p.RoleID = :role_id)";
-         $params[':role_id'] = $roleId;
-      }
-
-      $query .= " ORDER BY rh.InheritanceLevel, c.DisplayOrder";
-
-      return $orm->runQuery($query, $params);
-   }
 
    /**
     * Get all permissions grouped by category
@@ -380,80 +345,23 @@ class RBAC
 
       $roleData = $role[0];
 
-      // Get direct permissions
-      $directPerms = $orm->runQuery("
+      // Get permissions
+      $permissions = $orm->runQuery("
             SELECT p.PermissionID, p.PermissionName, p.PermissionDescription
-            FROM rolepermission rp
+            FROM role_permission rp
             JOIN permission p ON rp.PermissionID = p.PermissionID
-            WHERE rp.ChurchRoleID = :role_id
+            WHERE rp.RoleID = :role_id
             AND p.IsActive = 1
             ORDER BY p.PermissionName
         ", [':role_id' => $roleId]);
 
-      // Get inherited permissions
-      $inheritedPerms = $orm->runQuery("
-            SELECT DISTINCT
-                p.PermissionID, 
-                p.PermissionName, 
-                p.PermissionDescription,
-                parent_role.RoleName as InheritedFrom
-            FROM role_hierarchy rh
-            JOIN rolepermission rp ON rh.ParentRoleID = rp.ChurchRoleID
-            JOIN permission p ON rp.PermissionID = p.PermissionID
-            JOIN churchrole parent_role ON rh.ParentRoleID = parent_role.RoleID
-            WHERE rh.ChildRoleID = :role_id
-            AND p.IsActive = 1
-            ORDER BY p.PermissionName
-        ", [':role_id' => $roleId]);
-
-      $roleData['direct_permissions'] = $directPerms;
-      $roleData['inherited_permissions'] = $inheritedPerms;
-      $roleData['total_permissions'] = count($directPerms) + count($inheritedPerms);
+      $roleData['permissions'] = $permissions;
+      $roleData['total_permissions'] = count($permissions);
 
       return $roleData;
    }
 
-   /**
-    * Invalidate permission cache for user
-    *
-    * @param int $userId User ID
-    * @return void
-    */
-   public static function invalidateUserCache(int $userId): void
-   {
-      $db = Database::getInstance()->getConnection();
 
-      try {
-         $stmt = $db->prepare("CALL sp_invalidate_permission_cache(:user_id)");
-         $stmt->execute([':user_id' => $userId]);
-         $stmt->closeCursor();
-
-         Helpers::logError("[RBAC] Cache invalidated for user {$userId}");
-      } catch (Exception $e) {
-         Helpers::logError("[RBAC] Failed to invalidate cache: " . $e->getMessage());
-      }
-   }
-
-   /**
-    * Invalidate permission cache for all users with a role
-    *
-    * @param int $roleId Role ID
-    * @return void
-    */
-   public static function invalidateRoleCache(int $roleId): void
-   {
-      $db = Database::getInstance()->getConnection();
-
-      try {
-         $stmt = $db->prepare("CALL sp_invalidate_role_cache(:role_id)");
-         $stmt->execute([':role_id' => $roleId]);
-         $stmt->closeCursor();
-
-         Helpers::logError("[RBAC] Cache invalidated for role {$roleId}");
-      } catch (Exception $e) {
-         Helpers::logError("[RBAC] Failed to invalidate role cache: " . $e->getMessage());
-      }
-   }
 
    /**
     * Check if user has role

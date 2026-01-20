@@ -6,12 +6,17 @@
  * Handles creation, update, soft deletion, restoration,
  * retrieval, and reporting of member financial contributions.
  *
- * FIXED VERSION - All bugs corrected
+ * Refactored for optimized schema v2.0:
+ * - Uses payment_method table (was paymentoption)
+ * - FiscalYearID is now optional (nullable)
+ * - Added audit trail support (DeletedBy, DeletedAt)
+ * - Uses membership_status lookup table
+ * - Consistent field naming
  *
  * @package  AliveChMS\Core
- * @version  1.0.1
+ * @version  2.0.0
  * @author   Benjamin Ebo Yankson
- * @since    2025-November
+ * @since    2026-January
  */
 
 declare(strict_types=1);
@@ -34,17 +39,17 @@ class Contribution
          'date'                 => 'required|date',
          'contribution_type_id' => 'required|numeric',
          'member_id'            => 'required|numeric',
-         'payment_option_id'    => 'required|numeric',
-         'fiscal_year_id'       => 'required|numeric',
+         'payment_method_id'    => 'required|numeric',
+         'fiscal_year_id'       => 'numeric|nullable',
          'description'          => 'max:500|nullable',
       ]);
 
-      $amount         = (float)$data['amount'];
+      $amount           = (float)$data['amount'];
       $contributionDate = $data['date'];
-      $memberId       = (int)$data['member_id'];
-      $typeId         = (int)$data['contribution_type_id'];
-      $paymentId      = (int)$data['payment_option_id'];
-      $fiscalYearId   = (int)$data['fiscal_year_id'];
+      $memberId         = (int)$data['member_id'];
+      $typeId           = (int)$data['contribution_type_id'];
+      $paymentMethodId  = (int)$data['payment_method_id'];
+      $fiscalYearId     = !empty($data['fiscal_year_id']) ? (int)$data['fiscal_year_id'] : null;
 
       if ($amount <= 0) {
          ResponseHelper::error('Contribution amount must be greater than zero', 400);
@@ -55,36 +60,45 @@ class Contribution
       }
 
       // Validate foreign keys
-      $valid = $orm->runQuery(
-         "SELECT
-                (SELECT COUNT(*) FROM churchmember WHERE MbrID = :mid AND Deleted = 0 AND MbrMembershipStatus = 'Active') AS member_ok,
-                (SELECT COUNT(*) FROM contributiontype WHERE ContributionTypeID = :tid) AS type_ok,
-                (SELECT COUNT(*) FROM paymentoption WHERE PaymentOptionID = :pid) AS payment_ok,
-                (SELECT COUNT(*) FROM fiscalyear WHERE FiscalYearID = :fyid AND Status = 'Active') AS fiscal_ok",
-            [
-            ':mid' => $memberId,
-            ':tid' => $typeId,
-            ':pid' => $paymentId,
-            ':fyid' => $fiscalYearId
-            ]
-      )[0];
+      $validationQuery = "SELECT
+            (SELECT COUNT(*) FROM churchmember c 
+             JOIN membership_status ms ON c.MbrMembershipStatusID = ms.StatusID 
+             WHERE c.MbrID = :mid AND c.Deleted = 0 AND ms.StatusName = 'Active') AS member_ok,
+            (SELECT COUNT(*) FROM contribution_type WHERE ContributionTypeID = :tid AND IsActive = 1) AS type_ok,
+            (SELECT COUNT(*) FROM payment_method WHERE MethodID = :pmid AND IsActive = 1) AS payment_ok";
+
+      $validationParams = [
+         ':mid' => $memberId,
+         ':tid' => $typeId,
+         ':pmid' => $paymentMethodId
+      ];
+
+      // Only validate fiscal year if provided
+      if ($fiscalYearId !== null) {
+         $validationQuery .= ",
+            (SELECT COUNT(*) FROM fiscal_year WHERE FiscalYearID = :fyid AND Status = 'Active') AS fiscal_ok";
+         $validationParams[':fyid'] = $fiscalYearId;
+      }
+
+      $valid = $orm->runQuery($validationQuery, $validationParams)[0];
 
       if ($valid['member_ok'] == 0)   ResponseHelper::error('Invalid or inactive member', 400);
       if ($valid['type_ok'] == 0)     ResponseHelper::error('Invalid contribution type', 400);
-      if ($valid['payment_ok'] == 0)  ResponseHelper::error('Invalid payment option', 400);
-      if ($valid['fiscal_ok'] == 0)   ResponseHelper::error('Invalid or inactive fiscal year', 400);
+      if ($valid['payment_ok'] == 0)  ResponseHelper::error('Invalid payment method', 400);
+      if ($fiscalYearId !== null && isset($valid['fiscal_ok']) && $valid['fiscal_ok'] == 0) {
+         ResponseHelper::error('Invalid or inactive fiscal year', 400);
+      }
 
       $orm->beginTransaction();
       try {
-         // FIXED: Changed 'Description' to 'ContributionDescription' to match schema
          $contributionId = $orm->insert('contribution', [
             'ContributionAmount'       => $amount,
             'ContributionDate'         => $contributionDate,
             'ContributionTypeID'       => $typeId,
-            'PaymentOptionID'          => $paymentId,
+            'PaymentMethodID'          => $paymentMethodId,
             'MbrID'                    => $memberId,
             'FiscalYearID'             => $fiscalYearId,
-            'ContributionDescription'  => $data['description'] ?? null,  // FIXED: Column name
+            'ContributionDescription'  => $data['description'] ?? null,
             'Deleted'                  => 0,
             'RecordedBy'               => Auth::getCurrentUserId(),
             'RecordedAt'               => date('Y-m-d H:i:s')
@@ -121,7 +135,8 @@ class Contribution
          'amount'               => 'numeric|nullable',
          'date'                 => 'date|nullable',
          'contribution_type_id' => 'numeric|nullable',
-         'payment_option_id'    => 'numeric|nullable',
+         'payment_method_id'    => 'numeric|nullable',
+         'fiscal_year_id'       => 'numeric|nullable',
          'description'          => 'max:500|nullable',
       ]);
 
@@ -139,15 +154,19 @@ class Contribution
       if (!empty($data['contribution_type_id'])) {
          $update['ContributionTypeID'] = (int)$data['contribution_type_id'];
       }
-      if (!empty($data['payment_option_id'])) {
-         $update['PaymentOptionID'] = (int)$data['payment_option_id'];
+      if (!empty($data['payment_method_id'])) {
+         $update['PaymentMethodID'] = (int)$data['payment_method_id'];
       }
-      // FIXED: Changed 'Description' to 'ContributionDescription'
+      if (isset($data['fiscal_year_id'])) {
+         $update['FiscalYearID'] = !empty($data['fiscal_year_id']) ? (int)$data['fiscal_year_id'] : null;
+      }
       if (isset($data['description'])) {
          $update['ContributionDescription'] = $data['description'];
       }
 
       if (!empty($update)) {
+         $update['UpdatedBy'] = Auth::getCurrentUserId();
+         $update['UpdatedAt'] = date('Y-m-d H:i:s');
          $orm->update('contribution', $update, ['ContributionID' => $contributionId]);
       }
 
@@ -164,11 +183,17 @@ class Contribution
    {
       $orm = new ORM();
 
-      $affected = $orm->update('contribution', ['Deleted' => 1], ['ContributionID' => $contributionId, 'Deleted' => 0]);
+      $affected = $orm->update('contribution', [
+         'Deleted' => 1,
+         'DeletedBy' => Auth::getCurrentUserId(),
+         'DeletedAt' => date('Y-m-d H:i:s')
+      ], ['ContributionID' => $contributionId, 'Deleted' => 0]);
+
       if ($affected === 0) {
          ResponseHelper::error('Contribution not found or already deleted', 404);
       }
 
+      Helpers::logError("Contribution soft-deleted: ID $contributionId by " . Auth::getCurrentUserId());
       return ['status' => 'success'];
    }
 
@@ -204,16 +229,16 @@ class Contribution
             baseTable: 'contribution c',
             joins: [
             ['table' => 'churchmember m',       'on' => 'c.MbrID = m.MbrID'],
-            ['table' => 'contributiontype ct',  'on' => 'c.ContributionTypeID = ct.ContributionTypeID'],
-            ['table' => 'paymentoption p',      'on' => 'c.PaymentOptionID = p.PaymentOptionID'],
-            ['table' => 'fiscalyear fy',        'on' => 'c.FiscalYearID = fy.FiscalYearID', 'type' => 'LEFT']
+            ['table' => 'contribution_type ct', 'on' => 'c.ContributionTypeID = ct.ContributionTypeID'],
+            ['table' => 'payment_method pm',    'on' => 'c.PaymentMethodID = pm.MethodID'],
+            ['table' => 'fiscal_year fy',       'on' => 'c.FiscalYearID = fy.FiscalYearID', 'type' => 'LEFT']
             ],
             fields: [
             'c.*',
             'm.MbrFirstName',
             'm.MbrFamilyName',
             'ct.ContributionTypeName',
-            'p.PaymentOptionName',
+            'pm.MethodName as PaymentMethodName',
             'fy.FiscalYearName'
             ],
          conditions: ['c.ContributionID' => ':id', 'c.Deleted' => 0],
@@ -291,9 +316,9 @@ class Contribution
          baseTable: 'contribution c',
          joins: [
             ['table' => 'churchmember m',       'on' => 'c.MbrID = m.MbrID'],
-            ['table' => 'contributiontype ct',  'on' => 'c.ContributionTypeID = ct.ContributionTypeID'],
-            ['table' => 'paymentoption p',      'on' => 'c.PaymentOptionID = p.PaymentOptionID'],
-            ['table' => 'fiscalyear fy',        'on' => 'c.FiscalYearID = fy.FiscalYearID', 'type' => 'LEFT']
+            ['table' => 'contribution_type ct', 'on' => 'c.ContributionTypeID = ct.ContributionTypeID'],
+            ['table' => 'payment_method pm',    'on' => 'c.PaymentMethodID = pm.MethodID'],
+            ['table' => 'fiscal_year fy',       'on' => 'c.FiscalYearID = fy.FiscalYearID', 'type' => 'LEFT']
          ],
          fields: [
             'c.ContributionID',
@@ -302,12 +327,12 @@ class Contribution
             'c.ContributionDescription',
             'c.MbrID',
             'c.ContributionTypeID',
-            'c.PaymentOptionID',
+            'c.PaymentMethodID',
             'c.FiscalYearID',
             'm.MbrFirstName',
             'm.MbrFamilyName',
             'ct.ContributionTypeName',
-            'p.PaymentOptionName',
+            'pm.MethodName as PaymentMethodName',
             'fy.FiscalYearName'
          ],
          conditions: $conditions,
@@ -416,22 +441,22 @@ class Contribution
       // Get fiscal year - either specified or active
       if ($fiscalYearId) {
          $fy = $orm->runQuery(
-            "SELECT FiscalYearID, FiscalYearName, FiscalYearStartDate, FiscalYearEndDate, Status 
-             FROM fiscalyear WHERE FiscalYearID = :id",
+            "SELECT FiscalYearID, FiscalYearName, StartDate, EndDate, Status 
+             FROM fiscal_year WHERE FiscalYearID = :id",
             [':id' => $fiscalYearId]
          );
       } else {
          $fy = $orm->runQuery(
             "SELECT FiscalYearID, FiscalYearName, StartDate, EndDate, Status 
-             FROM fiscalyear WHERE Status = 'Active' LIMIT 1"
+             FROM fiscal_year WHERE Status = 'Active' LIMIT 1"
          );
       }
 
       $fiscalYear = $fy[0] ?? null;
       $fyId = $fiscalYear['FiscalYearID'] ?? null;
       $fiscalYearName = $fiscalYear['FiscalYearName'] ?? 'All Time';
-      $fyStartDate = $fiscalYear['FiscalYearStartDate'] ?? date('Y-01-01');
-      $fyEndDate = $fiscalYear['FiscalYearEndDate'] ?? date('Y-12-31');
+      $fyStartDate = $fiscalYear['StartDate'] ?? date('Y-01-01');
+      $fyEndDate = $fiscalYear['EndDate'] ?? date('Y-12-31');
       $fyStatus = $fiscalYear['Status'] ?? 'Unknown';
 
       // Fiscal year filter condition
@@ -529,7 +554,7 @@ class Contribution
             COALESCE(SUM(c.ContributionAmount), 0) AS total,
             COUNT(*) AS count
          FROM contribution c
-         JOIN contributiontype ct ON c.ContributionTypeID = ct.ContributionTypeID
+         JOIN contribution_type ct ON c.ContributionTypeID = ct.ContributionTypeID
          WHERE c.Deleted = 0 $fyCondition
          GROUP BY ct.ContributionTypeID, ct.ContributionTypeName
          ORDER BY total DESC",
@@ -539,14 +564,14 @@ class Contribution
       // Contributions by payment method (fiscal year)
       $byPaymentMethod = $orm->runQuery(
          "SELECT 
-            p.PaymentOptionID,
-            p.PaymentOptionName,
+            pm.MethodID,
+            pm.MethodName,
             COALESCE(SUM(c.ContributionAmount), 0) AS total,
             COUNT(*) AS count
          FROM contribution c
-         JOIN paymentoption p ON c.PaymentOptionID = p.PaymentOptionID
+         JOIN payment_method pm ON c.PaymentMethodID = pm.MethodID
          WHERE c.Deleted = 0 $fyCondition
-         GROUP BY p.PaymentOptionID, p.PaymentOptionName
+         GROUP BY pm.MethodID, pm.MethodName
          ORDER BY total DESC",
          $fyParams
       );
@@ -634,7 +659,7 @@ class Contribution
             m.MbrEmailAddress,
             m.MbrProfilePicture,
             ct.ContributionTypeName,
-            p.PaymentOptionName,
+            pm.MethodName as PaymentMethodName,
             fy.FiscalYearName,
             b.BranchName,
             b.BranchAddress,
@@ -642,9 +667,9 @@ class Contribution
             b.BranchEmailAddress
          FROM contribution c
          JOIN churchmember m ON c.MbrID = m.MbrID
-         JOIN contributiontype ct ON c.ContributionTypeID = ct.ContributionTypeID
-         JOIN paymentoption p ON c.PaymentOptionID = p.PaymentOptionID
-         LEFT JOIN fiscalyear fy ON c.FiscalYearID = fy.FiscalYearID
+         JOIN contribution_type ct ON c.ContributionTypeID = ct.ContributionTypeID
+         JOIN payment_method pm ON c.PaymentMethodID = pm.MethodID
+         LEFT JOIN fiscal_year fy ON c.FiscalYearID = fy.FiscalYearID
          LEFT JOIN branch b ON m.BranchID = b.BranchID
          WHERE c.ContributionID = :id AND c.Deleted = 0",
          [':id' => $contributionId]
@@ -665,7 +690,7 @@ class Contribution
          'date' => $contribution['ContributionDate'],
          'amount' => (float)$contribution['ContributionAmount'],
          'type' => $contribution['ContributionTypeName'],
-         'payment_method' => $contribution['PaymentOptionName'],
+         'payment_method' => $contribution['PaymentMethodName'],
          'fiscal_year' => $contribution['FiscalYearName'],
          'description' => $contribution['ContributionDescription'],
          'recorded_at' => $contribution['RecordedAt'],
@@ -713,12 +738,12 @@ class Contribution
       // Get fiscal year
       if ($fiscalYearId) {
          $fy = $orm->runQuery(
-            "SELECT * FROM fiscalyear WHERE FiscalYearID = :id",
+            "SELECT * FROM fiscal_year WHERE FiscalYearID = :id",
             [':id' => $fiscalYearId]
          );
       } else {
          $fy = $orm->runQuery(
-            "SELECT * FROM fiscalyear WHERE Status = 'Active' LIMIT 1"
+            "SELECT * FROM fiscal_year WHERE Status = 'Active' LIMIT 1"
          );
       }
 
@@ -734,10 +759,10 @@ class Contribution
             c.ContributionDate,
             c.ContributionDescription,
             ct.ContributionTypeName,
-            p.PaymentOptionName
+            pm.MethodName as PaymentMethodName
          FROM contribution c
-         JOIN contributiontype ct ON c.ContributionTypeID = ct.ContributionTypeID
-         JOIN paymentoption p ON c.PaymentOptionID = p.PaymentOptionID
+         JOIN contribution_type ct ON c.ContributionTypeID = ct.ContributionTypeID
+         JOIN payment_method pm ON c.PaymentMethodID = pm.MethodID
          WHERE c.MbrID = :member_id AND c.Deleted = 0 $fyCondition
          ORDER BY c.ContributionDate DESC",
          array_merge([':member_id' => $memberId], $fyParams)
@@ -750,7 +775,7 @@ class Contribution
             COALESCE(SUM(c.ContributionAmount), 0) AS total,
             COUNT(*) AS count
          FROM contribution c
-         JOIN contributiontype ct ON c.ContributionTypeID = ct.ContributionTypeID
+         JOIN contribution_type ct ON c.ContributionTypeID = ct.ContributionTypeID
          WHERE c.MbrID = :member_id AND c.Deleted = 0 $fyCondition
          GROUP BY ct.ContributionTypeID, ct.ContributionTypeName
          ORDER BY total DESC",
@@ -768,8 +793,8 @@ class Contribution
          'fiscal_year' => $fiscalYear ? [
             'id' => $fiscalYear['FiscalYearID'],
             'name' => $fiscalYear['FiscalYearName'],
-            'start_date' => $fiscalYear['FiscalYearStartDate'],
-            'end_date' => $fiscalYear['FiscalYearEndDate']
+            'start_date' => $fiscalYear['StartDate'],
+            'end_date' => $fiscalYear['EndDate']
          ] : null,
          'member' => [
             'id' => $member['MbrID'],
@@ -797,17 +822,27 @@ class Contribution
    public static function getTypes(): array
    {
       $orm = new ORM();
-      return $orm->getAll('contributiontype');
+      return $orm->runQuery(
+         "SELECT ContributionTypeID, ContributionTypeName, ContributionTypeDescription, IsActive, IsTaxDeductible 
+          FROM contribution_type 
+          WHERE IsActive = 1 
+          ORDER BY ContributionTypeName"
+      );
    }
 
    /**
-    * Get payment options
+    * Get payment methods
     *
-    * @return array List of payment options
+    * @return array List of payment methods
     */
-   public static function getPaymentOptions(): array
+   public static function getPaymentMethods(): array
    {
       $orm = new ORM();
-      return $orm->getAll('paymentoption');
+      return $orm->runQuery(
+         "SELECT MethodID, MethodName, DisplayOrder, IsActive 
+          FROM payment_method 
+          WHERE IsActive = 1 
+          ORDER BY DisplayOrder"
+      );
    }
 }

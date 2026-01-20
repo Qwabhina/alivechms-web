@@ -124,6 +124,56 @@ class AuthRoutes extends BaseRoute
                 ], 'Authenticated');
             })(),
 
+            // GET USER SESSIONS - List all active sessions for current user
+            $method === 'GET' && $path === 'auth/sessions' => (function () {
+                self::authenticate(true);
+
+                try {
+                    $userId = Auth::getCurrentUserId();
+                    $sessions = Auth::getUserSessions($userId);
+                    ResponseHelper::success($sessions, 'Sessions retrieved');
+                } catch (Exception $e) {
+                    ResponseHelper::unauthorized('Authentication required');
+                }
+            })(),
+
+            // REVOKE SESSION - Revoke a specific session
+            $method === 'DELETE' && preg_match('#^auth/sessions/(\d+)$#', $path, $matches) => (function () use ($matches) {
+                self::authenticate(true);
+
+                try {
+                    $sessionId = (int)$matches[1];
+                    $userId = Auth::getCurrentUserId();
+
+                    $success = Auth::revokeSession($sessionId, $userId);
+
+                    if ($success) {
+                        ResponseHelper::success(null, 'Session revoked');
+                    } else {
+                        ResponseHelper::error('Session not found or already revoked', 404);
+                    }
+                } catch (Exception $e) {
+                    ResponseHelper::error($e->getMessage(), 400);
+                }
+            })(),
+
+            // REVOKE ALL SESSIONS - Revoke all sessions except current
+            $method === 'POST' && $path === 'auth/sessions/revoke-all' => (function () {
+                self::authenticate(true);
+
+                try {
+                    $userId = Auth::getCurrentUserId();
+                    $currentToken = TokenManager::getRefreshTokenFromCookie();
+
+                    $count = Auth::revokeAllSessions($userId, $currentToken);
+                    ResponseHelper::success([
+                        'revoked_count' => $count
+                    ], 'All other sessions revoked');
+                } catch (Exception $e) {
+                    ResponseHelper::error($e->getMessage(), 400);
+                }
+            })(),
+
             // FALLBACK
             default => ResponseHelper::notFound('Auth endpoint not found'),
         };

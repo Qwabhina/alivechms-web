@@ -53,7 +53,7 @@ class RoleRoutes extends BaseRoute
          // CREATE ROLE
          $method === 'POST' && $path === 'role/create' => (function () {
             self::authenticate();
-            self::authorize('manage_roles');
+            self::authorize('roles.manage');
 
             $payload = self::getPayload();
 
@@ -64,7 +64,7 @@ class RoleRoutes extends BaseRoute
          // UPDATE ROLE
          $method === 'PUT' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_roles');
+            self::authorize('roles.manage');
 
             $roleId = self::getIdFromPath($pathParts, 2, 'Role ID');
 
@@ -77,7 +77,7 @@ class RoleRoutes extends BaseRoute
          // DELETE ROLE
          $method === 'DELETE' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_roles');
+            self::authorize('roles.manage');
 
             $roleId = self::getIdFromPath($pathParts, 2, 'Role ID');
 
@@ -98,19 +98,25 @@ class RoleRoutes extends BaseRoute
 
          // LIST ALL ROLES (with permissions) - Requires authentication
          $method === 'GET' && $path === 'role/all' => (function () {
-            self::authenticate(); // SECURITY FIX: Require authentication
+            self::authenticate();
             // No specific permission required - any authenticated user can see roles for dropdowns
 
             $result = Role::getAll();
             ResponseHelper::success($result);
          })(),
 
-         // LIST ROLE NAMES ONLY (for dropdowns) - Public endpoint
+         // LIST ROLE NAMES ONLY (for dropdowns) - Authenticated
          $method === 'GET' && $path === 'role/names' => (function () {
-            self::authenticate(false); // Public access for dropdowns
+            self::authenticate();
 
             $orm = new ORM();
-            $roles = $orm->runQuery("SELECT RoleID, RoleName FROM churchrole ORDER BY RoleName ASC", []);
+            $roles = $orm->runQuery(
+               "SELECT RoleID, RoleName, RoleDescription 
+                FROM church_role 
+                WHERE IsActive = 1 
+                ORDER BY DisplayOrder, RoleName ASC",
+               []
+            );
 
             ResponseHelper::success($roles);
          })(),
@@ -118,7 +124,7 @@ class RoleRoutes extends BaseRoute
          // ASSIGN PERMISSIONS TO ROLE (Replace All)
          $method === 'POST' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'permissions' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_roles');
+            self::authorize('roles.manage');
 
             $roleId = self::getIdFromPath($pathParts, 2, 'Role ID');
 
@@ -133,7 +139,7 @@ class RoleRoutes extends BaseRoute
          // ASSIGN ROLE TO MEMBER
          $method === 'POST' && $pathParts[0] === 'role' && ($pathParts[1] ?? '') === 'assign' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_roles');
+            self::authorize('roles.manage');
 
             $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
 

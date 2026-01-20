@@ -134,6 +134,7 @@ $routes = [
     'membershiptype'  => 'MembershipTypeRoutes.php',
     'milestone'       => 'MilestoneRoutes.php',
     'role'            => 'RoleRoutes.php',
+    'lookups'         => 'LookupRoutes.php',
     'settings'        => 'SettingsRoutes.php',
     'permission'      => 'PermissionRoutes.php',
     'volunteer'       => 'VolunteerRoutes.php',

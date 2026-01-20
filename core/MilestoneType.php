@@ -33,7 +33,7 @@ class MilestoneType
 
       // Check for duplicate name
       $existing = $orm->runQuery(
-         "SELECT MilestoneTypeID FROM milestone_type WHERE MilestoneTypeName = :name",
+         "SELECT MilestoneTypeID FROM milestone_type WHERE TypeName = :name",
          [':name' => $name]
       );
       if (!empty($existing)) {
@@ -44,7 +44,7 @@ class MilestoneType
       $maxOrder = $orm->runQuery("SELECT MAX(DisplayOrder) AS max_order FROM milestone_type")[0]['max_order'] ?? 0;
 
       $typeId = $orm->insert('milestone_type', [
-         'MilestoneTypeName' => $name,
+         'TypeName' => $name,
          'Description' => $data['description'] ?? null,
          'Icon' => $data['icon'] ?? 'trophy',
          'Color' => $data['color'] ?? 'primary',
@@ -73,13 +73,13 @@ class MilestoneType
       if (!empty($data['name'])) {
          $name = trim($data['name']);
          $existing = $orm->runQuery(
-            "SELECT MilestoneTypeID FROM milestone_type WHERE MilestoneTypeName = :name AND MilestoneTypeID != :id",
+            "SELECT MilestoneTypeID FROM milestone_type WHERE TypeName = :name AND MilestoneTypeID != :id",
             [':name' => $name, ':id' => $typeId]
          );
          if (!empty($existing)) {
             ResponseHelper::error('Milestone type name already exists', 400);
          }
-         $update['MilestoneTypeName'] = $name;
+         $update['TypeName'] = $name;
       }
 
       if (isset($data['description'])) {
@@ -155,8 +155,8 @@ class MilestoneType
 
       $where = $activeOnly ? "WHERE IsActive = 1" : "";
       $types = $orm->runQuery(
-         "SELECT MilestoneTypeID, MilestoneTypeName, Description, Icon, Color, DisplayOrder, IsActive, CreatedAt 
-          FROM milestone_type $where ORDER BY DisplayOrder ASC, MilestoneTypeName ASC"
+         "SELECT MilestoneTypeID, TypeName, Description, Icon, Color, DisplayOrder, IsActive, CreatedAt 
+          FROM milestone_type $where ORDER BY DisplayOrder ASC, TypeName ASC"
       );
 
       return ['data' => $types];

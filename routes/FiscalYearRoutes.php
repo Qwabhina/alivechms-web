@@ -45,7 +45,7 @@ class FiscalYearRoutes extends BaseRoute
          // CREATE NEW FISCAL YEAR
          $method === 'POST' && $path === 'fiscalyear/create' => (function () {
             self::authenticate();
-            self::authorize('manage_fiscal_years');
+            self::authorize('settings.edit');
 
             $payload = self::getPayload();
 
@@ -56,7 +56,7 @@ class FiscalYearRoutes extends BaseRoute
          // UPDATE FISCAL YEAR
          $method === 'POST' && $pathParts[0] === 'fiscalyear' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_fiscal_years');
+            self::authorize('settings.edit');
 
             $fiscalYearId = self::getIdFromPath($pathParts, 2, 'Fiscal Year ID');
 
@@ -69,7 +69,7 @@ class FiscalYearRoutes extends BaseRoute
          // DELETE FISCAL YEAR (Only if no financial records)
          $method === 'POST' && $pathParts[0] === 'fiscalyear' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_fiscal_years');
+            self::authorize('settings.edit');
 
             $fiscalYearId = self::getIdFromPath($pathParts, 2, 'Fiscal Year ID');
 
@@ -80,7 +80,7 @@ class FiscalYearRoutes extends BaseRoute
          // VIEW SINGLE FISCAL YEAR
          $method === 'GET' && $pathParts[0] === 'fiscalyear' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('view_fiscal_years');
+            self::authorize('finances.view');
 
             $fiscalYearId = self::getIdFromPath($pathParts, 2, 'Fiscal Year ID');
 
@@ -91,7 +91,7 @@ class FiscalYearRoutes extends BaseRoute
          // LIST ALL FISCAL YEARS (Paginated + Multi-Filter)
          $method === 'GET' && $path === 'fiscalyear/all' => (function () {
             self::authenticate();
-            self::authorize('view_fiscal_years');
+            self::authorize('finances.view');
 
             [$page, $limit] = self::getPagination(10, 100);
 
@@ -116,7 +116,7 @@ class FiscalYearRoutes extends BaseRoute
          // CLOSE FISCAL YEAR (Irreversible)
          $method === 'POST' && $pathParts[0] === 'fiscalyear' && ($pathParts[1] ?? '') === 'close' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_fiscal_years');
+            self::authorize('settings.edit');
 
             $fiscalYearId = self::getIdFromPath($pathParts, 2, 'Fiscal Year ID');
 

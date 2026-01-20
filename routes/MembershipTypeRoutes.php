@@ -52,7 +52,7 @@ class MembershipTypeRoutes extends BaseRoute
          // CREATE MEMBERSHIP TYPE
          $method === 'POST' && $path === 'membershiptype/create' => (function () {
             self::authenticate();
-            self::authorize('manage_membership_types');
+            self::authorize('settings.edit');
 
             $payload = self::getPayload();
 
@@ -63,7 +63,7 @@ class MembershipTypeRoutes extends BaseRoute
          // UPDATE MEMBERSHIP TYPE
          $method === 'POST' && $pathParts[0] === 'membershiptype' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_membership_types');
+            self::authorize('settings.edit');
 
             $typeId = self::getIdFromPath($pathParts, 2, 'Membership Type ID');
 
@@ -76,7 +76,7 @@ class MembershipTypeRoutes extends BaseRoute
          // DELETE MEMBERSHIP TYPE
          $method === 'POST' && $pathParts[0] === 'membershiptype' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_membership_types');
+            self::authorize('settings.edit');
 
             $typeId = self::getIdFromPath($pathParts, 2, 'Membership Type ID');
 
@@ -87,7 +87,7 @@ class MembershipTypeRoutes extends BaseRoute
          // VIEW SINGLE MEMBERSHIP TYPE
          $method === 'GET' && $pathParts[0] === 'membershiptype' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('view_membership_types');
+            self::authorize('members.view');
 
             $typeId = self::getIdFromPath($pathParts, 2, 'Membership Type ID');
 
@@ -98,7 +98,7 @@ class MembershipTypeRoutes extends BaseRoute
          // LIST ALL MEMBERSHIP TYPES (Paginated + Search)
          $method === 'GET' && $path === 'membershiptype/all' => (function () {
             self::authenticate();
-            self::authorize('view_membership_types');
+            self::authorize('members.view');
 
             [$page, $limit] = self::getPagination(10, 100);
 
@@ -114,7 +114,7 @@ class MembershipTypeRoutes extends BaseRoute
          // ASSIGN MEMBERSHIP TYPE TO MEMBER
          $method === 'POST' && $pathParts[0] === 'membershiptype' && ($pathParts[1] ?? '') === 'assign' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_membership_types');
+            self::authorize('members.edit');
 
             $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
 
@@ -127,7 +127,7 @@ class MembershipTypeRoutes extends BaseRoute
          // UPDATE MEMBERSHIP ASSIGNMENT (e.g., set end date)
          $method === 'POST' && $pathParts[0] === 'membershiptype' && ($pathParts[1] ?? '') === 'updateAssignment' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_membership_types');
+            self::authorize('members.edit');
 
             $assignmentId = self::getIdFromPath($pathParts, 2, 'Assignment ID');
 
@@ -140,7 +140,7 @@ class MembershipTypeRoutes extends BaseRoute
          // GET MEMBER'S MEMBERSHIP HISTORY
          $method === 'GET' && $pathParts[0] === 'membershiptype' && ($pathParts[1] ?? '') === 'memberassignments' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('view_membership_types');
+            self::authorize('members.view');
 
             $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
 

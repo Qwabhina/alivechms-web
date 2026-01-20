@@ -51,8 +51,23 @@ class Family
         $branchId = (int)$data['branch_id'];
 
         // Validate head member if provided
-        if ($headId && !$orm->exists('churchmember', ['MbrID' => $headId])) {
-            ResponseHelper::error('Head of household not found', 400);
+        if ($headId) {
+            $member = $orm->selectWithJoin(
+                baseTable: 'churchmember m',
+                joins: [['table' => 'membership_status ms', 'on' => 'm.MbrMembershipStatusID = ms.StatusID']],
+                fields: ['m.MbrID', 'ms.StatusName'],
+                conditions: ['m.MbrID' => ':member_id', 'm.Deleted' => 0],
+                params: [':member_id' => $headId]
+            );
+
+            if (empty($member)) {
+                ResponseHelper::error('Head of household not found', 400);
+            }
+        }
+
+        // Validate branch
+        if (empty($orm->getWhere('branch', ['BranchID' => $branchId, 'IsActive' => 1]))) {
+            ResponseHelper::error('Invalid branch', 400);
         }
 
         $orm->beginTransaction();
@@ -95,14 +110,43 @@ class Family
 
         $updates = [];
         if (isset($data['family_name'])) $updates['FamilyName'] = trim($data['family_name']);
-        if (isset($data['head_id'])) $updates['HeadOfHouseholdID'] = (int)$data['head_id'];
-        if (isset($data['branch_id'])) $updates['BranchID'] = (int)$data['branch_id'];
+        if (isset($data['head_id'])) {
+            $headId = (int)$data['head_id'];
+            // Validate new head
+            if ($headId > 0) {
+                $member = $orm->selectWithJoin(
+                    baseTable: 'churchmember m',
+                    joins: [['table' => 'membership_status ms', 'on' => 'm.MbrMembershipStatusID = ms.StatusID']],
+                    fields: ['m.MbrID', 'ms.StatusName'],
+                    conditions: ['m.MbrID' => ':member_id', 'm.Deleted' => 0],
+                    params: [':member_id' => $headId]
+                );
+
+                if (empty($member)) {
+                    ResponseHelper::error('Head of household not found', 400);
+                }
+            }
+            $updates['HeadOfHouseholdID'] = $headId;
+        }
+        if (isset($data['branch_id'])) {
+            $branchId = (int)$data['branch_id'];
+            if (empty($orm->getWhere('branch', ['BranchID' => $branchId, 'IsActive' => 1]))) {
+                ResponseHelper::error('Invalid branch', 400);
+            }
+            $updates['BranchID'] = $branchId;
+        }
 
         if (empty($updates)) {
             ResponseHelper::error('No updates provided', 400);
         }
 
-        $affected = $orm->update('family', $updates, ['FamilyID' => $familyId]);
+        // Add audit trail
+        $updates['UpdatedAt'] = date('Y-m-d H:i:s');
+        if (!empty($_SESSION['user_id'])) {
+            $updates['UpdatedBy'] = (int)$_SESSION['user_id'];
+        }
+
+        $affected = $orm->update('family', $updates, ['FamilyID' => $familyId, 'Deleted' => 0]);
 
         if ($affected === 0) {
             ResponseHelper::error('Family not found', 404);
@@ -133,8 +177,17 @@ class Family
             ResponseHelper::error('Cannot delete family with active members', 400);
         }
 
-        // Hard delete since table has no Deleted column
-        $affected = $orm->delete('family', ['FamilyID' => $familyId]);
+        // Soft delete with audit trail
+        $deleteData = [
+            'Deleted' => 1,
+            'DeletedAt' => date('Y-m-d H:i:s')
+        ];
+
+        if (!empty($_SESSION['user_id'])) {
+            $deleteData['DeletedBy'] = (int)$_SESSION['user_id'];
+        }
+
+        $affected = $orm->update('family', $deleteData, ['FamilyID' => $familyId, 'Deleted' => 0]);
 
         if ($affected === 0) {
             ResponseHelper::error('Family not found', 404);
@@ -169,7 +222,7 @@ class Family
                 CONCAT(m.MbrFirstName, ' ', m.MbrFamilyName) AS HeadOfHouseholdName
              FROM family f
              LEFT JOIN churchmember m ON f.HeadOfHouseholdID = m.MbrID
-             WHERE f.FamilyID = :family_id",
+             WHERE f.FamilyID = :family_id AND f.Deleted = 0",
             [':family_id' => $familyId]
         );
 
@@ -211,7 +264,7 @@ class Family
         $offset = ($page - 1) * $limit;
 
         // Build WHERE conditions
-        $whereConditions = ['1=1']; // family table has no Deleted column
+        $whereConditions = ['f.Deleted = 0'];
         $params = [];
 
         if (!empty($filters['branch_id'])) {
@@ -271,10 +324,20 @@ class Family
         Helpers::validateInput($data, ['role' => 'required|max:50']);
 
         // Check existence
-        if (!$orm->exists('family', ['FamilyID' => $familyId])) {
+        if (!$orm->exists('family', ['FamilyID' => $familyId, 'Deleted' => 0])) {
             ResponseHelper::error('Family not found', 404);
         }
-        if (!$orm->exists('churchmember', ['MbrID' => $memberId])) {
+
+        // Validate member
+        $member = $orm->selectWithJoin(
+            baseTable: 'churchmember m',
+            joins: [['table' => 'membership_status ms', 'on' => 'm.MbrMembershipStatusID = ms.StatusID']],
+            fields: ['m.MbrID', 'ms.StatusName'],
+            conditions: ['m.MbrID' => ':member_id', 'm.Deleted' => 0],
+            params: [':member_id' => $memberId]
+        );
+
+        if (empty($member)) {
             ResponseHelper::error('Member not found', 404);
         }
 

@@ -38,7 +38,7 @@ class BudgetRoutes extends BaseRoute
          // CREATE BUDGET (with items)
          $method === 'POST' && $path === 'budget/create' => (function () {
             self::authenticate();
-            self::authorize('create_budgets');
+            self::authorize('finances.view');
 
             $payload = self::getPayload();
 
@@ -49,7 +49,7 @@ class BudgetRoutes extends BaseRoute
          // UPDATE BUDGET (title/description only, draft state)
          $method === 'PUT' && $pathParts[0] === 'budget' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('edit_budgets');
+            self::authorize('finances.view');
 
             $budgetId = self::getIdFromPath($pathParts, 2, 'Budget ID');
 
@@ -62,7 +62,7 @@ class BudgetRoutes extends BaseRoute
          // SUBMIT BUDGET FOR APPROVAL
          $method === 'PUT' && $pathParts[0] === 'budget' && ($pathParts[1] ?? '') === 'submit' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('submit_budgets');
+            self::authorize('finances.view');
 
             $budgetId = self::getIdFromPath($pathParts, 2, 'Budget ID');
 
@@ -73,7 +73,7 @@ class BudgetRoutes extends BaseRoute
          // REVIEW BUDGET (Approve/Reject)
          $method === 'POST' && $pathParts[0] === 'budget' && ($pathParts[1] ?? '') === 'review' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('approve_budgets');
+            self::authorize('finances.view');
 
             $budgetId = self::getIdFromPath($pathParts, 2, 'Budget ID');
 
@@ -93,7 +93,7 @@ class BudgetRoutes extends BaseRoute
          // VIEW SINGLE BUDGET (with items)
          $method === 'GET' && $pathParts[0] === 'budget' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('view_budgets');
+            self::authorize('finances.view');
 
             $budgetId = self::getIdFromPath($pathParts, 2, 'Budget ID');
 
@@ -104,7 +104,7 @@ class BudgetRoutes extends BaseRoute
          // LIST ALL BUDGETS (Paginated + Filtered)
          $method === 'GET' && $path === 'budget/all' => (function () {
             self::authenticate();
-            self::authorize('view_budgets');
+            self::authorize('finances.view');
 
             [$page, $limit] = self::getPagination(10, 100);
 
@@ -117,7 +117,7 @@ class BudgetRoutes extends BaseRoute
          // ADD BUDGET ITEM
          $method === 'POST' && $pathParts[0] === 'budget' && ($pathParts[1] ?? '') === 'item' && ($pathParts[2] ?? '') === 'add' && isset($pathParts[3]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('edit_budgets');
+            self::authorize('finances.view');
 
             $budgetId = self::getIdFromPath($pathParts, 3, 'Budget ID');
 
@@ -130,7 +130,7 @@ class BudgetRoutes extends BaseRoute
          // UPDATE BUDGET ITEM
          $method === 'PUT' && $pathParts[0] === 'budget' && ($pathParts[1] ?? '') === 'item' && ($pathParts[2] ?? '') === 'update' && isset($pathParts[3]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('edit_budgets');
+            self::authorize('finances.view');
 
             $itemId = self::getIdFromPath($pathParts, 3, 'Item ID');
 
@@ -143,7 +143,7 @@ class BudgetRoutes extends BaseRoute
          // DELETE BUDGET ITEM
          $method === 'DELETE' && $pathParts[0] === 'budget' && ($pathParts[1] ?? '') === 'item' && ($pathParts[2] ?? '') === 'delete' && isset($pathParts[3]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('edit_budgets');
+            self::authorize('finances.view');
 
             $itemId = self::getIdFromPath($pathParts, 3, 'Item ID');
 

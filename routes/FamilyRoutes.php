@@ -38,7 +38,7 @@ class FamilyRoutes extends BaseRoute
             // CREATE FAMILY
             $method === 'POST' && $path === 'family/create' => (function () {
                 self::authenticate();
-                self::authorize('manage_families');
+                self::authorize('members.create');
 
                 $payload = self::getPayload([
                     'family_name' => 'required|max:100',
@@ -58,7 +58,7 @@ class FamilyRoutes extends BaseRoute
             // UPDATE FAMILY
             $method === 'PUT' && $pathParts[0] === 'family' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('manage_families');
+                self::authorize('members.edit');
 
                 $familyId = self::getIdFromPath($pathParts, 2, 'Family ID');
 
@@ -80,7 +80,7 @@ class FamilyRoutes extends BaseRoute
             // SOFT DELETE FAMILY
             $method === 'DELETE' && $pathParts[0] === 'family' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('manage_families');
+                self::authorize('members.delete');
 
                 $familyId = self::getIdFromPath($pathParts, 2, 'Family ID');
 
@@ -93,7 +93,7 @@ class FamilyRoutes extends BaseRoute
             // VIEW SINGLE FAMILY WITH MEMBERS
             $method === 'GET' && $pathParts[0] === 'family' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('view_families');
+                self::authorize('members.view');
 
                 $familyId = self::getIdFromPath($pathParts, 2, 'Family ID');
 
@@ -116,7 +116,7 @@ class FamilyRoutes extends BaseRoute
             // ADD MEMBER TO FAMILY
             $method === 'POST' && $pathParts[0] === 'family' && ($pathParts[1] ?? '') === 'addMember' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('manage_families');
+                self::authorize('members.edit');
 
                 $familyId = self::getIdFromPath($pathParts, 2, 'Family ID');
 
@@ -134,7 +134,7 @@ class FamilyRoutes extends BaseRoute
             // REMOVE MEMBER FROM FAMILY
             $method === 'DELETE' && $pathParts[0] === 'family' && ($pathParts[1] ?? '') === 'removeMember' && isset($pathParts[2], $pathParts[3]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('manage_families');
+                self::authorize('members.edit');
 
                 $familyId = self::getIdFromPath($pathParts, 2, 'Family ID');
                 $memberId = self::getIdFromPath($pathParts, 3, 'Member ID');
@@ -148,7 +148,7 @@ class FamilyRoutes extends BaseRoute
             // UPDATE MEMBER ROLE IN FAMILY
             $method === 'PUT' && $pathParts[0] === 'family' && ($pathParts[1] ?? '') === 'updateMemberRole' && isset($pathParts[2], $pathParts[3]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('manage_families');
+                self::authorize('members.edit');
 
                 $familyId = self::getIdFromPath($pathParts, 2, 'Family ID');
                 $memberId = self::getIdFromPath($pathParts, 3, 'Member ID');

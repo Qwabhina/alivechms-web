@@ -404,7 +404,7 @@ require_once '../includes/sidebar.php';
             State.milestoneTypesData.forEach(t => {
                const opt = document.createElement('option');
                opt.value = t.MilestoneTypeID;
-               opt.textContent = t.MilestoneTypeName;
+               opt.textContent = t.TypeName;
                filterSelect.appendChild(opt);
             });
          } catch (error) {
@@ -425,7 +425,7 @@ require_once '../includes/sidebar.php';
                   render: (v, row) => '<div class="fw-medium">' + (v || '-') + '</div>'
                },
                {
-                  key: 'MilestoneTypeName',
+                  key: 'TypeName',
                   title: 'Type',
                   render: (v, row) => '<span class="badge bg-' + (row.Color || 'primary') + '"><i class="bi bi-' + (row.Icon || 'trophy') + ' me-1"></i>' + v + '</span>'
                },
@@ -530,7 +530,7 @@ require_once '../includes/sidebar.php';
          document.getElementById('statsCardsRow1').innerHTML = row1Cards.map(renderStatCard).join('');
          const byType = stats.by_type || [];
          const row2Cards = byType.slice(0, 4).map(t => ({
-            title: t.MilestoneTypeName,
+            title: t.TypeName,
             value: (t.count || 0).toLocaleString(),
             subtitle: 'milestones',
             icon: t.Icon || 'trophy',
@@ -546,7 +546,7 @@ require_once '../includes/sidebar.php';
       function renderRecentMilestones(recent) {
          const tbody = document.getElementById('recentMilestonesBody');
          if (recent.length > 0) {
-            tbody.innerHTML = recent.slice(0, 5).map(m => '<tr><td><div class="fw-medium">' + m.MbrFirstName + ' ' + m.MbrFamilyName + '</div></td><td><span class="badge bg-' + (m.Color || 'primary') + '">' + m.MilestoneTypeName + '</span></td><td class="text-muted small">' + new Date(m.MilestoneDate).toLocaleDateString() + '</td></tr>').join('');
+            tbody.innerHTML = recent.slice(0, 5).map(m => '<tr><td><div class="fw-medium">' + m.MbrFirstName + ' ' + m.MbrFamilyName + '</div></td><td><span class="badge bg-' + (m.Color || 'primary') + '">' + m.TypeName + '</span></td><td class="text-muted small">' + new Date(m.MilestoneDate).toLocaleDateString() + '</td></tr>').join('');
          } else {
             tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">No recent milestones</td></tr>';
          }
@@ -571,7 +571,7 @@ require_once '../includes/sidebar.php';
          State.byTypeChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
-               labels: byType.map(t => t.MilestoneTypeName),
+               labels: byType.map(t => t.TypeName),
                datasets: [{
                   data: byType.map(t => parseInt(t.count)),
                   backgroundColor: colors,
@@ -735,7 +735,7 @@ require_once '../includes/sidebar.php';
             types.forEach(t => {
                const opt = document.createElement('option');
                opt.value = t.MilestoneTypeID;
-               opt.textContent = t.MilestoneTypeName;
+               opt.textContent = t.TypeName;
                select.appendChild(opt);
             });
             if (State.milestoneTypeChoices) State.milestoneTypeChoices.destroy();
@@ -820,7 +820,7 @@ require_once '../includes/sidebar.php';
             const icon = milestone.Icon || 'trophy';
             let html = '<div class="bg-' + color + ' bg-opacity-10 p-4 text-center">';
             html += '<div class="bg-' + color + ' text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;"><i class="bi bi-' + icon + ' fs-1"></i></div>';
-            html += '<h4 class="mb-1">' + milestone.MilestoneTypeName + '</h4>';
+            html += '<h4 class="mb-1">' + milestone.TypeName + '</h4>';
             html += '<p class="text-muted mb-0">' + milestone.MemberName + '</p></div>';
             html += '<div class="p-4"><div class="row g-3">';
             html += '<div class="col-md-6"><div class="text-muted small">Milestone Date</div><div class="fw-medium">' + new Date(milestone.MilestoneDate).toLocaleDateString('en-US', {
@@ -888,10 +888,10 @@ require_once '../includes/sidebar.php';
             const churchName = Config.getSetting('church_name', 'Church Name');
             const color = milestone.Color || 'primary';
             let html = '<div class="certificate-container p-4" style="border: 3px double #333; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">';
-            html += '<div class="text-center mb-4"><h2 class="mb-1" style="font-family: serif;">' + churchName + '</h2><p class="text-muted mb-0">Certificate of ' + milestone.MilestoneTypeName + '</p></div>';
+            html += '<div class="text-center mb-4"><h2 class="mb-1" style="font-family: serif;">' + churchName + '</h2><p class="text-muted mb-0">Certificate of ' + milestone.TypeName + '</p></div>';
             html += '<hr class="my-4"><div class="text-center mb-4"><p class="mb-2">This is to certify that</p>';
             html += '<h3 class="text-' + color + ' mb-2" style="font-family: serif;">' + milestone.MemberName + '</h3>';
-            html += '<p class="mb-0">has achieved the milestone of</p><h4 class="text-uppercase mb-3">' + milestone.MilestoneTypeName + '</h4>';
+            html += '<p class="mb-0">has achieved the milestone of</p><h4 class="text-uppercase mb-3">' + milestone.TypeName + '</h4>';
             html += '<p class="mb-0">on <strong>' + new Date(milestone.MilestoneDate).toLocaleDateString('en-US', {
                year: 'numeric',
                month: 'long',
@@ -921,7 +921,7 @@ require_once '../includes/sidebar.php';
                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No milestone types found</td></tr>';
                return;
             }
-            tbody.innerHTML = types.map(t => '<tr><td class="fw-medium">' + t.MilestoneTypeName + '</td><td class="text-muted">' + (t.Description || '-') + '</td><td><i class="bi bi-' + (t.Icon || 'trophy') + '"></i> ' + (t.Icon || 'trophy') + '</td><td><span class="badge bg-' + (t.Color || 'primary') + '">' + (t.Color || 'primary') + '</span></td><td><div class="btn-group btn-group-sm"><button class="btn btn-warning btn-sm" onclick="editMilestoneType(' + t.MilestoneTypeID + ')" title="Edit"><i class="bi bi-pencil"></i></button><button class="btn btn-danger btn-sm" onclick="deleteMilestoneType(' + t.MilestoneTypeID + ')" title="Delete"><i class="bi bi-trash"></i></button></div></td></tr>').join('');
+            tbody.innerHTML = types.map(t => '<tr><td class="fw-medium">' + t.TypeName + '</td><td class="text-muted">' + (t.Description || '-') + '</td><td><i class="bi bi-' + (t.Icon || 'trophy') + '"></i> ' + (t.Icon || 'trophy') + '</td><td><span class="badge bg-' + (t.Color || 'primary') + '">' + (t.Color || 'primary') + '</span></td><td><div class="btn-group btn-group-sm"><button class="btn btn-warning btn-sm" onclick="editMilestoneType(' + t.MilestoneTypeID + ')" title="Edit"><i class="bi bi-pencil"></i></button><button class="btn btn-danger btn-sm" onclick="deleteMilestoneType(' + t.MilestoneTypeID + ')" title="Delete"><i class="bi bi-trash"></i></button></div></td></tr>').join('');
          } catch (error) {
             console.error('Load milestone types error:', error);
             document.getElementById('milestoneTypesBody').innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Failed to load types</td></tr>';
@@ -966,7 +966,7 @@ require_once '../includes/sidebar.php';
             }
             State.editingTypeId = typeId;
             document.getElementById('editTypeId').value = typeId;
-            document.getElementById('editTypeName').value = type.MilestoneTypeName;
+            document.getElementById('editTypeName').value = type.TypeName;
             document.getElementById('editTypeDesc').value = type.Description || '';
             document.getElementById('editTypeIcon').value = type.Icon || '';
             document.getElementById('editTypeColor').value = type.Color || 'primary';

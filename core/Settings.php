@@ -30,14 +30,14 @@ class Settings
    {
       $orm = new ORM();
 
-      $result = $orm->getWhere('settings', ['setting_key' => $key]);
+      $result = $orm->getWhere('system_setting', ['SettingKey' => $key]);
 
       if (empty($result)) {
          return null;
       }
 
       $setting = $result[0];
-      return self::castValue($setting['setting_value'], $setting['setting_type']);
+      return self::castValue($setting['SettingValue'], $setting['SettingType']);
    }
 
    /**
@@ -77,28 +77,28 @@ class Settings
    {
       $orm = new ORM();
 
-      $existing = $orm->getWhere('settings', ['setting_key' => $key]);
+      $existing = $orm->getWhere('system_setting', ['SettingKey' => $key]);
 
       // Format value based on type
       $formattedValue = self::formatValue($value, $type);
 
       if (!empty($existing)) {
-         $orm->update('settings', [
-            'setting_value' => $formattedValue,
-            'setting_type' => $type,
-            'category' => $category,
-            'description' => $description,
-            'updated_at' => date('Y-m-d H:i:s')
-         ], ['setting_key' => $key]);
+         $orm->update('system_setting', [
+            'SettingValue' => $formattedValue,
+            'SettingType' => $type,
+            'Category' => $category,
+            'Description' => $description,
+            'UpdatedAt' => date('Y-m-d H:i:s')
+         ], ['SettingKey' => $key]);
       } else {
-         $orm->insert('settings', [
-            'setting_key' => $key,
-            'setting_value' => $formattedValue,
-            'setting_type' => $type,
-            'category' => $category,
-            'description' => $description,
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s')
+         $orm->insert('system_setting', [
+            'SettingKey' => $key,
+            'SettingValue' => $formattedValue,
+            'SettingType' => $type,
+            'Category' => $category,
+            'Description' => $description,
+            'CreatedAt' => date('Y-m-d H:i:s'),
+            'UpdatedAt' => date('Y-m-d H:i:s')
          ]);
       }
 
@@ -140,20 +140,20 @@ class Settings
 
       $conditions = [];
       if ($category) {
-         $conditions['category'] = $category;
+         $conditions['Category'] = $category;
       }
 
-      $settings = empty($conditions) ? $orm->getAll('settings') : $orm->getWhere('settings', $conditions);
+      $settings = empty($conditions) ? $orm->getAll('system_setting') : $orm->getWhere('system_setting', $conditions);
 
       return array_map(function ($setting) {
          return [
-            'id' => $setting['id'],
-            'key' => $setting['setting_key'],
-            'value' => self::castValue($setting['setting_value'], $setting['setting_type']),
-            'type' => $setting['setting_type'],
-            'category' => $setting['category'],
-            'description' => $setting['description'],
-            'updated_at' => $setting['updated_at']
+            'id' => $setting['SettingID'],
+            'key' => $setting['SettingKey'],
+            'value' => self::castValue($setting['SettingValue'], $setting['SettingType']),
+            'type' => $setting['SettingType'],
+            'category' => $setting['Category'],
+            'description' => $setting['Description'],
+            'updated_at' => $setting['UpdatedAt']
          ];
       }, $settings);
    }
@@ -218,7 +218,7 @@ class Settings
    {
       $orm = new ORM();
 
-      $orm->delete('settings', ['setting_key' => $key]);
+      $orm->delete('system_setting', ['SettingKey' => $key]);
 
       Helpers::logError("Setting deleted: $key");
       return ['status' => 'success'];
@@ -233,61 +233,61 @@ class Settings
    {
       $defaults = [
          // General Settings
-         ['key' => 'church_name', 'value' => 'Alive Church', 'type' => 'string', 'category' => 'general', 'description' => 'Church name'],
-         ['key' => 'church_motto', 'value' => 'Faith, Hope, and Love', 'type' => 'string', 'category' => 'general', 'description' => 'Church motto or tagline'],
-         ['key' => 'church_email', 'value' => 'info@alivechurch.org', 'type' => 'string', 'category' => 'general', 'description' => 'Church email address'],
-         ['key' => 'church_phone', 'value' => '+233 000 000 000', 'type' => 'string', 'category' => 'general', 'description' => 'Church phone number'],
-         ['key' => 'church_address', 'value' => 'Accra, Ghana', 'type' => 'string', 'category' => 'general', 'description' => 'Church physical address'],
-         ['key' => 'church_website', 'value' => 'https://alivechurch.org', 'type' => 'string', 'category' => 'general', 'description' => 'Church website URL'],
-         ['key' => 'church_logo', 'value' => '', 'type' => 'string', 'category' => 'general', 'description' => 'Church logo path (relative to public folder)'],
+         ['key' => 'church_name', 'value' => 'Alive Church', 'type' => 'string', 'category' => 'General', 'description' => 'Church name'],
+         ['key' => 'church_motto', 'value' => 'Faith, Hope, and Love', 'type' => 'string', 'category' => 'General', 'description' => 'Church motto or tagline'],
+         ['key' => 'church_email', 'value' => 'info@alivechurch.org', 'type' => 'string', 'category' => 'General', 'description' => 'Church email address'],
+         ['key' => 'church_phone', 'value' => '+233 000 000 000', 'type' => 'string', 'category' => 'General', 'description' => 'Church phone number'],
+         ['key' => 'church_address', 'value' => 'Accra, Ghana', 'type' => 'string', 'category' => 'General', 'description' => 'Church physical address'],
+         ['key' => 'church_website', 'value' => 'https://alivechurch.org', 'type' => 'string', 'category' => 'General', 'description' => 'Church website URL'],
+         ['key' => 'church_logo', 'value' => '', 'type' => 'string', 'category' => 'General', 'description' => 'Church logo path (relative to public folder)'],
 
          // Regional Settings
-         ['key' => 'currency_symbol', 'value' => 'GH₵', 'type' => 'string', 'category' => 'regional', 'description' => 'Currency symbol'],
-         ['key' => 'currency_code', 'value' => 'GHS', 'type' => 'string', 'category' => 'regional', 'description' => 'Currency code (ISO 4217)'],
-         ['key' => 'date_format', 'value' => 'Y-m-d', 'type' => 'string', 'category' => 'regional', 'description' => 'Date format'],
-         ['key' => 'time_format', 'value' => 'H:i', 'type' => 'string', 'category' => 'regional', 'description' => 'Time format'],
-         ['key' => 'timezone', 'value' => 'Africa/Accra', 'type' => 'string', 'category' => 'regional', 'description' => 'System timezone'],
-         ['key' => 'language', 'value' => 'en', 'type' => 'string', 'category' => 'regional', 'description' => 'Default language'],
+         ['key' => 'currency_symbol', 'value' => 'GH₵', 'type' => 'string', 'category' => 'Regional', 'description' => 'Currency symbol'],
+         ['key' => 'currency_code', 'value' => 'GHS', 'type' => 'string', 'category' => 'Regional', 'description' => 'Currency code (ISO 4217)'],
+         ['key' => 'date_format', 'value' => 'Y-m-d', 'type' => 'string', 'category' => 'Regional', 'description' => 'Date format'],
+         ['key' => 'time_format', 'value' => 'H:i', 'type' => 'string', 'category' => 'Regional', 'description' => 'Time format'],
+         ['key' => 'timezone', 'value' => 'Africa/Accra', 'type' => 'string', 'category' => 'Regional', 'description' => 'System timezone'],
+         ['key' => 'language', 'value' => 'en', 'type' => 'string', 'category' => 'Regional', 'description' => 'Default language'],
 
          // Email Settings
-         ['key' => 'enable_email', 'value' => 1, 'type' => 'boolean', 'category' => 'email', 'description' => 'Enable email notifications'],
-         ['key' => 'smtp_host', 'value' => '', 'type' => 'string', 'category' => 'email', 'description' => 'SMTP server host'],
-         ['key' => 'smtp_port', 'value' => 587, 'type' => 'number', 'category' => 'email', 'description' => 'SMTP server port'],
-         ['key' => 'smtp_username', 'value' => '', 'type' => 'string', 'category' => 'email', 'description' => 'SMTP username'],
-         ['key' => 'smtp_password', 'value' => '', 'type' => 'string', 'category' => 'email', 'description' => 'SMTP password'],
-         ['key' => 'smtp_encryption', 'value' => 'tls', 'type' => 'string', 'category' => 'email', 'description' => 'SMTP encryption (tls/ssl)'],
-         ['key' => 'email_from_name', 'value' => 'Alive Church', 'type' => 'string', 'category' => 'email', 'description' => 'Email sender name'],
-         ['key' => 'email_from_address', 'value' => 'noreply@alivechurch.org', 'type' => 'string', 'category' => 'email', 'description' => 'Email sender address'],
+         ['key' => 'enable_email', 'value' => 1, 'type' => 'boolean', 'category' => 'Email', 'description' => 'Enable email notifications'],
+         ['key' => 'smtp_host', 'value' => '', 'type' => 'string', 'category' => 'Email', 'description' => 'SMTP server host'],
+         ['key' => 'smtp_port', 'value' => 587, 'type' => 'number', 'category' => 'Email', 'description' => 'SMTP server port'],
+         ['key' => 'smtp_username', 'value' => '', 'type' => 'string', 'category' => 'Email', 'description' => 'SMTP username'],
+         ['key' => 'smtp_password', 'value' => '', 'type' => 'string', 'category' => 'Email', 'description' => 'SMTP password'],
+         ['key' => 'smtp_encryption', 'value' => 'tls', 'type' => 'string', 'category' => 'Email', 'description' => 'SMTP encryption (tls/ssl)'],
+         ['key' => 'email_from_name', 'value' => 'Alive Church', 'type' => 'string', 'category' => 'Email', 'description' => 'Email sender name'],
+         ['key' => 'email_from_address', 'value' => 'noreply@alivechurch.org', 'type' => 'string', 'category' => 'Email', 'description' => 'Email sender address'],
 
          // SMS Settings
-         ['key' => 'enable_sms', 'value' => 0, 'type' => 'boolean', 'category' => 'sms', 'description' => 'Enable SMS notifications'],
-         ['key' => 'sms_gateway', 'value' => '', 'type' => 'string', 'category' => 'sms', 'description' => 'SMS gateway provider'],
-         ['key' => 'sms_api_key', 'value' => '', 'type' => 'string', 'category' => 'sms', 'description' => 'SMS API key'],
-         ['key' => 'sms_sender_id', 'value' => 'AliveChurch', 'type' => 'string', 'category' => 'sms', 'description' => 'SMS sender ID'],
+         ['key' => 'enable_sms', 'value' => 0, 'type' => 'boolean', 'category' => 'SMS', 'description' => 'Enable SMS notifications'],
+         ['key' => 'sms_gateway', 'value' => '', 'type' => 'string', 'category' => 'SMS', 'description' => 'SMS gateway provider'],
+         ['key' => 'sms_api_key', 'value' => '', 'type' => 'string', 'category' => 'SMS', 'description' => 'SMS API key'],
+         ['key' => 'sms_sender_id', 'value' => 'AliveChurch', 'type' => 'string', 'category' => 'SMS', 'description' => 'SMS sender ID'],
 
          // System Settings
-         ['key' => 'items_per_page', 'value' => 10, 'type' => 'number', 'category' => 'system', 'description' => 'Default items per page in tables'],
-         ['key' => 'session_timeout', 'value' => 3600, 'type' => 'number', 'category' => 'system', 'description' => 'Session timeout in seconds'],
-         ['key' => 'maintenance_mode', 'value' => 0, 'type' => 'boolean', 'category' => 'system', 'description' => 'Enable maintenance mode'],
-         ['key' => 'enable_audit_log', 'value' => 1, 'type' => 'boolean', 'category' => 'system', 'description' => 'Enable audit logging'],
-         ['key' => 'max_login_attempts', 'value' => 5, 'type' => 'number', 'category' => 'system', 'description' => 'Maximum login attempts before lockout'],
-         ['key' => 'lockout_duration', 'value' => 900, 'type' => 'number', 'category' => 'system', 'description' => 'Account lockout duration in seconds'],
+         ['key' => 'items_per_page', 'value' => 10, 'type' => 'number', 'category' => 'System', 'description' => 'Default items per page in tables'],
+         ['key' => 'session_timeout', 'value' => 3600, 'type' => 'number', 'category' => 'System', 'description' => 'Session timeout in seconds'],
+         ['key' => 'maintenance_mode', 'value' => 0, 'type' => 'boolean', 'category' => 'System', 'description' => 'Enable maintenance mode'],
+         ['key' => 'enable_audit_log', 'value' => 1, 'type' => 'boolean', 'category' => 'System', 'description' => 'Enable audit logging'],
+         ['key' => 'max_login_attempts', 'value' => 5, 'type' => 'number', 'category' => 'System', 'description' => 'Maximum login attempts before lockout'],
+         ['key' => 'lockout_duration', 'value' => 900, 'type' => 'number', 'category' => 'System', 'description' => 'Account lockout duration in seconds'],
 
          // Backup Settings
-         ['key' => 'backup_enabled', 'value' => 0, 'type' => 'boolean', 'category' => 'backup', 'description' => 'Enable automatic backups'],
-         ['key' => 'backup_frequency', 'value' => 'daily', 'type' => 'string', 'category' => 'backup', 'description' => 'Backup frequency (daily/weekly/monthly)'],
-         ['key' => 'backup_retention_days', 'value' => 30, 'type' => 'number', 'category' => 'backup', 'description' => 'Number of days to retain backups'],
+         ['key' => 'backup_enabled', 'value' => 0, 'type' => 'boolean', 'category' => 'Backup', 'description' => 'Enable automatic backups'],
+         ['key' => 'backup_frequency', 'value' => 'daily', 'type' => 'string', 'category' => 'Backup', 'description' => 'Backup frequency (daily/weekly/monthly)'],
+         ['key' => 'backup_retention_days', 'value' => 30, 'type' => 'number', 'category' => 'Backup', 'description' => 'Number of days to retain backups'],
 
          // Notification Settings
-         ['key' => 'notify_new_member', 'value' => 1, 'type' => 'boolean', 'category' => 'notifications', 'description' => 'Notify on new member registration'],
-         ['key' => 'notify_contribution', 'value' => 1, 'type' => 'boolean', 'category' => 'notifications', 'description' => 'Notify on new contribution'],
-         ['key' => 'notify_event_reminder', 'value' => 1, 'type' => 'boolean', 'category' => 'notifications', 'description' => 'Send event reminders'],
-         ['key' => 'event_reminder_days', 'value' => 1, 'type' => 'number', 'category' => 'notifications', 'description' => 'Days before event to send reminder'],
+         ['key' => 'notify_new_member', 'value' => 1, 'type' => 'boolean', 'category' => 'Notifications', 'description' => 'Notify on new member registration'],
+         ['key' => 'notify_contribution', 'value' => 1, 'type' => 'boolean', 'category' => 'Notifications', 'description' => 'Notify on new contribution'],
+         ['key' => 'notify_event_reminder', 'value' => 1, 'type' => 'boolean', 'category' => 'Notifications', 'description' => 'Send event reminders'],
+         ['key' => 'event_reminder_days', 'value' => 1, 'type' => 'number', 'category' => 'Notifications', 'description' => 'Days before event to send reminder'],
 
          // Financial Settings
-         ['key' => 'default_fiscal_year', 'value' => 1, 'type' => 'number', 'category' => 'financial', 'description' => 'Default fiscal year ID'],
-         ['key' => 'require_receipt_number', 'value' => 1, 'type' => 'boolean', 'category' => 'financial', 'description' => 'Require receipt number for contributions'],
-         ['key' => 'auto_generate_receipt', 'value' => 1, 'type' => 'boolean', 'category' => 'financial', 'description' => 'Auto-generate receipt numbers'],
+         ['key' => 'default_fiscal_year', 'value' => 1, 'type' => 'number', 'category' => 'Financial', 'description' => 'Default fiscal year ID'],
+         ['key' => 'require_receipt_number', 'value' => 1, 'type' => 'boolean', 'category' => 'Financial', 'description' => 'Require receipt number for contributions'],
+         ['key' => 'auto_generate_receipt', 'value' => 1, 'type' => 'boolean', 'category' => 'Financial', 'description' => 'Auto-generate receipt numbers'],
       ];
 
       foreach ($defaults as $setting) {

@@ -1,10 +1,10 @@
 <?php
 
 /**
- * Pledge API Routes – v1
+ * Pledge API Routes – v2.0
  *
  * Complete pledge management:
- * - Create/update pledge
+ * - Create/update pledge (FiscalYearID optional)
  * - View single pledge with payment history
  * - List pledges with filters
  * - Record payment
@@ -12,10 +12,15 @@
  * - Pledge types CRUD
  * - Statistics
  *
+ * Refactored for optimized schema v2.0:
+ * - FiscalYearID is optional
+ * - Updated permission names
+ * - Uses fiscal_year table
+ *
  * @package  AliveChMS\Routes
- * @version  1.1.0
+ * @version  2.0.0
  * @author   Benjamin Ebo Yankson
- * @since    2025-November
+ * @since    2026-January
  */
 
 declare(strict_types=1);
@@ -36,7 +41,7 @@ class PledgeRoutes extends BaseRoute
          // CREATE PLEDGE
          $method === 'POST' && $path === 'pledge/create' => (function () {
             self::authenticate();
-            self::authorize('manage_pledges');
+            self::authorize('pledges.create');
             $payload = self::getPayload();
             $result = Pledge::create($payload);
             ResponseHelper::created($result, 'Pledge created');
@@ -45,7 +50,7 @@ class PledgeRoutes extends BaseRoute
          // UPDATE PLEDGE
          $method === 'PUT' && $pathParts[0] === 'pledge' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_pledges');
+            self::authorize('pledges.edit');
             $pledgeId = self::getIdFromPath($pathParts, 2, 'Pledge ID');
             $payload = self::getPayload();
             $result = Pledge::update($pledgeId, $payload);
@@ -55,7 +60,7 @@ class PledgeRoutes extends BaseRoute
          // VIEW SINGLE PLEDGE
          $method === 'GET' && $pathParts[0] === 'pledge' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('view_pledges');
+            self::authorize('pledges.view');
             $pledgeId = self::getIdFromPath($pathParts, 2, 'Pledge ID');
             $pledge = Pledge::get($pledgeId);
             ResponseHelper::success($pledge);
@@ -64,7 +69,7 @@ class PledgeRoutes extends BaseRoute
          // LIST ALL PLEDGES
          $method === 'GET' && $path === 'pledge/all' => (function () {
             self::authenticate();
-            self::authorize('view_pledges');
+            self::authorize('pledges.view');
             [$page, $limit] = self::getPagination(10, 100);
             $filters = self::getFilters(['member_id', 'status', 'fiscal_year_id', 'pledge_type_id', 'start_date', 'end_date', 'search']);
             [$sortBy, $sortDir] = self::getSorting('PledgeDate', 'DESC', ['PledgeDate', 'PledgeAmount', 'MemberName', 'PledgeStatus', 'DueDate']);
@@ -77,7 +82,7 @@ class PledgeRoutes extends BaseRoute
          // GET PLEDGE STATISTICS
          $method === 'GET' && $path === 'pledge/stats' => (function () {
             self::authenticate();
-            self::authorize('view_pledges');
+            self::authorize('pledges.view');
             $fiscalYearId = !empty($_GET['fiscal_year_id']) ? (int)$_GET['fiscal_year_id'] : null;
             $result = Pledge::getStats($fiscalYearId);
             ResponseHelper::success($result);
@@ -86,7 +91,7 @@ class PledgeRoutes extends BaseRoute
          // RECORD PAYMENT
          $method === 'POST' && $pathParts[0] === 'pledge' && ($pathParts[1] ?? '') === 'payment' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('record_pledge_payments');
+            self::authorize('pledges.record_payment');
             $pledgeId = self::getIdFromPath($pathParts, 2, 'Pledge ID');
             $payload = self::getPayload();
             $result = Pledge::recordPayment($pledgeId, $payload);
@@ -98,7 +103,7 @@ class PledgeRoutes extends BaseRoute
          // LIST PLEDGE TYPES
          $method === 'GET' && $path === 'pledge/types' => (function () {
             self::authenticate();
-            self::authorize('view_pledges');
+            self::authorize('pledges.view');
             $result = PledgeType::getAll();
             ResponseHelper::success($result['data']);
          })(),
@@ -106,7 +111,7 @@ class PledgeRoutes extends BaseRoute
          // CREATE PLEDGE TYPE
          $method === 'POST' && $path === 'pledge/type/create' => (function () {
             self::authenticate();
-            self::authorize('manage_pledge_types');
+            self::authorize('settings.edit');
             $payload = self::getPayload();
             $result = PledgeType::create($payload);
             ResponseHelper::created($result, 'Pledge type created');
@@ -115,7 +120,7 @@ class PledgeRoutes extends BaseRoute
          // UPDATE PLEDGE TYPE
          $method === 'PUT' && $pathParts[0] === 'pledge' && ($pathParts[1] ?? '') === 'type' && ($pathParts[2] ?? '') === 'update' && isset($pathParts[3]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_pledge_types');
+            self::authorize('settings.edit');
             $typeId = self::getIdFromPath($pathParts, 3, 'Pledge Type ID');
             $payload = self::getPayload();
             $result = PledgeType::update($typeId, $payload);
@@ -125,7 +130,7 @@ class PledgeRoutes extends BaseRoute
          // DELETE PLEDGE TYPE
          $method === 'DELETE' && $pathParts[0] === 'pledge' && ($pathParts[1] ?? '') === 'type' && ($pathParts[2] ?? '') === 'delete' && isset($pathParts[3]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_pledge_types');
+            self::authorize('settings.edit');
             $typeId = self::getIdFromPath($pathParts, 3, 'Pledge Type ID');
             $result = PledgeType::delete($typeId);
             ResponseHelper::success($result, 'Pledge type deleted');

@@ -403,7 +403,10 @@ const Auth = {
     
     /**
      * Check if user has permission
-     * @param {string} permission - Permission name
+     * User permissions come from the login response and are cached in memory
+     * Available permissions (all system permissions) are loaded by Config.js
+     * 
+     * @param {string} permission - Permission name (e.g., 'members.view')
      * @returns {boolean} Has permission
      */
     hasPermission(permission) {
@@ -411,7 +414,7 @@ const Auth = {
         if (!user) return false;
         
         const role = this.getUserRole();
-        if (role === 'Admin' || role === 'Administrator') return true;
+        if (role === 'Admin' || role === 'Administrator' || role === 'Super Admin') return true;
         
         const permissions = user.permissions || this.extractPermissions(user);
         return permissions.includes(permission);

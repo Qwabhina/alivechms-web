@@ -6,10 +6,16 @@
  * Complete expense lifecycle with request, approval workflow,
  * cancellation, fiscal-year integration, and full audit trail.
  *
+ * Refactored for optimized schema v2.0:
+ * - FiscalYearID is now optional (nullable)
+ * - Added audit trail support (DeletedBy, DeletedAt, UpdatedBy, UpdatedAt)
+ * - Uses fiscal_year table (was fiscalyear)
+ * - Enhanced approval workflow tracking
+ *
  * @package  AliveChMS\Core
- * @version  1.2.0
+ * @version  2.0.0
  * @author   Benjamin Ebo Yankson
- * @since    2025-November
+ * @since    2026-January
  */
 
 declare(strict_types=1);
@@ -30,14 +36,14 @@ class Expense
       // Get fiscal year
       if ($fiscalYearId) {
          $fy = $orm->runQuery(
-            "SELECT FiscalYearID, FiscalYearName, FiscalYearStartDate, FiscalYearEndDate, Status 
-             FROM fiscalyear WHERE FiscalYearID = :id",
+            "SELECT FiscalYearID, FiscalYearName, StartDate, EndDate, Status 
+             FROM fiscal_year WHERE FiscalYearID = :id",
             [':id' => $fiscalYearId]
          );
       } else {
          $fy = $orm->runQuery(
-            "SELECT FiscalYearID, FiscalYearName, FiscalYearStartDate, FiscalYearEndDate, Status 
-             FROM fiscalyear WHERE Status = 'Active' LIMIT 1"
+            "SELECT FiscalYearID, FiscalYearName, StartDate, EndDate, Status 
+             FROM fiscal_year WHERE Status = 'Active' LIMIT 1"
          );
       }
 
@@ -213,14 +219,14 @@ class Expense
          'amount'         => 'required|numeric',
          'expense_date'   => 'required|date',
          'category_id'    => 'required|numeric',
-         'fiscal_year_id' => 'required|numeric',
+         'fiscal_year_id' => 'numeric|nullable',
          'purpose'        => 'max:1000|nullable',
       ]);
 
       $amount = (float)$data['amount'];
       $expenseDate = $data['expense_date'];
       $categoryId = (int)$data['category_id'];
-      $fiscalYearId = (int)$data['fiscal_year_id'];
+      $fiscalYearId = !empty($data['fiscal_year_id']) ? (int)$data['fiscal_year_id'] : null;
       $branchId = !empty($data['branch_id']) ? (int)$data['branch_id'] : null;
 
       if ($amount <= 0) {
@@ -231,24 +237,36 @@ class Expense
          ResponseHelper::error('Expense date cannot be in the future', 400);
       }
 
-      // Validate foreign keys
+      // Validate category
       $valid = $orm->runQuery(
-         "SELECT
-            (SELECT COUNT(*) FROM expense_category WHERE ExpCategoryID = :cat) AS cat_ok,
-            (SELECT COUNT(*) FROM fiscalyear WHERE FiscalYearID = :fy AND Status = 'Active') AS fy_ok",
-         [':cat' => $categoryId, ':fy' => $fiscalYearId]
+         "SELECT COUNT(*) AS cat_ok FROM expense_category WHERE ExpCategoryID = :cat AND IsActive = 1",
+         [':cat' => $categoryId]
       )[0];
 
-      if ($valid['cat_ok'] == 0) ResponseHelper::error('Invalid expense category', 400);
-      if ($valid['fy_ok'] == 0)  ResponseHelper::error('Invalid or inactive fiscal year', 400);
+      if ($valid['cat_ok'] == 0) {
+         ResponseHelper::error('Invalid expense category', 400);
+      }
+
+      // Validate fiscal year if provided
+      if ($fiscalYearId !== null) {
+         $fyValid = $orm->runQuery(
+            "SELECT COUNT(*) AS fy_ok FROM fiscal_year WHERE FiscalYearID = :fy AND Status = 'Active'",
+            [':fy' => $fiscalYearId]
+         )[0];
+         if ($fyValid['fy_ok'] == 0) {
+            ResponseHelper::error('Invalid or inactive fiscal year', 400);
+         }
+      }
 
       // Validate branch if provided
       if ($branchId) {
          $branchValid = $orm->runQuery(
-            "SELECT COUNT(*) AS ok FROM branch WHERE BranchID = :br",
+            "SELECT COUNT(*) AS ok FROM branch WHERE BranchID = :br AND IsActive = 1",
             [':br' => $branchId]
          )[0];
-         if ($branchValid['ok'] == 0) ResponseHelper::error('Invalid branch', 400);
+         if ($branchValid['ok'] == 0) {
+            ResponseHelper::error('Invalid branch', 400);
+         }
       }
 
       $currentUserId = Auth::getCurrentUserId();
@@ -269,6 +287,93 @@ class Expense
 
       Helpers::logError("New expense request: ExpID $expenseId | Amount $amount");
       return ['status' => 'success', 'expense_id' => $expenseId];
+   }
+
+   /**
+    * Update an existing expense (only pending expenses can be updated)
+    */
+   public static function update(int $expenseId, array $data): array
+   {
+      $orm = new ORM();
+
+      $expense = $orm->getWhere('expense', ['ExpID' => $expenseId])[0] ?? null;
+      if (!$expense) {
+         ResponseHelper::error('Expense not found', 404);
+      }
+
+      if ($expense['ExpStatus'] !== self::STATUS_PENDING) {
+         ResponseHelper::error('Only pending expenses can be updated', 400);
+      }
+
+      Helpers::validateInput($data, [
+         'title'          => 'max:100|nullable',
+         'amount'         => 'numeric|nullable',
+         'expense_date'   => 'date|nullable',
+         'category_id'    => 'numeric|nullable',
+         'fiscal_year_id' => 'numeric|nullable',
+         'purpose'        => 'max:1000|nullable',
+      ]);
+
+      $update = [];
+
+      if (!empty($data['title'])) {
+         $update['ExpTitle'] = $data['title'];
+      }
+      if (isset($data['amount']) && (float)$data['amount'] > 0) {
+         $update['ExpAmount'] = (float)$data['amount'];
+      }
+      if (!empty($data['expense_date'])) {
+         if ($data['expense_date'] > date('Y-m-d')) {
+            ResponseHelper::error('Expense date cannot be in the future', 400);
+         }
+         $update['ExpDate'] = $data['expense_date'];
+      }
+      if (!empty($data['category_id'])) {
+         $update['ExpCategoryID'] = (int)$data['category_id'];
+      }
+      if (isset($data['fiscal_year_id'])) {
+         $update['FiscalYearID'] = !empty($data['fiscal_year_id']) ? (int)$data['fiscal_year_id'] : null;
+      }
+      if (isset($data['purpose'])) {
+         $update['ExpPurpose'] = $data['purpose'];
+      }
+      if (!empty($data['branch_id'])) {
+         $update['BranchID'] = (int)$data['branch_id'];
+      }
+
+      if (!empty($update)) {
+         $update['UpdatedBy'] = Auth::getCurrentUserId();
+         $update['UpdatedAt'] = date('Y-m-d H:i:s');
+         $orm->update('expense', $update, ['ExpID' => $expenseId]);
+      }
+
+      return ['status' => 'success', 'expense_id' => $expenseId];
+   }
+
+   /**
+    * Soft delete an expense
+    */
+   public static function delete(int $expenseId): array
+   {
+      $orm = new ORM();
+
+      $expense = $orm->getWhere('expense', ['ExpID' => $expenseId])[0] ?? null;
+      if (!$expense) {
+         ResponseHelper::error('Expense not found', 404);
+      }
+
+      $affected = $orm->update('expense', [
+         'Deleted' => 1,
+         'DeletedBy' => Auth::getCurrentUserId(),
+         'DeletedAt' => date('Y-m-d H:i:s')
+      ], ['ExpID' => $expenseId]);
+
+      if ($affected === 0) {
+         ResponseHelper::error('Failed to delete expense', 500);
+      }
+
+      Helpers::logError("Expense soft-deleted: ExpID $expenseId by " . Auth::getCurrentUserId());
+      return ['status' => 'success'];
    }
 
    /**
@@ -340,7 +445,7 @@ class Expense
                  a.MbrFamilyName AS ApproverFamilyName
           FROM expense e
           JOIN expense_category ec ON e.ExpCategoryID = ec.ExpCategoryID
-          JOIN fiscalyear fy ON e.FiscalYearID = fy.FiscalYearID
+          LEFT JOIN fiscal_year fy ON e.FiscalYearID = fy.FiscalYearID
           LEFT JOIN branch b ON e.BranchID = b.BranchID
           LEFT JOIN churchmember r ON e.RequestedBy = r.MbrID
           LEFT JOIN expense_approval ea ON e.ExpID = ea.ExpID
@@ -387,7 +492,7 @@ class Expense
       $orm = new ORM();
       $offset = ($page - 1) * $limit;
 
-      $where = [];
+      $where = ['e.Deleted = 0'];
       $params = [];
 
       if (!empty($filters['fiscal_year_id'])) {
@@ -415,7 +520,7 @@ class Expense
          $params[':end'] = $filters['end_date'];
       }
 
-      $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+      $whereClause = 'WHERE ' . implode(' AND ', $where);
 
       // Sorting
       $orderBy = 'e.ExpDate DESC';
@@ -439,7 +544,7 @@ class Expense
                  ec.ExpCategoryName, fy.FiscalYearName, b.BranchName
           FROM expense e
           JOIN expense_category ec ON e.ExpCategoryID = ec.ExpCategoryID
-          JOIN fiscalyear fy ON e.FiscalYearID = fy.FiscalYearID
+          LEFT JOIN fiscal_year fy ON e.FiscalYearID = fy.FiscalYearID
           LEFT JOIN branch b ON e.BranchID = b.BranchID
           $whereClause
           ORDER BY $orderBy

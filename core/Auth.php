@@ -26,7 +26,6 @@ use Firebase\JWT\BeforeValidException;
 use Firebase\JWT\SignatureInvalidException;
 
 require_once __DIR__ . '/Security/TokenManager.php';
-require_once __DIR__ . '/PermissionCache.php';
 require_once __DIR__ . '/RBAC.php';
 
 class Auth
@@ -125,7 +124,7 @@ class Auth
     /**
      * Store refresh token in database
      *
-     * @param int    $userId      Member ID
+     * @param int    $userId      User ID (from user_authentication table)
      * @param string $refreshToken Refresh token string
      * @return void
      */
@@ -136,12 +135,16 @@ class Auth
         $decoded   = JWT::decode($token, new Key(self::$refreshSecretKey, 'HS256'));
         $expiresAt = date('Y-m-d H:i:s', $decoded->exp);
 
-        $orm->insert('refresh_tokens', [
-            'user_id'     => $userId,
-            'token'       => $token,
-            'expires_at'  => $expiresAt,
-            'revoked'     => 0,
-            'created_at'  => date('Y-m-d H:i:s')
+        // NEW: Store in user_sessions table with device info
+        $orm->insert('user_sessions', [
+            'UserID'      => $userId,
+            'TokenHash'   => hash('sha256', $token), // Store hash for security
+            'DeviceInfo'  => $_SERVER['HTTP_USER_AGENT'] ?? null,
+            'IPAddress'   => $_SERVER['REMOTE_ADDR'] ?? null,
+            'UserAgent'   => $_SERVER['HTTP_USER_AGENT'] ?? null,
+            'ExpiresAt'   => $expiresAt,
+            'IsRevoked'   => 0,
+            'CreatedAt'   => date('Y-m-d H:i:s')
         ]);
     }
 
@@ -312,28 +315,73 @@ class Auth
     {
         $orm = new ORM();
 
+        // NEW: Updated table names and membership status check
         $user = $orm->selectWithJoin(
-            baseTable: 'userauthentication u',
+            baseTable: 'user_authentication u',
             joins: [
                 ['table' => 'churchmember c', 'on' => 'u.MbrID = c.MbrID'],
-                ['table' => 'memberrole mr', 'on' => 'c.MbrID = mr.MbrID', 'type' => 'LEFT'],
-                ['table' => 'churchrole cr', 'on' => 'mr.ChurchRoleID = cr.RoleID', 'type' => 'LEFT']
+                ['table' => 'membership_status ms', 'on' => 'c.MbrMembershipStatusID = ms.StatusID'],
+                ['table' => 'member_role mr', 'on' => 'c.MbrID = mr.MbrID AND mr.IsActive = 1', 'type' => 'LEFT'],
+                ['table' => 'church_role cr', 'on' => 'mr.RoleID = cr.RoleID', 'type' => 'LEFT']
             ],
-            fields: ['u.MbrID', 'u.Username', 'u.PasswordHash', 'c.*', 'cr.RoleName'],
-            conditions: ['u.Username' => ':username', 'c.MbrMembershipStatus' => ':status'],
-            params: [':username' => $username, ':status' => 'Active']
+            fields: ['u.UserID', 'u.MbrID', 'u.Username', 'u.PasswordHash', 'u.IsLocked', 'u.FailedLoginAttempts', 'u.EmailVerified', 'c.*', 'ms.StatusName as MembershipStatus', 'cr.RoleName'],
+            conditions: ['u.Username' => ':username', 'c.Deleted' => 0],
+            params: [':username' => $username]
         )[0] ?? null;
 
-        if (!$user || !password_verify($password, $user['PasswordHash'])) {
-            Helpers::logError("Failed login attempt for username: $username");
+        if (!$user) {
+            Helpers::logError("Failed login attempt for username: $username - User not found");
             throw new Exception('Invalid credentials');
         }
 
-        // Get all roles of user
+        // NEW: Check if account is locked
+        if ($user['IsLocked']) {
+            Helpers::logError("Login attempt for locked account: $username");
+            throw new Exception('Account is locked. Please contact administrator.');
+        }
+
+        // NEW: Check if membership is active
+        if ($user['MembershipStatus'] !== 'Active') {
+            Helpers::logError("Login attempt for inactive member: $username (Status: {$user['MembershipStatus']})");
+            throw new Exception('Your membership is not active. Please contact administrator.');
+        }
+
+        // Verify password
+        if (!password_verify($password, $user['PasswordHash'])) {
+            // NEW: Increment failed attempts and lock if needed
+            $failedAttempts = ($user['FailedLoginAttempts'] ?? 0) + 1;
+            $isLocked = $failedAttempts >= 5 ? 1 : 0;
+
+            $orm->update('user_authentication', [
+                'FailedLoginAttempts' => $failedAttempts,
+                'IsLocked' => $isLocked
+            ], ['UserID' => $user['UserID']]);
+
+            if ($isLocked) {
+                Helpers::logError("Account locked due to failed attempts: $username");
+                throw new Exception('Account locked due to too many failed attempts. Please contact administrator.');
+            }
+
+            Helpers::logError("Failed login attempt for username: $username (Attempt $failedAttempts/5)");
+            throw new Exception('Invalid credentials');
+        }
+
+        // NEW: Reset failed attempts on successful login
+        $orm->update('user_authentication', [
+            'FailedLoginAttempts' => 0,
+            'LastLoginAt' => date('Y-m-d H:i:s'),
+            'LastLoginIP' => $_SERVER['REMOTE_ADDR'] ?? null
+        ], ['UserID' => $user['UserID']]);
+
+        // Get all active roles of user with date validation
         $roles = $orm->runQuery(
-            "SELECT cr.RoleName FROM memberrole mr 
-             JOIN churchrole cr ON mr.ChurchRoleID = cr.RoleID 
-             WHERE mr.MbrID = :id",
+            "SELECT cr.RoleName FROM member_role mr 
+             JOIN church_role cr ON mr.RoleID = cr.RoleID 
+             WHERE mr.MbrID = :id 
+             AND mr.IsActive = 1
+             AND (mr.StartDate IS NULL OR mr.StartDate <= CURDATE())
+             AND (mr.EndDate IS NULL OR mr.EndDate >= CURDATE())
+             AND cr.IsActive = 1",
             [':id' => $user['MbrID']]
         );
 
@@ -346,7 +394,7 @@ class Auth
         ];
 
         $refreshToken = self::generateRefreshToken($userData);
-        self::storeRefreshToken($user['MbrID'], $refreshToken);
+        self::storeRefreshToken($user['UserID'], $refreshToken);
 
         // Store refresh token in HttpOnly cookie (secure)
         if ($useSecureCookies) {
@@ -355,13 +403,6 @@ class Auth
 
         // Generate CSRF token for cookie-based auth
         $csrfToken = TokenManager::generateCsrfToken();
-
-        // Update last login
-        $orm->update(
-            'userauthentication',
-            ['LastLoginAt' => date('Y-m-d H:i:s')],
-            ['MbrID' => $user['MbrID']]
-        );
 
         // Get actual permissions from database using new RBAC system
         $permissions = RBAC::getUserPermissions($user['MbrID']);
@@ -417,9 +458,12 @@ class Auth
         }
 
         $orm = new ORM();
-        $stored = $orm->getWhere('refresh_tokens', [
-            'token'   => $refreshToken,
-            'revoked' => 0
+
+        // NEW: Look up by token hash
+        $tokenHash = hash('sha256', $refreshToken);
+        $stored = $orm->getWhere('user_sessions', [
+            'TokenHash' => $tokenHash,
+            'IsRevoked' => 0
         ]);
 
         if (empty($stored)) {
@@ -428,19 +472,29 @@ class Auth
 
         $tokenRecord = $stored[0];
 
-        if (strtotime($tokenRecord['expires_at']) < time()) {
-            $orm->update('refresh_tokens', ['revoked' => 1], ['id' => $tokenRecord['id']]);
+        if (strtotime($tokenRecord['ExpiresAt']) < time()) {
+            $orm->update('user_sessions', [
+                'IsRevoked' => 1,
+                'RevokedAt' => date('Y-m-d H:i:s')
+            ], ['SessionID' => $tokenRecord['SessionID']]);
             Helpers::sendError('Refresh token expired');
         }
 
         // Revoke old refresh token
-        $orm->update('refresh_tokens', ['revoked' => 1], ['id' => $tokenRecord['id']]);
+        $orm->update('user_sessions', [
+            'IsRevoked' => 1,
+            'RevokedAt' => date('Y-m-d H:i:s')
+        ], ['SessionID' => $tokenRecord['SessionID']]);
 
-        // Fetch fresh user roles
+        // Fetch fresh user roles with validation
         $roles = $orm->runQuery(
-            "SELECT cr.RoleName FROM memberrole mr 
-             JOIN churchrole cr ON mr.ChurchRoleID = cr.RoleID 
-             WHERE mr.MbrID = :id",
+            "SELECT cr.RoleName FROM member_role mr 
+             JOIN church_role cr ON mr.RoleID = cr.RoleID 
+             WHERE mr.MbrID = :id 
+             AND mr.IsActive = 1
+             AND (mr.StartDate IS NULL OR mr.StartDate <= CURDATE())
+             AND (mr.EndDate IS NULL OR mr.EndDate >= CURDATE())
+             AND cr.IsActive = 1",
             [':id' => $decoded['user_id']]
         );
 
@@ -451,7 +505,12 @@ class Auth
         ];
 
         $newRefreshToken = self::generateRefreshToken($userData);
-        self::storeRefreshToken($userData['MbrID'], $newRefreshToken);
+
+        // Get UserID from MbrID
+        $userAuth = $orm->getWhere('user_authentication', ['MbrID' => $userData['MbrID']])[0] ?? null;
+        if ($userAuth) {
+            self::storeRefreshToken($userAuth['UserID'], $newRefreshToken);
+        }
 
         // Update cookie with new refresh token
         TokenManager::setRefreshTokenCookie($newRefreshToken);
@@ -481,7 +540,11 @@ class Auth
 
         if (!empty($refreshToken)) {
             $orm = new ORM();
-            $orm->update('refresh_tokens', ['revoked' => 1], ['token' => $refreshToken]);
+            $tokenHash = hash('sha256', $refreshToken);
+            $orm->update('user_sessions', [
+                'IsRevoked' => 1,
+                'RevokedAt' => date('Y-m-d H:i:s')
+            ], ['TokenHash' => $tokenHash]);
         }
 
         // Clear the HttpOnly cookie
@@ -495,11 +558,84 @@ class Auth
     {
         $orm = new ORM();
 
-        // Delete tokens expired more than 7 days ago
+        // Delete sessions expired more than 7 days ago
         $result = $orm->runQuery(
-            "DELETE FROM refresh_tokens 
-             WHERE expires_at < DATE_SUB(NOW(), INTERVAL 7 DAY)",
+            "DELETE FROM user_sessions 
+             WHERE ExpiresAt < DATE_SUB(NOW(), INTERVAL 7 DAY)",
             []
+        );
+
+        return $result ? count($result) : 0;
+    }
+
+    /**
+     * Get user's active sessions
+     *
+     * @param int $userId User ID
+     * @return array Active sessions
+     */
+    public static function getUserSessions(int $userId): array
+    {
+        $orm = new ORM();
+
+        return $orm->runQuery(
+            "SELECT SessionID, DeviceInfo, IPAddress, CreatedAt, ExpiresAt
+             FROM user_sessions
+             WHERE UserID = :user_id
+             AND IsRevoked = 0
+             AND ExpiresAt > NOW()
+             ORDER BY CreatedAt DESC",
+            [':user_id' => $userId]
+        );
+    }
+
+    /**
+     * Revoke a specific session
+     *
+     * @param int $sessionId Session ID
+     * @param int $userId User ID (for security check)
+     * @return bool Success
+     */
+    public static function revokeSession(int $sessionId, int $userId): bool
+    {
+        $orm = new ORM();
+
+        $affected = $orm->update('user_sessions', [
+            'IsRevoked' => 1,
+            'RevokedAt' => date('Y-m-d H:i:s')
+        ], [
+            'SessionID' => $sessionId,
+            'UserID' => $userId
+        ]);
+
+        return $affected > 0;
+    }
+
+    /**
+     * Revoke all sessions for a user (except current)
+     *
+     * @param int $userId User ID
+     * @param string|null $currentToken Current refresh token to keep
+     * @return int Number of sessions revoked
+     */
+    public static function revokeAllSessions(int $userId, ?string $currentToken = null): int
+    {
+        $orm = new ORM();
+
+        $conditions = "UserID = :user_id AND IsRevoked = 0";
+        $params = [':user_id' => $userId];
+
+        if ($currentToken) {
+            $tokenHash = hash('sha256', $currentToken);
+            $conditions .= " AND TokenHash != :token_hash";
+            $params[':token_hash'] = $tokenHash;
+        }
+
+        $result = $orm->runQuery(
+            "UPDATE user_sessions 
+             SET IsRevoked = 1, RevokedAt = NOW()
+             WHERE $conditions",
+            $params
         );
 
         return $result ? count($result) : 0;

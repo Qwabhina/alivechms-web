@@ -53,8 +53,45 @@
    };
 
    document.addEventListener('DOMContentLoaded', () => {
-      // Check authentication
-      if (!Auth.requireAuth()) return;
+      Config.log('Footer: DOMContentLoaded fired');
+
+      // Check authentication FIRST - this must complete before anything else
+      Config.log('Footer: Calling Auth.requireAuth()');
+      if (!Auth.requireAuth()) {
+         Config.log('Footer: Auth.requireAuth() returned false, redirecting to login');
+         return; // Will redirect to login
+      }
+      Config.log('Footer: Auth.requireAuth() returned true');
+
+      // Ensure token is restored and available
+      const token = Auth.getToken();
+      Config.log('Footer: Auth.getToken() returned:', token ? `token of length ${token.length}` : 'null');
+
+      if (!token) {
+         Config.error('No token available after requireAuth');
+
+         // Debug: Check sessionStorage
+         const sessionData = sessionStorage.getItem('alive_session');
+         Config.error('SessionStorage alive_session:', sessionData ? 'exists' : 'missing');
+         if (sessionData) {
+            try {
+               const parsed = JSON.parse(sessionData);
+               Config.error('SessionStorage data:', {
+                  hasToken: !!parsed.accessToken,
+                  tokenLength: parsed.accessToken?.length,
+                  timestamp: new Date(parsed.timestamp).toLocaleString(),
+                  age: Date.now() - parsed.timestamp
+               });
+            } catch (e) {
+               Config.error('Failed to parse sessionStorage:', e);
+            }
+         }
+
+         window.location.href = '../login/';
+         return;
+      }
+
+      Config.log('Auth initialized successfully, token length:', token.length);
 
       // Load user info
       const user = Auth.getUser();
@@ -148,6 +185,10 @@
       document.getElementById('sidebarNotificationsBtn')?.addEventListener('click', () => {
          Alerts.info('No new notifications');
       });
+
+      // Signal that auth is ready for page-specific scripts
+      Config.log('Footer: Dispatching authReady event');
+      window.dispatchEvent(new Event('authReady'));
    });
 </script>
 </body>
