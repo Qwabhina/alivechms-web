@@ -2,8 +2,14 @@
  * AliveChMS API Wrapper
  * 
  * Handles all API requests with automatic token management,
- * error handling, and request/response interceptors
- * @version 1.0.0
+ * error handling, CSRF protection, and request/response interceptors
+ * 
+ * Security features:
+ * - Automatic CSRF token inclusion for state-changing requests
+ * - Credentials included for HttpOnly cookie support
+ * - Token refresh on 401 responses
+ * 
+ * @version 2.0.0
  */
 
 class API {
@@ -15,18 +21,31 @@ class API {
     }
     
     /**
-     * Get authorization header
+     * Get authorization headers including CSRF
+     * @param {string} method - HTTP method
      * @returns {Object} Headers object
      */
-    getHeaders() {
+    getHeaders(method = 'GET') {
         const headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         };
         
-        const token = localStorage.getItem(Config.TOKEN_KEY);
+        // Add access token
+        const token = Auth.getToken();
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
+            Config.log('API: Adding Authorization header, token length:', token.length);
+        } else {
+            Config.log('API: No token available for Authorization header');
+        }
+        
+        // Add CSRF token for state-changing requests
+        if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method.toUpperCase())) {
+            const csrfToken = Auth.getCsrfToken();
+            if (csrfToken) {
+                headers['X-CSRF-Token'] = csrfToken;
+            }
         }
         
         return headers;
@@ -40,13 +59,23 @@ class API {
      */
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}/${endpoint}`;
+        const method = options.method || 'GET';
+        
+        const headers = this.getHeaders(method);
+        
+        // Debug: Log the actual Authorization header being sent
+        if (headers['Authorization']) {
+            Config.log('API: Sending Authorization header, length:', headers['Authorization'].length);
+        }
         
         const config = {
             ...options,
+            method,
             headers: {
-                ...this.getHeaders(),
+                ...headers,
                 ...options.headers
-            }
+            },
+            credentials: 'include' // Important: send/receive cookies
         };
         
         // Add timeout
@@ -55,7 +84,7 @@ class API {
         config.signal = controller.signal;
         
         try {
-            Config.log(`API Request: ${config.method || 'GET'} ${url}`);
+            Config.log(`API Request: ${method} ${url}`);
             
             const response = await fetch(url, config);
             clearTimeout(timeoutId);
@@ -64,6 +93,17 @@ class API {
             if (response.status === 401 && !endpoint.includes('auth/')) {
                 Config.log('Token expired, attempting refresh...');
                 return await this.handleTokenExpiration(endpoint, options);
+            }
+            
+            // Handle 403 with CSRF error - refresh CSRF token
+            if (response.status === 403) {
+                const data = await response.clone().json().catch(() => ({}));
+                if (data.message && data.message.includes('CSRF')) {
+                    Config.log('CSRF token invalid, refreshing...');
+                    await this.refreshCsrfToken();
+                    // Retry request with new CSRF token
+                    return await this.request(endpoint, options);
+                }
             }
             
             // Parse response
@@ -85,11 +125,9 @@ class API {
                 );
             }
             
-            Config.log(`API Response: ${config.method || 'GET'} ${url}`, data);
+            Config.log(`API Response: ${method} ${url}`, data);
             
             // Extract data from standard response format
-            // Backend returns: { status, message, data, timestamp }
-            // We return just the data for cleaner frontend code
             if (data && typeof data === 'object' && 'data' in data && data.status === 'success') {
                 return data.data;
             }
@@ -99,7 +137,6 @@ class API {
         } catch (error) {
             clearTimeout(timeoutId);
             
-            // Handle network errors
             if (error.name === 'AbortError') {
                 throw new APIError('Request timeout', 408);
             }
@@ -108,12 +145,33 @@ class API {
                 throw error;
             }
             
-            // Network error (no internet, CORS, etc.)
             throw new APIError(
                 'Network error. Please check your internet connection.',
                 0,
                 error
             );
+        }
+    }
+    
+    /**
+     * Refresh CSRF token
+     */
+    async refreshCsrfToken() {
+        try {
+            const response = await fetch(`${this.baseURL}/auth/csrf`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.data && data.data.csrf_token) {
+                    Auth._csrfToken = data.data.csrf_token;
+                    Config.log('CSRF token refreshed');
+                }
+            }
+        } catch (e) {
+            Config.warn('Failed to refresh CSRF token', e);
         }
     }
     
@@ -128,34 +186,12 @@ class API {
             this.refreshing = true;
             
             try {
-                const refreshToken = localStorage.getItem(Config.REFRESH_TOKEN_KEY);
-                if (!refreshToken) {
-                    throw new Error('No refresh token');
-                }
-                
-                // Refresh the token
-                const response = await fetch(`${this.baseURL}/auth/refresh`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ refresh_token: refreshToken })
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Token refresh failed');
-                }
-                
-                const data = await response.json();
-                
-                // Update tokens
-                localStorage.setItem(Config.TOKEN_KEY, data.access_token);
-                localStorage.setItem(Config.REFRESH_TOKEN_KEY, data.refresh_token);
+                await Auth.refreshToken();
                 
                 Config.log('Token refreshed successfully');
                 
                 // Retry all waiting requests
-                this.refreshSubscribers.forEach(callback => callback(data.access_token));
+                this.refreshSubscribers.forEach(callback => callback());
                 this.refreshSubscribers = [];
                 
                 // Retry original request
@@ -163,7 +199,6 @@ class API {
                 
             } catch (error) {
                 Config.error('Token refresh failed', error);
-                // Clear auth and redirect to login
                 Auth.logout();
                 return Promise.reject(new APIError('Session expired. Please login again.', 401));
             } finally {
@@ -173,8 +208,8 @@ class API {
         
         // If already refreshing, wait for it to complete
         return new Promise((resolve, reject) => {
-            this.refreshSubscribers.push((token) => {
-                resolve(this.request(endpoint, options));
+            this.refreshSubscribers.push(() => {
+                this.request(endpoint, options).then(resolve).catch(reject);
             });
         });
     }
@@ -243,17 +278,27 @@ class API {
     async upload(endpoint, formData) {
         const url = `${this.baseURL}/${endpoint}`;
         
-        const token = localStorage.getItem(Config.TOKEN_KEY);
-        const headers = {
-            'Authorization': `Bearer ${token}`
-        };
+        const token = Auth.getToken();
+        const headers = {};
+        
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        // Add CSRF token for uploads
+        const csrfToken = Auth.getCsrfToken();
+        if (csrfToken) {
+            headers['X-CSRF-Token'] = csrfToken;
+        }
+        
         // Don't set Content-Type for FormData - browser will set it with boundary
         
         try {
             const response = await fetch(url, {
                 method: 'POST',
                 headers,
-                body: formData
+                body: formData,
+                credentials: 'include'
             });
             
             const data = await response.json();

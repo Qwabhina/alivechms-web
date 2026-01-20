@@ -77,8 +77,8 @@ class MemberRoutes extends BaseRoute
                 } else {
                     // Handle JSON submission
                     $payload = self::getPayload([
-                        'first_name'     => 'required|max:50',
-                        'family_name'    => 'required|max:50',
+                        'first_name'     => 'required|max:100',
+                        'family_name'    => 'required|max:100',
                         'email_address'  => 'required|email',
                         'username'       => 'nullable|max:50',
                         'password'       => 'nullable',
@@ -86,12 +86,12 @@ class MemberRoutes extends BaseRoute
                         'date_of_birth'  => 'nullable',
                         'address'        => 'nullable',
                         'phone_numbers'  => 'nullable',
-                        'occupation'     => 'nullable|max:100',
-                        'marital_status' => 'nullable|max:50',
-                        'education_level' => 'nullable|max:100',
-                        'other_names'    => 'nullable|max:50',
+                        'occupation'     => 'nullable|max:150',
+                        'marital_status_id' => 'numeric|nullable',
+                        'education_level_id' => 'numeric|nullable',
+                        'membership_status_id' => 'numeric|nullable',
+                        'other_names'    => 'nullable|max:150',
                         'family_id'      => 'nullable',
-                        'family_role'    => 'max:50|nullable',
                         'branch_id'      => 'numeric|nullable'
                     ]);
                 }
@@ -128,7 +128,7 @@ class MemberRoutes extends BaseRoute
                 // Check if this is the user's own profile
                 if ($currentUserId) {
                     $orm = new ORM();
-                    $userAuth = $orm->getWhere('userauthentication', ['MbrID' => $currentUserId]);
+                    $userAuth = $orm->getWhere('user_authentication', ['MbrID' => $currentUserId]);
                     if (!empty($userAuth) && $userAuth[0]['MbrID'] == $memberId) {
                         $isOwnProfile = true;
                     }
@@ -136,7 +136,7 @@ class MemberRoutes extends BaseRoute
 
                 // If not own profile, require edit_members permission
                 if (!$isOwnProfile) {
-                    self::authorize('edit_members');
+                    self::authorize('members.edit');
                 }
 
                 try {
@@ -150,7 +150,7 @@ class MemberRoutes extends BaseRoute
             // VIEW SINGLE MEMBER
             $method === 'GET' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('view_members');
+                self::authorize('members.view');
 
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
 
@@ -161,24 +161,24 @@ class MemberRoutes extends BaseRoute
             // UPDATE MEMBER
             $method === 'PUT' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('view_members');
+                self::authorize('members.view');
 
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
 
                 $payload = self::getPayload([
-                    'first_name'     => 'max:50|nullable',
-                    'family_name'    => 'max:50|nullable',
+                    'first_name'     => 'max:100|nullable',
+                    'family_name'    => 'max:100|nullable',
                     'email_address'  => 'email|nullable',
                     'gender'         => 'in:Male,Female,Other|nullable',
                     'date_of_birth'  => 'nullable',
                     'address'        => 'nullable',
                     'phone_numbers'  => 'nullable',
-                    'occupation'     => 'nullable|max:100',
-                    'marital_status' => 'nullable|max:50',
-                    'education_level' => 'nullable|max:100',
-                    'other_names'    => 'nullable|max:50',
+                    'occupation'     => 'nullable|max:150',
+                    'marital_status_id' => 'numeric|nullable',
+                    'education_level_id' => 'numeric|nullable',
+                    'membership_status_id' => 'numeric|nullable',
+                    'other_names'    => 'nullable|max:150',
                     'family_id'      => 'nullable',
-                    'family_role'    => 'max:50|nullable',
                     'branch_id'      => 'numeric|nullable'
                 ]);
 
@@ -189,7 +189,7 @@ class MemberRoutes extends BaseRoute
             // UPDATE MEMBER (POST with file upload support)
             $method === 'POST' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('view_members');
+                self::authorize('members.view');
 
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
 
@@ -238,19 +238,19 @@ class MemberRoutes extends BaseRoute
                 } else {
                     // Handle JSON submission
                     $payload = self::getPayload([
-                        'first_name'     => 'max:50|nullable',
-                        'family_name'    => 'max:50|nullable',
+                        'first_name'     => 'max:100|nullable',
+                        'family_name'    => 'max:100|nullable',
                         'email_address'  => 'email|nullable',
                         'gender'         => 'in:Male,Female,Other|nullable',
                         'date_of_birth'  => 'nullable',
                         'address'        => 'nullable',
                         'phone_numbers'  => 'nullable',
-                        'occupation'     => 'nullable|max:100',
-                        'marital_status' => 'nullable|max:50',
-                        'education_level' => 'nullable|max:100',
-                        'other_names'    => 'nullable|max:50',
+                        'occupation'     => 'nullable|max:150',
+                        'marital_status_id' => 'numeric|nullable',
+                        'education_level_id' => 'numeric|nullable',
+                        'membership_status_id' => 'numeric|nullable',
+                        'other_names'    => 'nullable|max:150',
                         'family_id'      => 'nullable',
-                        'family_role'    => 'max:50|nullable',
                         'branch_id'      => 'numeric|nullable'
                     ]);
                 }
@@ -262,7 +262,7 @@ class MemberRoutes extends BaseRoute
             // SOFT DELETE MEMBER
             $method === 'DELETE' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('delete_members');
+                self::authorize('members.delete');
 
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
 
@@ -273,7 +273,7 @@ class MemberRoutes extends BaseRoute
             // LIST ALL MEMBERS (PAGINATED)
             $method === 'GET' && $path === 'member/all' => (function () {
                 self::authenticate();
-                self::authorize('view_members');
+                self::authorize('members.view');
 
                 [$page, $limit] = self::getPagination(25, 100);
 
@@ -283,7 +283,7 @@ class MemberRoutes extends BaseRoute
                 [$sortBy, $sortDir] = self::getSorting(
                     'MbrRegistrationDate',
                     'DESC',
-                    ['MbrFirstName', 'MbrFamilyName', 'MbrRegistrationDate', 'MbrEmailAddress', 'MbrMembershipStatus']
+                    ['MbrFirstName', 'MbrFamilyName', 'MbrRegistrationDate', 'MbrEmailAddress', 'MembershipStatusName']
                 );
                 $filters['sort_by'] = $sortBy;
                 $filters['sort_dir'] = $sortDir;
@@ -295,7 +295,7 @@ class MemberRoutes extends BaseRoute
             // RECENT MEMBERS (LAST 10)
             $method === 'GET' && $path === 'member/recent' => (function () {
                 self::authenticate();
-                self::authorize('view_members');
+                self::authorize('members.view');
 
                 $members = Member::getRecent();
                 ResponseHelper::success(['data' => $members]);
@@ -304,10 +304,81 @@ class MemberRoutes extends BaseRoute
             // MEMBER STATISTICS
             $method === 'GET' && $path === 'member/stats' => (function () {
                 self::authenticate();
-                self::authorize('view_members');
+                self::authorize('members.view');
 
                 $stats = Member::getStats();
                 ResponseHelper::success($stats);
+            })(),
+
+            // GET MEMBER BY UNIQUE ID (NEW)
+            $method === 'GET' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'by-unique-id' && isset($pathParts[2]) => (function () use ($pathParts) {
+                self::authenticate();
+                self::authorize('members.view');
+
+                $uniqueId = $pathParts[2];
+
+                try {
+                    $orm = new ORM();
+                    $member = $orm->getWhere('churchmember', [
+                        'MbrUniqueID' => $uniqueId,
+                        'Deleted' => 0
+                    ]);
+
+                    if (empty($member)) {
+                        ResponseHelper::error('Member not found', 404);
+                    }
+
+                    $memberData = Member::get((int)$member[0]['MbrID']);
+                    ResponseHelper::success($memberData);
+                } catch (Exception $e) {
+                    ResponseHelper::error($e->getMessage(), 400);
+                }
+            })(),
+
+            // GET LOOKUP DATA FOR MEMBER FORMS (NEW)
+            $method === 'GET' && $path === 'member/lookup-data' => (function () {
+                self::authenticate();
+                self::authorize('members.view');
+
+                try {
+                    $orm = new ORM();
+
+                    $result = [
+                        'marital_statuses' => $orm->runQuery(
+                            "SELECT StatusID as id, StatusName as name, DisplayOrder 
+                             FROM marital_status 
+                             WHERE IsActive = 1 
+                             ORDER BY DisplayOrder"
+                        ),
+                        'education_levels' => $orm->runQuery(
+                            "SELECT LevelID as id, LevelName as name, DisplayOrder 
+                             FROM education_level 
+                             WHERE IsActive = 1 
+                             ORDER BY DisplayOrder"
+                        ),
+                        'membership_statuses' => $orm->runQuery(
+                            "SELECT StatusID as id, StatusName as name, DisplayOrder 
+                             FROM membership_status 
+                             WHERE IsActive = 1 
+                             ORDER BY DisplayOrder"
+                        ),
+                        'phone_types' => $orm->runQuery(
+                            "SELECT TypeID as id, TypeName as name, DisplayOrder 
+                             FROM phone_type 
+                             ORDER BY DisplayOrder"
+                        ),
+                        'branches' => $orm->runQuery(
+                            "SELECT BranchID as id, BranchName as name, BranchCode as code 
+                             FROM branch 
+                             WHERE IsActive = 1 
+                             ORDER BY BranchName"
+                        )
+                    ];
+
+                    ResponseHelper::success($result, 'Lookup data retrieved');
+                } catch (Exception $e) {
+                    ResponseHelper::error($e->getMessage(), 500);
+                }
             })(),
 
             // FALLBACK

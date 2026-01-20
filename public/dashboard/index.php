@@ -458,19 +458,40 @@
    }
 
    // Initialize on page load
-   document.addEventListener('DOMContentLoaded', () => {
+   // Note: Config may not be loaded yet at this point
+   window.addEventListener('authReady', () => {
+      Config.log('Dashboard: authReady event received');
+      window.authReadyFired = true;
+
       // Check permission
       if (!Auth.requirePermission(Config.PERMISSIONS.VIEW_DASHBOARD)) {
+         Config.warn('Dashboard: Permission denied');
          window.location.href = '../login/';
          return;
       }
 
+      Config.log('Dashboard: Permission granted, loading dashboard');
       // Load dashboard
       loadDashboard();
 
       // Auto-refresh every 5 minutes
       setInterval(loadDashboard, 5 * 60 * 1000);
+   }, {
+      once: true
    });
+
+   // Fallback: if authReady doesn't fire within 2 seconds, try anyway
+   setTimeout(() => {
+      if (!window.authReadyFired) {
+         Config.warn('Dashboard: authReady timeout, attempting to load anyway');
+         if (Auth.isAuthenticated()) {
+            Config.log('Dashboard: User is authenticated, loading dashboard');
+            loadDashboard();
+         } else {
+            Config.error('Dashboard: User not authenticated after timeout');
+         }
+      }
+   }, 2000);
 </script>
 
 <?php include '../includes/footer.php'; ?>

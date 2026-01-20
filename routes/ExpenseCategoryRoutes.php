@@ -43,7 +43,7 @@ class ExpenseCategoryRoutes extends BaseRoute
          // CREATE EXPENSE CATEGORY
          $method === 'POST' && $path === 'expensecategory/create' => (function () {
             self::authenticate();
-            self::authorize('manage_expense_categories');
+            self::authorize('settings.edit');
 
             $payload = self::getPayload();
 
@@ -54,7 +54,7 @@ class ExpenseCategoryRoutes extends BaseRoute
          // UPDATE EXPENSE CATEGORY
          $method === 'PUT' && $pathParts[0] === 'expensecategory' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_expense_categories');
+            self::authorize('settings.edit');
 
             $categoryId = self::getIdFromPath($pathParts, 2, 'Category ID');
 
@@ -67,7 +67,7 @@ class ExpenseCategoryRoutes extends BaseRoute
          // DELETE EXPENSE CATEGORY
          $method === 'DELETE' && $pathParts[0] === 'expensecategory' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_expense_categories');
+            self::authorize('settings.edit');
 
             $categoryId = self::getIdFromPath($pathParts, 2, 'Category ID');
 
@@ -78,7 +78,7 @@ class ExpenseCategoryRoutes extends BaseRoute
          // VIEW SINGLE EXPENSE CATEGORY
          $method === 'GET' && $pathParts[0] === 'expensecategory' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('view_expense');
+            self::authorize('finances.view');
 
             $categoryId = self::getIdFromPath($pathParts, 2, 'Category ID');
 
@@ -89,7 +89,7 @@ class ExpenseCategoryRoutes extends BaseRoute
          // LIST ALL EXPENSE CATEGORIES (also handle expense-category path)
          $method === 'GET' && ($path === 'expensecategory/all' || $path === 'expense-category/all') => (function () {
             self::authenticate();
-            self::authorize('view_expense');
+            self::authorize('finances.view');
 
             $result = ExpenseCategory::getAll();
             ResponseHelper::success($result);

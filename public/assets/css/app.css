@@ -1,11 +1,11 @@
 :root {
    --sidebar-width: 260px;
    --header-height: 65px;
-   --sidebar-bg: #1e293b;
-      --sidebar-hover: #334155;
-      --sidebar-active: #3b82f6;
+   --sidebar-bg: #000250;
+      --sidebar-hover: #065dff;
+      --sidebar-active: #e5a100;
       --sidebar-text: #e2e8f0;
-   --primary-color: #3b82f6;
+   --primary-color: #00028a;
    --success-color: #22c55e;
       --warning-color: #f59e0b;
       --danger-color: #ef4444;

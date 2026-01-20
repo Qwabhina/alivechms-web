@@ -31,16 +31,18 @@ class ContributionType
 
       // Check for duplicate name
       $existing = $orm->runQuery(
-         "SELECT ContributionTypeID FROM contributiontype WHERE ContributionTypeName = :name",
+         "SELECT ContributionTypeID FROM contribution_type WHERE ContributionTypeName = :name",
          [':name' => $name]
       );
       if (!empty($existing)) {
          ResponseHelper::error('Contribution type name already exists', 400);
       }
 
-      $typeId = $orm->insert('contributiontype', [
+      $typeId = $orm->insert('contribution_type', [
          'ContributionTypeName' => $name,
-         'ContributionTypeDescription' => $data['description'] ?? null
+         'ContributionTypeDescription' => $data['description'] ?? null,
+         'IsActive' => 1,
+         'IsTaxDeductible' => $data['is_tax_deductible'] ?? 1
       ])['id'];
 
       return ['status' => 'success', 'contribution_type_id' => $typeId];
@@ -53,7 +55,7 @@ class ContributionType
    {
       $orm = new ORM();
 
-      $type = $orm->getWhere('contributiontype', ['ContributionTypeID' => $typeId]);
+      $type = $orm->getWhere('contribution_type', ['ContributionTypeID' => $typeId]);
       if (empty($type)) {
          ResponseHelper::error('Contribution type not found', 404);
       }
@@ -63,7 +65,7 @@ class ContributionType
       if (!empty($data['name'])) {
          $name = trim($data['name']);
          $existing = $orm->runQuery(
-            "SELECT ContributionTypeID FROM contributiontype WHERE ContributionTypeName = :name AND ContributionTypeID != :id",
+            "SELECT ContributionTypeID FROM contribution_type WHERE ContributionTypeName = :name AND ContributionTypeID != :id",
             [':name' => $name, ':id' => $typeId]
          );
          if (!empty($existing)) {
@@ -76,8 +78,12 @@ class ContributionType
          $update['ContributionTypeDescription'] = $data['description'] ?: null;
       }
 
+      if (isset($data['is_tax_deductible'])) {
+         $update['IsTaxDeductible'] = (int)$data['is_tax_deductible'];
+      }
+
       if (!empty($update)) {
-         $orm->update('contributiontype', $update, ['ContributionTypeID' => $typeId]);
+         $orm->update('contribution_type', $update, ['ContributionTypeID' => $typeId]);
       }
 
       return ['status' => 'success', 'contribution_type_id' => $typeId];
@@ -90,14 +96,14 @@ class ContributionType
    {
       $orm = new ORM();
 
-      $type = $orm->getWhere('contributiontype', ['ContributionTypeID' => $typeId]);
+      $type = $orm->getWhere('contribution_type', ['ContributionTypeID' => $typeId]);
       if (empty($type)) {
          ResponseHelper::error('Contribution type not found', 404);
       }
 
       // Check if type is in use
       $inUse = $orm->runQuery(
-         "SELECT COUNT(*) AS cnt FROM contribution WHERE ContributionTypeID = :id",
+         "SELECT COUNT(*) AS cnt FROM contribution WHERE ContributionTypeID = :id AND Deleted = 0",
          [':id' => $typeId]
       )[0]['cnt'];
 
@@ -105,7 +111,7 @@ class ContributionType
          ResponseHelper::error('Cannot delete contribution type that is in use', 400);
       }
 
-      $orm->delete('contributiontype', ['ContributionTypeID' => $typeId]);
+      $orm->delete('contribution_type', ['ContributionTypeID' => $typeId]);
       return ['status' => 'success'];
    }
 
@@ -116,7 +122,7 @@ class ContributionType
    {
       $orm = new ORM();
 
-      $type = $orm->getWhere('contributiontype', ['ContributionTypeID' => $typeId]);
+      $type = $orm->getWhere('contribution_type', ['ContributionTypeID' => $typeId]);
       if (empty($type)) {
          ResponseHelper::error('Contribution type not found', 404);
       }
@@ -131,7 +137,10 @@ class ContributionType
    {
       $orm = new ORM();
       $types = $orm->runQuery(
-         "SELECT ContributionTypeID, ContributionTypeName, ContributionTypeDescription FROM contributiontype ORDER BY ContributionTypeName ASC"
+         "SELECT ContributionTypeID, ContributionTypeName, ContributionTypeDescription, IsActive, IsTaxDeductible 
+          FROM contribution_type 
+          WHERE IsActive = 1
+          ORDER BY ContributionTypeName ASC"
       );
 
       return ['data' => $types];

@@ -39,15 +39,15 @@ class Event
 
       $branchId = (int)$data['branch_id'];
 
-      if (empty($orm->getWhere('branch', ['BranchID' => $branchId]))) {
-         Helpers::sendFeedback('Invalid branch', 400);
+      if (empty($orm->getWhere('branch', ['BranchID' => $branchId, 'IsActive' => 1]))) {
+         ResponseHelper::error('Invalid branch', 400);
       }
 
       if ($data['event_date'] < date('Y-m-d')) {
-         Helpers::sendFeedback('Event date cannot be in the past', 400);
+         ResponseHelper::error('Event date cannot be in the past', 400);
       }
 
-      $eventId = $orm->insert('event', [
+      $eventId = $orm->insert('church_event', [
          'EventTitle'       => $data['title'],
             'EventDescription' => $data['description'] ?? null,
          'EventDate'        => $data['event_date'],
@@ -74,9 +74,9 @@ class Event
    {
       $orm = new ORM();
 
-      $event = $orm->getWhere('event', ['EventID' => $eventId]);
+      $event = $orm->getWhere('church_event', ['EventID' => $eventId, 'Deleted' => 0]);
       if (empty($event)) {
-         Helpers::sendFeedback('Event not found', 404);
+         ResponseHelper::error('Event not found', 404);
       }
 
       $update = [];
@@ -85,7 +85,7 @@ class Event
       if (isset($data['description']))  $update['EventDescription'] = $data['description'];
       if (!empty($data['event_date'])) {
          if ($data['event_date'] < date('Y-m-d')) {
-            Helpers::sendFeedback('Event date cannot be in the past', 400);
+            ResponseHelper::error('Event date cannot be in the past', 400);
          }
          $update['EventDate'] = $data['event_date'];
       }
@@ -93,14 +93,18 @@ class Event
       if (isset($data['end_time']))     $update['EndTime']   = $data['end_time'];
       if (isset($data['location']))     $update['Location']  = $data['location'];
       if (!empty($data['branch_id'])) {
-         if (empty($orm->getWhere('branch', ['BranchID' => (int)$data['branch_id']]))) {
-            Helpers::sendFeedback('Invalid branch', 400);
+         if (empty($orm->getWhere('branch', ['BranchID' => (int)$data['branch_id'], 'IsActive' => 1]))) {
+            ResponseHelper::error('Invalid branch', 400);
          }
          $update['BranchID'] = (int)$data['branch_id'];
       }
 
       if (!empty($update)) {
-         $orm->update('event', $update, ['EventID' => $eventId]);
+         $update['UpdatedAt'] = date('Y-m-d H:i:s');
+         if (!empty($_SESSION['user_id'])) {
+            $update['UpdatedBy'] = (int)$_SESSION['user_id'];
+         }
+         $orm->update('church_event', $update, ['EventID' => $eventId]);
       }
 
       return ['status' => 'success', 'event_id' => $eventId];
@@ -116,16 +120,26 @@ class Event
    {
       $orm = new ORM();
 
-      $event = $orm->getWhere('event', ['EventID' => $eventId]);
+      $event = $orm->getWhere('church_event', ['EventID' => $eventId, 'Deleted' => 0]);
       if (empty($event)) {
-         Helpers::sendFeedback('Event not found', 404);
+         ResponseHelper::error('Event not found', 404);
       }
 
       if (!empty($orm->getWhere('event_attendance', ['EventID' => $eventId]))) {
-         Helpers::sendFeedback('Cannot delete event with recorded attendance', 400);
+         ResponseHelper::error('Cannot delete event with recorded attendance', 400);
       }
 
-      $orm->delete('event', ['EventID' => $eventId]);
+      // Soft delete with audit trail
+      $deleteData = [
+         'Deleted' => 1,
+         'DeletedAt' => date('Y-m-d H:i:s')
+      ];
+
+      if (!empty($_SESSION['user_id'])) {
+         $deleteData['DeletedBy'] = (int)$_SESSION['user_id'];
+      }
+
+      $orm->update('church_event', $deleteData, ['EventID' => $eventId]);
       return ['status' => 'success'];
    }
 
@@ -140,13 +154,13 @@ class Event
    {
       $orm = new ORM();
 
-      $event = $orm->getWhere('event', ['EventID' => $eventId]);
+      $event = $orm->getWhere('church_event', ['EventID' => $eventId, 'Deleted' => 0]);
       if (empty($event)) {
-         Helpers::sendFeedback('Event not found', 404);
+         ResponseHelper::error('Event not found', 404);
       }
 
       if (empty($data['attendances']) || !is_array($data['attendances'])) {
-         Helpers::sendFeedback('attendances array is required', 400);
+         ResponseHelper::error('attendances array is required', 400);
       }
 
       $orm->beginTransaction();
@@ -200,23 +214,27 @@ class Event
    {
       $validStatuses = ['Present', 'Absent', 'Late', 'Excused'];
       if (!in_array($status, $validStatuses, true)) {
-         Helpers::sendFeedback('Invalid attendance status', 400);
+         ResponseHelper::error('Invalid attendance status', 400);
       }
 
       $orm = new ORM();
 
-      $event = $orm->getWhere('event', ['EventID' => $eventId]);
+      $event = $orm->getWhere('church_event', ['EventID' => $eventId, 'Deleted' => 0]);
       if (empty($event)) {
-         Helpers::sendFeedback('Event not found', 404);
+         ResponseHelper::error('Event not found', 404);
       }
 
-      $member = $orm->getWhere('churchmember', [
-         'MbrID'              => $memberId,
-         'MbrMembershipStatus' => 'Active',
-         'Deleted'            => 0
-      ]);
-      if (empty($member)) {
-         Helpers::sendFeedback('Invalid or inactive member', 400);
+      // Validate member - check membership status via lookup table
+      $member = $orm->selectWithJoin(
+         baseTable: 'churchmember m',
+         joins: [['table' => 'membership_status ms', 'on' => 'm.MbrMembershipStatusID = ms.StatusID']],
+         fields: ['m.MbrID', 'ms.StatusName'],
+         conditions: ['m.MbrID' => ':member_id', 'm.Deleted' => 0],
+         params: [':member_id' => $memberId]
+      );
+
+      if (empty($member) || $member[0]['StatusName'] !== 'Active') {
+         ResponseHelper::error('Invalid or inactive member', 400);
       }
 
       $existing = $orm->getWhere('event_attendance', [
@@ -252,7 +270,7 @@ class Event
       $orm = new ORM();
 
       $result = $orm->selectWithJoin(
-         baseTable: 'event e',
+         baseTable: 'church_event e',
             joins: [
             ['table' => 'branch b',        'on' => 'e.BranchID = b.BranchID'],
             ['table' => 'churchmember c',  'on' => 'e.CreatedBy = c.MbrID', 'type' => 'LEFT']
@@ -263,12 +281,12 @@ class Event
             'c.MbrFirstName AS CreatorFirstName',
             'c.MbrFamilyName AS CreatorFamilyName'
             ],
-         conditions: ['e.EventID' => ':id'],
+         conditions: ['e.EventID' => ':id', 'e.Deleted' => 0],
             params: [':id' => $eventId]
       );
 
       if (empty($result)) {
-         Helpers::sendFeedback('Event not found', 404);
+         ResponseHelper::error('Event not found', 404);
       }
 
       $stats = $orm->runQuery(
@@ -304,7 +322,7 @@ class Event
       $orm    = new ORM();
       $offset = ($page - 1) * $limit;
 
-      $conditions = [];
+      $conditions = ['e.Deleted' => 0];
       $params     = [];
 
       if (!empty($filters['branch_id'])) {
@@ -344,7 +362,7 @@ class Event
       }
 
       $events = $orm->selectWithJoin(
-         baseTable: 'event e',
+         baseTable: 'church_event e',
          joins: [['table' => 'branch b', 'on' => 'e.BranchID = b.BranchID']],
          fields: [
             'e.EventID',
@@ -363,8 +381,8 @@ class Event
       );
 
       $total = $orm->runQuery(
-         "SELECT COUNT(*) AS total FROM event e" .
-            (!empty($conditions) ? ' WHERE ' . implode(' AND ', array_keys($conditions)) : ''),
+         "SELECT COUNT(*) AS total FROM church_event e WHERE e.Deleted = 0" .
+            (count($conditions) > 1 ? " AND " . implode(' AND ', array_slice(array_keys($conditions), 1)) : ''),
          $params
       )[0]['total'];
 

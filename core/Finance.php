@@ -51,7 +51,7 @@ class Finance
       $contributions = $orm->runQuery(
          "SELECT ct.ContributionTypeName, SUM(c.ContributionAmount) AS total
              FROM contribution c
-             JOIN contributiontype ct ON c.ContributionTypeID = ct.ContributionTypeID
+             JOIN contribution_type ct ON c.ContributionTypeID = ct.ContributionTypeID
              WHERE $where
              GROUP BY ct.ContributionTypeID
              ORDER BY total DESC",
@@ -99,8 +99,8 @@ class Finance
       $budgeted = $orm->runQuery(
          "SELECT bi.Category, SUM(bi.Amount) AS budgeted
              FROM budget_items bi
-             JOIN budget b ON bi.BudgetID = b.BudgetID
-             WHERE b.FiscalYearID = :fy AND b.BudgetStatus = 'Approved'
+             JOIN churchbudget b ON bi.BudgetID = b.BudgetID
+             WHERE b.FiscalYearID = :fy AND b.BudgetStatus = 'Approved' AND b.Deleted = 0
              GROUP BY bi.Category",
          [':fy' => $fiscalYearId]
       );
@@ -221,7 +221,7 @@ class Finance
       $summary = $orm->runQuery(
          "SELECT ct.ContributionTypeName, SUM(c.ContributionAmount) AS total, COUNT(c.ContributionID) AS count
              FROM contribution c
-             JOIN contributiontype ct ON c.ContributionTypeID = ct.ContributionTypeID
+             JOIN contribution_type ct ON c.ContributionTypeID = ct.ContributionTypeID
              WHERE $where
              GROUP BY ct.ContributionTypeID
              ORDER BY total DESC",
@@ -262,16 +262,16 @@ class Finance
    private static function validateFiscalYear(int $fiscalYearId): void
    {
       $orm = new ORM();
-      $fy  = $orm->getWhere('fiscalyear', ['FiscalYearID' => $fiscalYearId, 'Status' => 'Active']);
+      $fy  = $orm->getWhere('fiscal_year', ['FiscalYearID' => $fiscalYearId, 'Status' => 'Active']);
       if (empty($fy)) {
-         Helpers::sendFeedback('Invalid or inactive fiscal year', 400);
+         ResponseHelper::error('Invalid or inactive fiscal year', 400);
       }
    }
 
    private static function getFiscalYearName(int $fiscalYearId): string
    {
       $orm = new ORM();
-      $fy  = $orm->getWhere('fiscalyear', ['FiscalYearID' => $fiscalYearId])[0] ?? null;
-      return $fy ? $fy['YearName'] : 'Unknown';
+      $fy  = $orm->getWhere('fiscal_year', ['FiscalYearID' => $fiscalYearId])[0] ?? null;
+      return $fy ? $fy['FiscalYearName'] : 'Unknown';
    }
 }

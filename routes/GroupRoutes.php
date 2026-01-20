@@ -54,7 +54,7 @@ class GroupRoutes extends BaseRoute
          // CREATE GROUP
          $method === 'POST' && $path === 'group/create' => (function () {
             self::authenticate();
-            self::authorize('manage_groups');
+            self::authorize('groups.manage');
 
             $payload = self::getPayload();
 
@@ -65,7 +65,7 @@ class GroupRoutes extends BaseRoute
          // UPDATE GROUP
          $method === 'PUT' && $pathParts[0] === 'group' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_groups');
+            self::authorize('groups.manage');
 
             $groupId = self::getIdFromPath($pathParts, 2, 'Group ID');
 
@@ -78,7 +78,7 @@ class GroupRoutes extends BaseRoute
          // DELETE GROUP
          $method === 'DELETE' && $pathParts[0] === 'group' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_groups');
+            self::authorize('groups.manage');
 
             $groupId = self::getIdFromPath($pathParts, 2, 'Group ID');
 
@@ -89,7 +89,7 @@ class GroupRoutes extends BaseRoute
          // VIEW SINGLE GROUP
          $method === 'GET' && $pathParts[0] === 'group' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('view_groups');
+            self::authorize('groups.view');
 
             $groupId = self::getIdFromPath($pathParts, 2, 'Group ID');
 
@@ -100,7 +100,7 @@ class GroupRoutes extends BaseRoute
          // LIST ALL GROUPS (Paginated + Multi-Filter)
          $method === 'GET' && $path === 'group/all' => (function () {
             self::authenticate();
-            self::authorize('view_groups');
+            self::authorize('groups.view');
 
             [$page, $limit] = self::getPagination(10, 100);
 
@@ -131,7 +131,7 @@ class GroupRoutes extends BaseRoute
          // ADD MEMBER TO GROUP
          $method === 'POST' && $pathParts[0] === 'group' && ($pathParts[1] ?? '') === 'addMember' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_groups');
+            self::authorize('groups.manage');
 
             $groupId = self::getIdFromPath($pathParts, 2, 'Group ID');
 
@@ -146,7 +146,7 @@ class GroupRoutes extends BaseRoute
          // REMOVE MEMBER FROM GROUP
          $method === 'DELETE' && $pathParts[0] === 'group' && ($pathParts[1] ?? '') === 'removeMember' && isset($pathParts[2], $pathParts[3]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_groups');
+            self::authorize('groups.manage');
 
             $groupId = self::getIdFromPath($pathParts, 2, 'Group ID');
             $memberId = self::getIdFromPath($pathParts, 3, 'Member ID');
@@ -158,7 +158,7 @@ class GroupRoutes extends BaseRoute
          // GET GROUP MEMBERS (Paginated)
          $method === 'GET' && $pathParts[0] === 'group' && ($pathParts[1] ?? '') === 'members' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('view_groups');
+            self::authorize('groups.view');
 
             $groupId = self::getIdFromPath($pathParts, 2, 'Group ID');
 
@@ -175,7 +175,7 @@ class GroupRoutes extends BaseRoute
          // CREATE GROUP TYPE
          $method === 'POST' && $path === 'grouptype/create' => (function () {
             self::authenticate();
-            self::authorize('manage_group_types');
+            self::authorize('settings.edit');
 
             $payload = self::getPayload([
                'name' => 'required|max:100'
@@ -188,7 +188,7 @@ class GroupRoutes extends BaseRoute
          // UPDATE GROUP TYPE
          $method === 'PUT' && $pathParts[0] === 'grouptype' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_group_types');
+            self::authorize('settings.edit');
 
             $typeId = self::getIdFromPath($pathParts, 2, 'GroupType ID');
 
@@ -201,7 +201,7 @@ class GroupRoutes extends BaseRoute
          // DELETE GROUP TYPE
          $method === 'DELETE' && $pathParts[0] === 'grouptype' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_group_types');
+            self::authorize('settings.edit');
 
             $typeId = self::getIdFromPath($pathParts, 2, 'GroupType ID');
 
@@ -212,7 +212,7 @@ class GroupRoutes extends BaseRoute
          // VIEW SINGLE GROUP TYPE
          $method === 'GET' && $pathParts[0] === 'grouptype' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('view_group_types');
+            self::authorize('groups.view');
 
             $typeId = self::getIdFromPath($pathParts, 2, 'GroupType ID');
 
@@ -223,7 +223,7 @@ class GroupRoutes extends BaseRoute
          // LIST ALL GROUP TYPES
          $method === 'GET' && $path === 'grouptype/all' => (function () {
             self::authenticate();
-            self::authorize('view_group_types');
+            self::authorize('groups.view');
 
             [$page, $limit] = self::getPagination(10, 100);
 

@@ -1,21 +1,29 @@
 <?php
 
 /**
- * Expense API Routes – v1
+ * Expense API Routes – v2.0
  *
  * Full expense lifecycle with approval workflow:
- * - Create expense request
+ * - Create expense request (FiscalYearID optional)
+ * - Update pending expense
+ * - Soft delete expense with audit trail
  * - View single expense
  * - Paginated listing with powerful filtering
  * - Review (approve/reject)
  * - Cancel pending expense
+ * - Upload/delete proof files
+ *
+ * Refactored for optimized schema v2.0:
+ * - FiscalYearID is optional
+ * - Enhanced audit trail
+ * - Updated permission names
  *
  * All operations strictly permission-controlled.
  *
  * @package  AliveChMS\Routes
- * @version  1.0.0
+ * @version  2.0.0
  * @author   Benjamin Ebo Yankson
- * @since    2025-November
+ * @since    2026-January
  */
 
 declare(strict_types=1);
@@ -36,7 +44,7 @@ class ExpenseRoutes extends BaseRoute
          // CREATE EXPENSE REQUEST
          $method === 'POST' && $path === 'expense/create' => (function () {
             self::authenticate();
-            self::authorize('create_expense');
+            self::authorize('expenses.create');
 
             $payload = self::getPayload();
 
@@ -44,10 +52,33 @@ class ExpenseRoutes extends BaseRoute
             ResponseHelper::created($result, 'Expense created');
          })(),
 
+         // UPDATE EXPENSE
+         $method === 'PUT' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('expenses.create');
+
+            $expenseId = self::getIdFromPath($pathParts, 2, 'Expense ID');
+            $payload = self::getPayload();
+
+            $result = Expense::update($expenseId, $payload);
+            ResponseHelper::success($result, 'Expense updated');
+         })(),
+
+         // SOFT DELETE EXPENSE
+         $method === 'DELETE' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('expenses.delete');
+
+            $expenseId = self::getIdFromPath($pathParts, 2, 'Expense ID');
+
+            $result = Expense::delete($expenseId);
+            ResponseHelper::success($result, 'Expense deleted');
+         })(),
+
          // VIEW SINGLE EXPENSE
          $method === 'GET' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('view_expenses');
+            self::authorize('expenses.view');
 
             $expenseId = self::getIdFromPath($pathParts, 2, 'Expense ID');
 
@@ -58,7 +89,7 @@ class ExpenseRoutes extends BaseRoute
          // LIST ALL EXPENSES (Paginated + Filtered)
          $method === 'GET' && $path === 'expense/all' => (function () {
             self::authenticate();
-            self::authorize('view_expenses');
+            self::authorize('expenses.view');
 
             [$page, $limit] = self::getPagination(10, 100);
 
@@ -88,7 +119,7 @@ class ExpenseRoutes extends BaseRoute
          // GET EXPENSE STATISTICS
          $method === 'GET' && $path === 'expense/stats' => (function () {
             self::authenticate();
-            self::authorize('view_expenses');
+            self::authorize('expenses.view');
 
             $fiscalYearId = !empty($_GET['fiscal_year_id']) ? (int)$_GET['fiscal_year_id'] : null;
             $result = Expense::getStats($fiscalYearId);
@@ -98,7 +129,7 @@ class ExpenseRoutes extends BaseRoute
          // REVIEW EXPENSE (Approve/Reject)
          $method === 'POST' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'review' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('approve_expenses');
+            self::authorize('expenses.approve');
 
             $expenseId = self::getIdFromPath($pathParts, 2, 'Expense ID');
 
@@ -118,7 +149,7 @@ class ExpenseRoutes extends BaseRoute
          // CANCEL PENDING EXPENSE
          $method === 'POST' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'cancel' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('cancel_expenses');
+            self::authorize('expenses.create');
 
             $expenseId = self::getIdFromPath($pathParts, 2, 'Expense ID');
 
@@ -133,7 +164,7 @@ class ExpenseRoutes extends BaseRoute
          // UPLOAD PROOF FILE
          $method === 'POST' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'upload-proof' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('create_expense');
+            self::authorize('expenses.create');
 
             $expenseId = self::getIdFromPath($pathParts, 2, 'Expense ID');
 
@@ -148,7 +179,7 @@ class ExpenseRoutes extends BaseRoute
          // DELETE PROOF FILE
          $method === 'DELETE' && $pathParts[0] === 'expense' && ($pathParts[1] ?? '') === 'delete-proof' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('create_expense');
+            self::authorize('expenses.create');
 
             $expenseId = self::getIdFromPath($pathParts, 2, 'Expense ID');
 

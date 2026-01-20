@@ -38,7 +38,7 @@ class DashboardRoutes extends BaseRoute
             // DASHBOARD OVERVIEW
             $method === 'GET' && $path === 'dashboard/overview' => (function () {
                 self::authenticate();
-                self::authorize('view_dashboard');
+                self::authorize('reports.view');
 
                 try {
                     $overview = Dashboard::getOverview();

@@ -28,7 +28,7 @@ class SettingsRoutes extends BaseRoute
          // GET ALL SETTINGS
          $method === 'GET' && $path === 'settings/all' => (function () {
             self::authenticate();
-            self::authorize('manage_settings');
+            self::authorize('settings.view');
 
             $settings = Settings::getAll();
             ResponseHelper::success(['data' => $settings]);
@@ -37,7 +37,7 @@ class SettingsRoutes extends BaseRoute
          // GET SETTINGS BY CATEGORY
          $method === 'GET' && $pathParts[0] === 'settings' && ($pathParts[1] ?? '') === 'category' => (function () {
             self::authenticate();
-            self::authorize('manage_settings');
+            self::authorize('settings.view');
 
             $settings = Settings::getByCategory();
             ResponseHelper::success(['data' => $settings]);
@@ -46,7 +46,7 @@ class SettingsRoutes extends BaseRoute
          // GET SINGLE SETTING
          $method === 'GET' && $pathParts[0] === 'settings' && ($pathParts[1] ?? '') === 'get' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_settings');
+            self::authorize('settings.view');
 
             $key = $pathParts[2];
             $value = Settings::get($key);
@@ -56,7 +56,7 @@ class SettingsRoutes extends BaseRoute
          // UPDATE SETTINGS (BULK)
          $method === 'POST' && $path === 'settings/update' => (function () {
             self::authenticate();
-            self::authorize('manage_settings');
+            self::authorize('settings.edit');
 
             $payload = self::getPayload();
 
@@ -77,7 +77,7 @@ class SettingsRoutes extends BaseRoute
          // UPLOAD CHURCH LOGO
          $method === 'POST' && $path === 'settings/upload-logo' => (function () {
             self::authenticate();
-            self::authorize('manage_settings');
+            self::authorize('settings.edit');
 
             // Check if file was uploaded
             if (!isset($_FILES['logo']) || $_FILES['logo']['error'] !== UPLOAD_ERR_OK) {
@@ -149,7 +149,7 @@ class SettingsRoutes extends BaseRoute
          // INITIALIZE DEFAULT SETTINGS
          $method === 'POST' && $path === 'settings/initialize' => (function () {
             self::authenticate();
-            self::authorize('manage_settings');
+            self::authorize('settings.edit');
 
             $result = Settings::initializeDefaults();
             ResponseHelper::success($result);
@@ -158,7 +158,7 @@ class SettingsRoutes extends BaseRoute
          // DELETE SETTING
          $method === 'DELETE' && $pathParts[0] === 'settings' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('manage_settings');
+            self::authorize('settings.edit');
 
             $key = $pathParts[2];
             $result = Settings::delete($key);

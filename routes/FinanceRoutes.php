@@ -41,7 +41,7 @@ class FinanceRoutes extends BaseRoute
 
       self::rateLimit(maxAttempts: 60, windowSeconds: 60);
       self::authenticate();
-      self::authorize('view_financial_reports');
+      self::authorize('finances.view');
 
       // Extract common parameters
       $fiscalYearId = $pathParts[2] ?? null;

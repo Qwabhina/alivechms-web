@@ -26,8 +26,8 @@
          window.fetch = async function(url, options = {}) {
             // Check if this is a request to our API
             if (typeof url === 'string' && url.includes(Config.API_BASE_URL)) {
-               // Add authentication headers
-               const token = localStorage.getItem(Config.TOKEN_KEY);
+               // Add authentication headers - use Auth module to get token
+               const token = Auth.getToken();
                if (token) {
                   // Check if this is a FormData upload (don't override Content-Type for multipart)
                   const isFormData = options.body instanceof FormData;
@@ -43,6 +43,9 @@
                   if (!isFormData) {
                      options.headers['Content-Type'] = 'application/json';
                   }
+                  
+                  // Include credentials for cookie-based refresh tokens
+                  options.credentials = 'include';
                }
             }
             

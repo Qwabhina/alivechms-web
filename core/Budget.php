@@ -40,14 +40,14 @@ class Budget
          'items'          => 'required'
       ]);
 
-      if (!is_array($data['items']) || empty($data['items'])) Helpers::sendError('At least one budget item is required', 400);
+      if (!is_array($data['items']) || empty($data['items'])) ResponseHelper::error('At least one budget item is required', 400);
 
       $fiscalYearId = (int)$data['fiscal_year_id'];
       $branchId     = (int)$data['branch_id'];
 
       // Validate references
-      if (empty($orm->getWhere('fiscalyear', ['FiscalYearID' => $fiscalYearId, 'Status' => 'Active']))) Helpers::sendError('Invalid or inactive fiscal year', 400);
-      if (empty($orm->getWhere('branch', ['BranchID' => $branchId]))) Helpers::sendError('Invalid branch', 400);
+      if (empty($orm->getWhere('fiscal_year', ['FiscalYearID' => $fiscalYearId, 'Status' => 'Active']))) ResponseHelper::error('Invalid or inactive fiscal year', 400);
+      if (empty($orm->getWhere('branch', ['BranchID' => $branchId, 'IsActive' => 1]))) ResponseHelper::error('Invalid branch', 400);
 
       $orm->beginTransaction();
       try {
@@ -68,11 +68,11 @@ class Budget
          $orm->commit();
 
          // Return success response
-         Helpers::sendSuccess('', 200, 'Budget [' . $budgetId . '] created successfully');
+         return ['status' => 'success', 'budget_id' => $budgetId];
       } catch (Exception $e) {
          $orm->rollBack();
          Helpers::logError("Budget creation failed: " . $e->getMessage());
-         Helpers::sendError('Failed to create budget');
+         throw $e;
       }
    }
 
@@ -91,9 +91,16 @@ class Budget
       $update = [];
       if (!empty($data['title']))       $update['BudgetTitle']       = $data['title'];
       if (isset($data['description']))  $update['BudgetDescription'] = $data['description'];
-      if (!empty($update))  $orm->update('churchbudget', $update, ['BudgetID' => $budgetId]);
 
-      Helpers::sendSuccess('', 200, 'Budget updated successfully');
+      if (!empty($update)) {
+         $update['UpdatedAt'] = date('Y-m-d H:i:s');
+         if (!empty($_SESSION['user_id'])) {
+            $update['UpdatedBy'] = (int)$_SESSION['user_id'];
+         }
+         $orm->update('churchbudget', $update, ['BudgetID' => $budgetId]);
+      }
+
+      return ['status' => 'success'];
    }
 
    /**
@@ -109,11 +116,12 @@ class Budget
 
       $orm->update('churchbudget', [
          'BudgetStatus'  => self::STATUS_SUBMITTED,
-         'SubmittedAt'   => date('Y-m-d H:i:s')
+         'SubmittedAt'   => date('Y-m-d H:i:s'),
+         'SubmittedBy'   => Auth::getCurrentUserId()
       ], ['BudgetID' => $budgetId]);
 
       Helpers::logError("Budget submitted: BudgetID $budgetId");
-      Helpers::sendSuccess('', 200, 'Budget submitted for approval');
+      return ['status' => 'success'];
    }
 
    /**
@@ -128,9 +136,9 @@ class Budget
    {
       $orm = new ORM();
 
-      $budget = $orm->getWhere('churchbudget', ['BudgetID' => $budgetId])[0] ?? null;
+      $budget = $orm->getWhere('churchbudget', ['BudgetID' => $budgetId, 'Deleted' => 0])[0] ?? null;
       if (!$budget || $budget['BudgetStatus'] !== self::STATUS_SUBMITTED) {
-         Helpers::sendError('Only submitted budgets can be reviewed', 400);
+         ResponseHelper::error('Only submitted budgets can be reviewed', 400);
       }
 
       $newStatus = $action === 'approve' ? self::STATUS_APPROVED : self::STATUS_REJECTED;
@@ -158,26 +166,26 @@ class Budget
       $result = $orm->selectWithJoin(
          baseTable: 'churchbudget b',
          joins: [
-            ['table' => 'fiscalyear f',   'on' => 'b.FiscalYearID = f.FiscalYearID'],
+            ['table' => 'fiscal_year f',  'on' => 'b.FiscalYearID = f.FiscalYearID'],
             ['table' => 'branch br',      'on' => 'b.BranchID = br.BranchID'],
             ['table' => 'churchmember c', 'on' => 'b.CreatedBy = c.MbrID', 'type' => 'LEFT'],
             ['table' => 'churchmember a', 'on' => 'b.ApprovedBy = a.MbrID', 'type' => 'LEFT']
          ],
          fields: [
             'b.*',
-            'f.YearName AS FiscalYear',
+            'f.FiscalYearName AS FiscalYear',
             'br.BranchName',
             'c.MbrFirstName AS CreatorFirstName',
             'c.MbrFamilyName AS CreatorFamilyName',
             'a.MbrFirstName AS ApproverFirstName',
             'a.MbrFamilyName AS ApproverFamilyName'
          ],
-         conditions: ['b.BudgetID' => ':id'],
+         conditions: ['b.BudgetID' => ':id', 'b.Deleted' => 0],
          params: [':id' => $budgetId]
       );
 
       if (empty($result)) {
-         Helpers::sendError('Budget not found', 404);
+         ResponseHelper::error('Budget not found', 404);
       }
 
       $items = $orm->getWhere('budget_items', ['BudgetID' => $budgetId]);
@@ -200,7 +208,7 @@ class Budget
       $orm    = new ORM();
       $offset = ($page - 1) * $limit;
 
-      $conditions = [];
+      $conditions = ['b.Deleted' => 0];
       $params     = [];
 
       if (!empty($filters['fiscal_year_id'])) {
@@ -219,8 +227,8 @@ class Budget
       $budgets = $orm->selectWithJoin(
          baseTable: 'churchbudget b',
          joins: [
-            ['table' => 'fiscalyear f', 'on' => 'b.FiscalYearID = f.FiscalYearID'],
-            ['table' => 'branch br',    'on' => 'b.BranchID = br.BranchID']
+            ['table' => 'fiscal_year f', 'on' => 'b.FiscalYearID = f.FiscalYearID'],
+            ['table' => 'branch br',     'on' => 'b.BranchID = br.BranchID']
          ],
          fields: [
             'b.BudgetID',
@@ -239,8 +247,8 @@ class Budget
       );
 
       $total = $orm->runQuery(
-         "SELECT COUNT(*) AS total FROM churchbudget b" .
-            (!empty($conditions) ? ' WHERE ' . implode(' AND ', array_keys($conditions)) : ''),
+         "SELECT COUNT(*) AS total FROM churchbudget b WHERE b.Deleted = 0" .
+            (count($conditions) > 1 ? " AND " . implode(' AND ', array_slice(array_keys($conditions), 1)) : ''),
          $params
       )[0]['total'];
 
@@ -270,7 +278,7 @@ class Budget
 
       $amount = (float)$item['amount'];
       if ($amount <= 0) {
-         Helpers::sendError('Amount must be greater than zero', 400);
+         ResponseHelper::error('Amount must be greater than zero', 400);
       }
 
       $orm->beginTransaction();
@@ -297,7 +305,7 @@ class Budget
 
       $item = $orm->getWhere('budget_items', ['ItemID' => $itemId])[0] ?? null;
       if (!$item) {
-         Helpers::sendError('Item not found', 404);
+         ResponseHelper::error('Item not found', 404);
       }
 
       self::ensureDraft((int)$item['BudgetID']);
@@ -308,13 +316,13 @@ class Budget
       if (isset($data['amount'])) {
          $amount = (float)$data['amount'];
          if ($amount <= 0) {
-            Helpers::sendError('Amount must be greater than zero', 400);
+            ResponseHelper::error('Amount must be greater than zero', 400);
          }
          $update['Amount'] = $amount;
       }
 
       if (empty($update)) {
-         Helpers::sendSuccess('', 200, 'No changes provided');
+         return ['status' => 'success', 'message' => 'No changes provided'];
       }
 
       $orm->beginTransaction();
@@ -335,7 +343,7 @@ class Budget
 
       $item = $orm->getWhere('budget_items', ['ItemID' => $itemId])[0] ?? null;
       if (!$item) {
-         Helpers::sendError('Item not found', 404);
+         ResponseHelper::error('Item not found', 404);
       }
 
       self::ensureDraft((int)$item['BudgetID']);
@@ -357,12 +365,12 @@ class Budget
    private static function ensureDraft(int $budgetId): void
    {
       $orm = new ORM();
-      $b   = $orm->getWhere('churchbudget', ['BudgetID' => $budgetId])[0] ?? null;
+      $b   = $orm->getWhere('churchbudget', ['BudgetID' => $budgetId, 'Deleted' => 0])[0] ?? null;
       if (!$b) {
-         Helpers::sendError('Budget not found', 404);
+         ResponseHelper::error('Budget not found', 404);
       }
       if ($b['BudgetStatus'] !== self::STATUS_DRAFT) {
-         Helpers::sendError('Only draft budgets can be modified', 400);
+         ResponseHelper::error('Only draft budgets can be modified', 400);
       }
    }
 

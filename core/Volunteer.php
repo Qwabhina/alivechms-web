@@ -59,7 +59,7 @@ class Volunteer
       $name = trim($data['name']);
 
       if (!empty($orm->getWhere('volunteer_role', ['RoleName' => $name]))) {
-         Helpers::sendFeedback('Volunteer role name already exists', 400);
+         ResponseHelper::error('Volunteer role name already exists', 400);
       }
 
       $roleId = $orm->insert('volunteer_role', [
@@ -85,13 +85,14 @@ class Volunteer
    {
       $orm = new ORM();
 
-      // Validate event exists
-      if (empty($orm->getWhere('event', ['EventID' => $eventId]))) {
-         Helpers::sendFeedback('Event not found', 404);
+      // Validate event exists and is not deleted
+      $event = $orm->getWhere('event', ['EventID' => $eventId, 'Deleted' => 0]);
+      if (empty($event)) {
+         ResponseHelper::error('Event not found', 404);
       }
 
       if (empty($volunteers) || !is_array($volunteers)) {
-         Helpers::sendFeedback('volunteers array is required', 400);
+         ResponseHelper::error('volunteers array is required', 400);
       }
 
       $assignedBy = Auth::getCurrentUserId();
@@ -109,18 +110,23 @@ class Volunteer
             $roleId   = !empty($v['role_id']) ? (int)$v['role_id'] : null;
 
             // Validate member
-            $member = $orm->getWhere('churchmember', [
-               'MbrID'              => $memberId,
-               'MbrMembershipStatus' => 'Active',
-               'Deleted'            => 0
-            ]);
+            $member = $orm->runQuery(
+               "SELECT cm.MbrID 
+                FROM churchmember cm
+                JOIN membership_status ms ON cm.MembershipStatusID = ms.MembershipStatusID
+                WHERE cm.MbrID = :id AND ms.StatusName = 'Active' AND cm.Deleted = 0",
+               [':id' => $memberId]
+            );
             if (empty($member)) {
                throw new Exception("Invalid or inactive member: $memberId");
             }
 
-            // Validate role if provided
-            if ($roleId !== null && empty($orm->getWhere('volunteer_role', ['VolunteerRoleID' => $roleId]))) {
-               throw new Exception("Invalid volunteer role ID: $roleId");
+            // Validate role if provided (check IsActive)
+            if ($roleId !== null) {
+               $role = $orm->getWhere('volunteer_role', ['VolunteerRoleID' => $roleId, 'IsActive' => 1]);
+               if (empty($role)) {
+                  throw new Exception("Invalid or inactive volunteer role ID: $roleId");
+               }
             }
 
             // Skip if already assigned
@@ -165,23 +171,23 @@ class Volunteer
    public static function confirmAssignment(int $assignmentId, string $action): array
    {
       if (!in_array($action, ['confirm', 'decline'], true)) {
-         Helpers::sendFeedback("Action must be 'confirm' or 'decline'", 400);
+         ResponseHelper::error("Action must be 'confirm' or 'decline'", 400);
       }
 
       $orm = new ORM();
 
       $assignment = $orm->getWhere('event_volunteer', ['AssignmentID' => $assignmentId])[0] ?? null;
       if (!$assignment) {
-         Helpers::sendFeedback('Assignment not found', 404);
+         ResponseHelper::error('Assignment not found', 404);
       }
 
       $currentUserId = Auth::getCurrentUserId();
       if ((int)$assignment['MbrID'] !== $currentUserId) {
-         Helpers::sendFeedback('You can only respond to your own assignment', 403);
+         ResponseHelper::error('You can only respond to your own assignment', 403);
       }
 
       if ($assignment['Status'] !== self::STATUS_PENDING) {
-         Helpers::sendFeedback('Assignment is no longer pending', 400);
+         ResponseHelper::error('Assignment is no longer pending', 400);
       }
 
       $newStatus = $action === 'confirm' ? self::STATUS_CONFIRMED : self::STATUS_DECLINED;
@@ -206,11 +212,11 @@ class Volunteer
 
       $assignment = $orm->getWhere('event_volunteer', ['AssignmentID' => $assignmentId])[0] ?? null;
       if (!$assignment) {
-         Helpers::sendFeedback('Assignment not found', 404);
+         ResponseHelper::error('Assignment not found', 404);
       }
 
       if ($assignment['Status'] !== self::STATUS_CONFIRMED) {
-         Helpers::sendFeedback('Only confirmed assignments can be marked complete', 400);
+         ResponseHelper::error('Only confirmed assignments can be marked complete', 400);
       }
 
       $orm->update('event_volunteer', ['Status' => self::STATUS_COMPLETED], ['AssignmentID' => $assignmentId]);
@@ -291,7 +297,7 @@ class Volunteer
 
       $assignment = $orm->getWhere('event_volunteer', ['AssignmentID' => $assignmentId])[0] ?? null;
       if (!$assignment) {
-         Helpers::sendFeedback('Assignment not found', 404);
+         ResponseHelper::error('Assignment not found', 404);
       }
 
       $orm->delete('event_volunteer', ['AssignmentID' => $assignmentId]);

@@ -37,18 +37,21 @@ class Group
       $leaderId = (int)$data['leader_id'];
       $typeId   = (int)$data['type_id'];
 
-      // Validate leader
-      $leader = $orm->getWhere('churchmember', [
-         'MbrID'              => $leaderId,
-         'MbrMembershipStatus' => 'Active',
-         'Deleted'            => 0
-      ]);
-      if (empty($leader)) {
+      // Validate leader - check membership status via lookup table
+      $leader = $orm->selectWithJoin(
+         baseTable: 'churchmember m',
+         joins: [['table' => 'membership_status ms', 'on' => 'm.MbrMembershipStatusID = ms.StatusID']],
+         fields: ['m.MbrID', 'ms.StatusName'],
+         conditions: ['m.MbrID' => ':leader_id', 'm.Deleted' => 0],
+         params: [':leader_id' => $leaderId]
+      );
+
+      if (empty($leader) || $leader[0]['StatusName'] !== 'Active') {
          ResponseHelper::error('Invalid or inactive group leader', 400);
       }
 
       // Validate group type
-      if (empty($orm->getWhere('grouptype', ['GroupTypeID' => $typeId]))) {
+      if (empty($orm->getWhere('group_type', ['GroupTypeID' => $typeId, 'IsActive' => 1]))) {
          ResponseHelper::error('Invalid group type', 400);
       }
 
@@ -110,19 +113,22 @@ class Group
       }
 
       if (!empty($data['leader_id'])) {
-         $leader = $orm->getWhere('churchmember', [
-            'MbrID'              => (int)$data['leader_id'],
-            'MbrMembershipStatus' => 'Active',
-            'Deleted'            => 0
-         ]);
-         if (empty($leader)) {
+         $leader = $orm->selectWithJoin(
+            baseTable: 'churchmember m',
+            joins: [['table' => 'membership_status ms', 'on' => 'm.MbrMembershipStatusID = ms.StatusID']],
+            fields: ['m.MbrID', 'ms.StatusName'],
+            conditions: ['m.MbrID' => ':leader_id', 'm.Deleted' => 0],
+            params: [':leader_id' => (int)$data['leader_id']]
+         );
+
+         if (empty($leader) || $leader[0]['StatusName'] !== 'Active') {
             ResponseHelper::error('Invalid or inactive leader', 400);
          }
          $update['GroupLeaderID'] = (int)$data['leader_id'];
       }
 
       if (!empty($data['type_id'])) {
-         if (empty($orm->getWhere('grouptype', ['GroupTypeID' => (int)$data['type_id']]))) {
+         if (empty($orm->getWhere('group_type', ['GroupTypeID' => (int)$data['type_id'], 'IsActive' => 1]))) {
             ResponseHelper::error('Invalid group type', 400);
          }
          $update['GroupTypeID'] = (int)$data['type_id'];
@@ -133,6 +139,10 @@ class Group
       }
 
       if (!empty($update)) {
+         $update['UpdatedAt'] = date('Y-m-d H:i:s');
+         if (!empty($_SESSION['user_id'])) {
+            $update['UpdatedBy'] = (int)$_SESSION['user_id'];
+         }
          $orm->update('churchgroup', $update, ['GroupID' => $groupId]);
       }
 
@@ -161,7 +171,17 @@ class Group
          ResponseHelper::error('Cannot delete group with members or messages', 400);
       }
 
-      $orm->delete('churchgroup', ['GroupID' => $groupId]);
+      // Soft delete with audit trail
+      $deleteData = [
+         'Deleted' => 1,
+         'DeletedAt' => date('Y-m-d H:i:s')
+      ];
+
+      if (!empty($_SESSION['user_id'])) {
+         $deleteData['DeletedBy'] = (int)$_SESSION['user_id'];
+      }
+
+      $orm->update('churchgroup', $deleteData, ['GroupID' => $groupId]);
       return ['status' => 'success'];
    }
 
@@ -179,7 +199,7 @@ class Group
             baseTable: 'churchgroup g',
             joins: [
             ['table' => 'churchmember l', 'on' => 'g.GroupLeaderID = l.MbrID'],
-            ['table' => 'grouptype t',    'on' => 'g.GroupTypeID = t.GroupTypeID']
+            ['table' => 'group_type t',    'on' => 'g.GroupTypeID = t.GroupTypeID']
             ],
             fields: [
             'g.*',
@@ -188,7 +208,7 @@ class Group
             't.GroupTypeName',
             '(SELECT COUNT(*) FROM groupmember gm WHERE gm.GroupID = g.GroupID) AS MemberCount'
             ],
-            conditions: ['g.GroupID' => ':id'],
+         conditions: ['g.GroupID' => ':id', 'g.Deleted' => 0],
             params: [':id' => $groupId]
       );
 
@@ -212,7 +232,7 @@ class Group
       $orm    = new ORM();
       $offset = ($page - 1) * $limit;
 
-      $conditions = [];
+      $conditions = ['g.Deleted' => 0];
       $params     = [];
 
       if (!empty($filters['type_id'])) {
@@ -253,7 +273,7 @@ class Group
             baseTable: 'churchgroup g',
             joins: [
             ['table' => 'churchmember l', 'on' => 'g.GroupLeaderID = l.MbrID'],
-            ['table' => 'grouptype t',    'on' => 'g.GroupTypeID = t.GroupTypeID']
+            ['table' => 'group_type t',    'on' => 'g.GroupTypeID = t.GroupTypeID']
             ],
             fields: [
             'g.GroupID',
@@ -274,7 +294,8 @@ class Group
 
       $total = $orm->runQuery(
          "SELECT COUNT(*) AS total FROM churchgroup g" .
-            (!empty($conditions) ? " LEFT JOIN churchmember l ON g.GroupLeaderID = l.MbrID WHERE " . implode(' AND ', array_keys($conditions)) : ''),
+            " LEFT JOIN churchmember l ON g.GroupLeaderID = l.MbrID WHERE g.Deleted = 0" .
+            (count($conditions) > 1 ? " AND " . implode(' AND ', array_slice(array_keys($conditions), 1)) : ''),
             $params
       )[0]['total'];
 
@@ -305,12 +326,16 @@ class Group
          ResponseHelper::error('Group not found', 404);
       }
 
-      $member = $orm->getWhere('churchmember', [
-         'MbrID'              => $memberId,
-         'MbrMembershipStatus' => 'Active',
-         'Deleted'            => 0
-      ]);
-      if (empty($member)) {
+      // Validate member - check membership status via lookup table
+      $member = $orm->selectWithJoin(
+         baseTable: 'churchmember m',
+         joins: [['table' => 'membership_status ms', 'on' => 'm.MbrMembershipStatusID = ms.StatusID']],
+         fields: ['m.MbrID', 'ms.StatusName'],
+         conditions: ['m.MbrID' => ':member_id', 'm.Deleted' => 0],
+         params: [':member_id' => $memberId]
+      );
+
+      if (empty($member) || $member[0]['StatusName'] !== 'Active') {
          ResponseHelper::error('Invalid or inactive member', 400);
       }
 

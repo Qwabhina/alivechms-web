@@ -47,6 +47,28 @@ class PublicRoutes extends BaseRoute
             ResponseHelper::success($publicSettings);
          })(),
 
+         // GET AVAILABLE PERMISSIONS (for frontend)
+         $method === 'GET' && $path === 'public/permissions' => (function () {
+            $orm = new ORM();
+
+            // Get all active permissions with their categories
+            $permissions = $orm->runQuery(
+               "SELECT 
+                  p.PermissionID,
+                  p.PermissionName,
+                  p.PermissionDescription,
+                  pc.CategoryName,
+                  pc.DisplayOrder
+               FROM permission p
+               LEFT JOIN permission_category pc ON p.CategoryID = pc.CategoryID
+               WHERE p.IsActive = 1
+               ORDER BY pc.DisplayOrder, p.PermissionName",
+               []
+            );
+
+            ResponseHelper::success($permissions);
+         })(),
+
          // GET SYSTEM INFO
          $method === 'GET' && $path === 'public/info' => (function () {
             $info = [

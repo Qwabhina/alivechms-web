@@ -28,7 +28,7 @@ class Dashboard
    {
       $orm          = new ORM();
       $currentUserId = Auth::getCurrentUserId();
-      $branchId     = Auth::getUserBranchId($currentUserId);
+      $branchId     = Auth::getUserBranchId();
 
       $today        = date('Y-m-d');
       $monthStart   = date('Y-m-01');
@@ -38,20 +38,21 @@ class Dashboard
       $membership = $orm->runQuery(
          "SELECT
                 COUNT(*) AS total,
-                SUM(CASE WHEN MbrRegistrationDate >= :today THEN 1 ELSE 0 END) AS new_today,
-                SUM(CASE WHEN MbrRegistrationDate >= :month THEN 1 ELSE 0 END) AS new_this_month,
-                SUM(CASE WHEN MbrRegistrationDate >= :year THEN 1 ELSE 0 END) AS new_this_year
-             FROM churchmember
-             WHERE Deleted = 0
-               AND MbrMembershipStatus = 'Active'
-               AND BranchID = :branch",
+                SUM(CASE WHEN m.MbrRegistrationDate >= :today THEN 1 ELSE 0 END) AS new_today,
+                SUM(CASE WHEN m.MbrRegistrationDate >= :month THEN 1 ELSE 0 END) AS new_this_month,
+                SUM(CASE WHEN m.MbrRegistrationDate >= :year THEN 1 ELSE 0 END) AS new_this_year
+             FROM churchmember m
+             JOIN membership_status ms ON m.MbrMembershipStatusID = ms.StatusID
+             WHERE m.Deleted = 0
+               AND ms.StatusName = 'Active'
+               AND m.BranchID = :branch",
          [':today' => $today, ':month' => $monthStart, ':year' => $yearStart, ':branch' => $branchId]
       )[0];
 
       // Financial Summary (Current Active Fiscal Year)
       $fiscalYear = $orm->runQuery(
-         "SELECT FiscalYearID FROM fiscalyear
-             WHERE :today BETWEEN FiscalYearStartDate AND FiscalYearEndDate
+         "SELECT FiscalYearID FROM fiscal_year
+             WHERE :today BETWEEN StartDate AND EndDate
                AND Status = 'Active' AND BranchID = :branch
              LIMIT 1",
          [':today' => $today, ':branch' => $branchId]
@@ -64,14 +65,14 @@ class Dashboard
          $income = $orm->runQuery(
             "SELECT COALESCE(SUM(ContributionAmount), 0) AS total
                  FROM contribution
-                 WHERE FiscalYearID = :fy AND BranchID = :branch",
+                 WHERE FiscalYearID = :fy AND BranchID = :branch AND Deleted = 0",
             [':fy' => $fyId, ':branch' => $branchId]
          )[0]['total'];
 
          $expenses = $orm->runQuery(
             "SELECT COALESCE(SUM(ExpAmount), 0) AS total
                  FROM expense
-                 WHERE FiscalYearID = :fy AND ExpStatus = 'Approved' AND BranchID = :branch",
+                 WHERE FiscalYearID = :fy AND ApprovalStatus = 'Approved' AND BranchID = :branch AND Deleted = 0",
             [':fy' => $fyId, ':branch' => $branchId]
          )[0]['total'];
 
@@ -83,40 +84,44 @@ class Dashboard
       }
 
       // Last 4 Sundays Attendance
+      // Note: Attendance is tracked by CheckInTime (not null = present)
       $attendance = $orm->runQuery(
          "SELECT
                 DATE(e.EventDateTime) AS date,
-                COALESCE(SUM(CASE WHEN ea.AttendanceStatus = 'Present' THEN 1 ELSE 0 END), 0) AS present
-             FROM churchevent e
-             LEFT JOIN event_attendance ea ON e.EventID = ea.EventID
+                COUNT(DISTINCT ea.MbrID) AS present
+             FROM church_event e
+             LEFT JOIN event_attendance ea ON e.EventID = ea.EventID AND ea.CheckInTime IS NOT NULL
              WHERE e.BranchID = :branch
-               AND e.EventDateTime <= :today
+               AND DATE(e.EventDateTime) <= :today
                AND DAYOFWEEK(e.EventDateTime) = 1
-             GROUP BY e.EventDateTime
-             ORDER BY e.EventDateTime DESC
+             GROUP BY DATE(e.EventDateTime)
+             ORDER BY DATE(e.EventDateTime) DESC
              LIMIT 4",
          [':branch' => $branchId, ':today' => $today]
       );
 
       // Upcoming Events (Next 7 days)
       $upcomingEvents = $orm->runQuery(
-         "SELECT EventID, EventName, EventDateTime, Location
-             FROM churchevent
+         "SELECT EventID, EventName AS EventTitle, 
+                 DATE(EventDateTime) AS EventDate, 
+                 TIME(EventDateTime) AS StartTime, 
+                 Location
+             FROM church_event
              WHERE BranchID = :branch
-               AND EventDateTime BETWEEN :today AND DATE_ADD(:nextweek, INTERVAL 7 DAY)
-             ORDER BY EventDateTime DESC
+               AND DATE(EventDateTime) BETWEEN :today1 AND DATE_ADD(:today2, INTERVAL 7 DAY)
+             ORDER BY EventDateTime ASC
              LIMIT 5",
-         [':branch' => $branchId, ':today' => $today, ':nextweek' => date('Y-m-d', strtotime('+7 days'))]
+         [':branch' => $branchId, ':today1' => $today, ':today2' => $today]
       );
 
       // Pending Approvals
       $pending = [
          'budgets'  => (int)$orm->runQuery(
-            "SELECT COUNT(*) AS cnt FROM churchbudget WHERE BudgetStatus = 'Submitted' AND BranchID = :br",
+            "SELECT COUNT(*) AS cnt FROM church_budget WHERE BudgetStatus = 'Submitted' AND BranchID = :br",
             [':br' => $branchId]
          )[0]['cnt'],
          'expenses' => (int)$orm->runQuery(
-            "SELECT COUNT(*) AS cnt FROM expense WHERE ExpStatus = 'Pending Approval' AND BranchID = :br",
+            "SELECT COUNT(*) AS cnt FROM expense WHERE ApprovalStatus = 'Pending' AND BranchID = :br AND Deleted = 0",
             [':br' => $branchId]
          )[0]['cnt']
       ];
@@ -131,6 +136,7 @@ class Dashboard
 FROM churchmember m
 WHERE m.BranchID = :br1
   AND m.MbrRegistrationDate >= :cutoff1
+  AND m.Deleted = 0
 
 UNION ALL
 
@@ -140,13 +146,14 @@ SELECT 'Contribution' AS type,
 FROM contribution c
 WHERE c.BranchID = :br2
   AND c.ContributionDate >= :cutoff2
+  AND c.Deleted = 0
 
 UNION ALL
 
 SELECT 'Event Created' AS type,
        e.EventName AS description,
        e.CreatedAt AS timestamp
-FROM churchevent e
+FROM church_event e
 WHERE e.BranchID = :br3
   AND e.CreatedAt >= :cutoff3
 
@@ -154,9 +161,9 @@ ORDER BY timestamp DESC
 LIMIT 10
 ",
          [
-            ':br1' => 1,
-            ':br2' => 1,
-            ':br3' => 1,
+            ':br1' => $branchId,
+            ':br2' => $branchId,
+            ':br3' => $branchId,
 
             ':cutoff1' => $cutoff,
             ':cutoff2' => $cutoff,

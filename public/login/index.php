@@ -28,17 +28,11 @@ try {
    <title>Login - <?= htmlspecialchars($churchName) ?></title>
 
    <!-- Bootstrap CSS -->
-   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-   <!-- <link rel="stylesheet" href="../assets/css/bootstrap.min.css"> -->
-
+   <link href="../assets/css/vendor/bootstrap.min.css" rel="stylesheet">
    <!-- Bootstrap Icons -->
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-   <!-- <link rel="stylesheet" href="../assets/bootstrap-icons.min.css"> -->
-
+   <link rel="stylesheet" href="../assets/css/vendor/bootstrap-icons.min.css">
    <!-- SweetAlert2 -->
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.4/dist/sweetalert2.min.css">
-   <!-- <link rel="stylesheet" href="../assets/css/sweetalert2.min.css"> -->
-
+   <link rel="stylesheet" href="../assets/css/vendor/sweetalert2.min.css">
    <!-- Custom CSS -->
    <link rel="stylesheet" href="../assets/css/login.css">
 </head>
@@ -137,13 +131,9 @@ try {
    </div>
 
    <!-- Bootstrap JS -->
-   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-   <!-- <script src="../assets/js/bootstrap.bundle.min.js"></script> -->
-
+   <script src="../assets/js/vendor/bootstrap.bundle.min.js"></script>
    <!-- SweetAlert2 -->
-   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.4/dist/sweetalert2.all.min.js"></script>
-   <!-- <script src="../assets/js/sweetalert2.all.min.js"></script> -->
-
+   <script src="../assets/js/vendor/sweetalert2.all.min.js"></script>
    <!-- Core JS -->
    <script src="../assets/js/core/config.js"></script>
    <script src="../assets/js/core/utils.js"></script>
@@ -152,7 +142,7 @@ try {
    <script src="../assets/js/core/alerts.js"></script>
 
    <script>
-      // Check if already logged in
+      // Check if already logged in (simple check, no API calls)
       if (Auth.isAuthenticated()) {
          window.location.href = '../dashboard/';
       }
@@ -195,7 +185,7 @@ try {
          buttonText.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging in...';
 
          try {
-            // Attempt login
+            // Attempt login - tokens are now stored securely
             await Auth.login(username, password, remember);
 
             // Show success message

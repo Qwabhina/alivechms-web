@@ -6,10 +6,16 @@
  * Full pledge lifecycle: creation, payment recording,
  * status tracking, fulfillment detection, and reporting.
  *
+ * Refactored for optimized schema v2.0:
+ * - FiscalYearID is now optional (nullable)
+ * - Uses fiscal_year table (was fiscalyear)
+ * - Uses membership_status lookup table
+ * - Added audit trail support
+ *
  * @package  AliveChMS\Core
- * @version  1.1.0
+ * @version  2.0.0
  * @author   Benjamin Ebo Yankson
- * @since    2025-November
+ * @since    2026-January
  */
 
 declare(strict_types=1);
@@ -30,12 +36,12 @@ class Pledge
       // Get fiscal year
       if ($fiscalYearId) {
          $fy = $orm->runQuery(
-            "SELECT FiscalYearID, FiscalYearName, Status FROM fiscalyear WHERE FiscalYearID = :id",
+            "SELECT FiscalYearID, FiscalYearName, Status FROM fiscal_year WHERE FiscalYearID = :id",
             [':id' => $fiscalYearId]
          );
       } else {
          $fy = $orm->runQuery(
-            "SELECT FiscalYearID, FiscalYearName, Status FROM fiscalyear WHERE Status = 'Active' LIMIT 1"
+            "SELECT FiscalYearID, FiscalYearName, Status FROM fiscal_year WHERE Status = 'Active' LIMIT 1"
          );
       }
 
@@ -173,7 +179,7 @@ class Pledge
       Helpers::validateInput($data, [
          'member_id'       => 'required|numeric',
          'pledge_type_id'  => 'required|numeric',
-         'fiscal_year_id'  => 'required|numeric',
+         'fiscal_year_id'  => 'numeric|nullable',
          'amount'          => 'required|numeric',
          'pledge_date'     => 'required|date',
          'due_date'        => 'date|nullable',
@@ -182,25 +188,47 @@ class Pledge
 
       $memberId     = (int)$data['member_id'];
       $typeId       = (int)$data['pledge_type_id'];
-      $fiscalYearId = (int)$data['fiscal_year_id'];
+      $fiscalYearId = !empty($data['fiscal_year_id']) ? (int)$data['fiscal_year_id'] : null;
       $amount       = (float)$data['amount'];
 
       if ($amount <= 0) {
          ResponseHelper::error('Pledge amount must be greater than zero', 400);
       }
 
-      // Validate foreign keys
-      $valid = $orm->runQuery(
-         "SELECT
-                (SELECT COUNT(*) FROM churchmember WHERE MbrID = :mid AND Deleted = 0 AND MbrMembershipStatus = 'Active') AS member_ok,
-                (SELECT COUNT(*) FROM pledge_type WHERE PledgeTypeID = :tid) AS type_ok,
-                (SELECT COUNT(*) FROM fiscalyear WHERE FiscalYearID = :fyid AND Status = 'Active') AS fy_ok",
-         [':mid' => $memberId, ':tid' => $typeId, ':fyid' => $fiscalYearId]
+      // Validate member with membership_status lookup
+      $memberValid = $orm->runQuery(
+         "SELECT COUNT(*) AS member_ok 
+          FROM churchmember c
+          JOIN membership_status ms ON c.MbrMembershipStatusID = ms.StatusID
+          WHERE c.MbrID = :mid AND c.Deleted = 0 AND ms.StatusName = 'Active'",
+         [':mid' => $memberId]
       )[0];
 
-      if ($valid['member_ok'] == 0) ResponseHelper::error('Invalid member', 400);
-      if ($valid['type_ok'] == 0)   ResponseHelper::error('Invalid pledge type', 400);
-      if ($valid['fy_ok'] == 0)     ResponseHelper::error('Invalid fiscal year', 400);
+      if ($memberValid['member_ok'] == 0) {
+         ResponseHelper::error('Invalid or inactive member', 400);
+      }
+
+      // Validate pledge type
+      $typeValid = $orm->runQuery(
+         "SELECT COUNT(*) AS type_ok FROM pledge_type WHERE PledgeTypeID = :tid AND IsActive = 1",
+         [':tid' => $typeId]
+      )[0];
+
+      if ($typeValid['type_ok'] == 0) {
+         ResponseHelper::error('Invalid pledge type', 400);
+      }
+
+      // Validate fiscal year if provided
+      if ($fiscalYearId !== null) {
+         $fyValid = $orm->runQuery(
+            "SELECT COUNT(*) AS fy_ok FROM fiscal_year WHERE FiscalYearID = :fyid AND Status = 'Active'",
+            [':fyid' => $fiscalYearId]
+         )[0];
+
+         if ($fyValid['fy_ok'] == 0) {
+            ResponseHelper::error('Invalid or inactive fiscal year', 400);
+         }
+      }
 
       $pledgeId = $orm->insert('pledge', [
          'MbrID'          => $memberId,
@@ -342,8 +370,9 @@ class Pledge
          $update['Description'] = $data['description'] ?? null;
       }
 
+      // Validate pledge type
       if (!empty($data['pledge_type_id'])) {
-         $typeExists = $orm->getWhere('pledge_type', ['PledgeTypeID' => (int)$data['pledge_type_id']]);
+         $typeExists = $orm->getWhere('pledge_type', ['PledgeTypeID' => (int)$data['pledge_type_id'], 'IsActive' => 1]);
          if (empty($typeExists)) {
             ResponseHelper::error('Invalid pledge type', 400);
          }
@@ -389,7 +418,7 @@ class Pledge
           FROM pledge p
           JOIN churchmember m ON p.MbrID = m.MbrID
           JOIN pledge_type pt ON p.PledgeTypeID = pt.PledgeTypeID
-          JOIN fiscalyear fy ON p.FiscalYearID = fy.FiscalYearID
+          LEFT JOIN fiscal_year fy ON p.FiscalYearID = fy.FiscalYearID
           LEFT JOIN churchmember c ON p.CreatedBy = c.MbrID
           WHERE p.PledgeID = :id",
          [':id' => $pledgeId]
@@ -502,7 +531,7 @@ class Pledge
           FROM pledge p
           JOIN churchmember m ON p.MbrID = m.MbrID
           JOIN pledge_type pt ON p.PledgeTypeID = pt.PledgeTypeID
-          JOIN fiscalyear fy ON p.FiscalYearID = fy.FiscalYearID
+          LEFT JOIN fiscal_year fy ON p.FiscalYearID = fy.FiscalYearID
           $whereClause
           ORDER BY $orderBy
           LIMIT :limit OFFSET :offset",

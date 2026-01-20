@@ -53,11 +53,11 @@ class Communication
       ]);
 
       if (empty($data['member_id']) && empty($data['group_id'])) {
-         Helpers::sendFeedback('Either member_id or group_id is required', 400);
+         ResponseHelper::error('Either member_id or group_id is required', 400);
       }
 
       if (!empty($data['member_id']) && !empty($data['group_id'])) {
-         Helpers::sendFeedback('Cannot specify both member_id and group_id', 400);
+         ResponseHelper::error('Cannot specify both member_id and group_id', 400);
       }
 
       $sentBy = Auth::getCurrentUserId();
@@ -203,7 +203,7 @@ class Communication
       ], ['CommID' => $commId, 'MbrID' => $userId]);
 
       if ($affected === 0) {
-         Helpers::sendFeedback('Notification not found or already read', 404);
+         ResponseHelper::error('Notification not found or already read', 404);
       }
 
       return ['status' => 'success'];

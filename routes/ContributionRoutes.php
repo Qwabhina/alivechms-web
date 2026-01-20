@@ -1,23 +1,30 @@
 <?php
 
 /**
- * Contribution API Routes – v1
+ * Contribution API Routes – v2.0
  *
  * Full financial contribution management:
- * - Create new contribution
+ * - Create new contribution (FiscalYearID optional)
  * - Update existing contribution
- * - Soft-delete & restore
+ * - Soft-delete & restore with audit trail
  * - View single contribution
  * - Paginated listing with powerful filtering
  * - Totals reporting
- * - Contribution type CRUD
+ * - Contribution statistics
+ * - Receipt generation
+ * - Member statements
+ *
+ * Refactored for optimized schema v2.0:
+ * - Uses payment_method (was paymentoption)
+ * - FiscalYearID is optional
+ * - Enhanced audit trail
  *
  * All operations strictly permission-controlled.
  *
  * @package  AliveChMS\Routes
- * @version  1.1.0
+ * @version  2.0.0
  * @author   Benjamin Ebo Yankson
- * @since    2025-November
+ * @since    2026-January
  */
 
 declare(strict_types=1);
@@ -39,7 +46,7 @@ class ContributionRoutes extends BaseRoute
             // CREATE CONTRIBUTION
             $method === 'POST' && $path === 'contribution/create' => (function () {
                 self::authenticate();
-                self::authorize('create_contribution');
+                self::authorize('contributions.create');
 
                 $payload = self::getPayload();
 
@@ -50,7 +57,7 @@ class ContributionRoutes extends BaseRoute
             // UPDATE CONTRIBUTION
             $method === 'PUT' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('edit_contribution');
+                self::authorize('contributions.edit');
 
                 $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
                 $payload = self::getPayload();
@@ -62,7 +69,7 @@ class ContributionRoutes extends BaseRoute
             // SOFT DELETE CONTRIBUTION
             $method === 'DELETE' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'delete' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('delete_contribution');
+                self::authorize('contributions.delete');
 
                 $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
 
@@ -73,7 +80,7 @@ class ContributionRoutes extends BaseRoute
             // RESTORE SOFT-DELETED CONTRIBUTION
             $method === 'POST' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'restore' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('delete_contribution');
+                self::authorize('contributions.delete');
 
                 $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
 
@@ -84,7 +91,7 @@ class ContributionRoutes extends BaseRoute
             // VIEW SINGLE CONTRIBUTION
             $method === 'GET' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'view' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('view_contribution');
+                self::authorize('finances.view');
 
                 $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
 
@@ -95,7 +102,7 @@ class ContributionRoutes extends BaseRoute
             // LIST ALL CONTRIBUTIONS (Paginated + Filtered)
             $method === 'GET' && $path === 'contribution/all' => (function () {
                 self::authenticate();
-                self::authorize('view_contribution');
+                self::authorize('finances.view');
 
                 [$page, $limit] = self::getPagination(10, 100);
 
@@ -124,7 +131,7 @@ class ContributionRoutes extends BaseRoute
             // TOTAL CONTRIBUTIONS (Reporting)
             $method === 'GET' && $path === 'contribution/total' => (function () {
                 self::authenticate();
-                self::authorize('view_contribution');
+                self::authorize('finances.view');
 
                 $filters = self::getFilters([
                     'contribution_type_id',
@@ -141,7 +148,7 @@ class ContributionRoutes extends BaseRoute
             // GET CONTRIBUTION STATISTICS
             $method === 'GET' && $path === 'contribution/stats' => (function () {
                 self::authenticate();
-                self::authorize('view_contribution');
+                self::authorize('finances.view');
 
                 $fiscalYearId = !empty($_GET['fiscal_year_id']) ? (int)$_GET['fiscal_year_id'] : null;
                 $result = Contribution::getStats($fiscalYearId);
@@ -151,16 +158,16 @@ class ContributionRoutes extends BaseRoute
             // GET CONTRIBUTION TYPES
             $method === 'GET' && $path === 'contribution/types' => (function () {
                 self::authenticate();
-                self::authorize('view_contribution');
+                self::authorize('finances.view');
 
-                $result = ContributionType::getAll();
-                ResponseHelper::success($result['data']);
+                $result = Contribution::getTypes();
+                ResponseHelper::success(['data' => $result]);
             })(),
 
             // CREATE CONTRIBUTION TYPE
             $method === 'POST' && $path === 'contribution/type/create' => (function () {
                 self::authenticate();
-                self::authorize('manage_contribution_types');
+                self::authorize('settings.edit');
 
                 $payload = self::getPayload();
                 $result = ContributionType::create($payload);
@@ -170,7 +177,7 @@ class ContributionRoutes extends BaseRoute
             // UPDATE CONTRIBUTION TYPE
             $method === 'PUT' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'type' && ($pathParts[2] ?? '') === 'update' && isset($pathParts[3]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('manage_contribution_types');
+                self::authorize('settings.edit');
 
                 $typeId = self::getIdFromPath($pathParts, 3, 'Contribution Type ID');
                 $payload = self::getPayload();
@@ -181,26 +188,26 @@ class ContributionRoutes extends BaseRoute
             // DELETE CONTRIBUTION TYPE
             $method === 'DELETE' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'type' && ($pathParts[2] ?? '') === 'delete' && isset($pathParts[3]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('manage_contribution_types');
+                self::authorize('settings.edit');
 
                 $typeId = self::getIdFromPath($pathParts, 3, 'Contribution Type ID');
                 $result = ContributionType::delete($typeId);
                 ResponseHelper::success($result, 'Contribution type deleted');
             })(),
 
-            // GET PAYMENT OPTIONS
-            $method === 'GET' && $path === 'contribution/payment-options' => (function () {
+            // GET PAYMENT METHODS
+            $method === 'GET' && $path === 'contribution/payment-methods' => (function () {
                 self::authenticate();
-                self::authorize('view_contribution');
+                self::authorize('finances.view');
 
-                $result = Contribution::getPaymentOptions();
+                $result = Contribution::getPaymentMethods();
                 ResponseHelper::success(['data' => $result]);
             })(),
 
             // GET CONTRIBUTION RECEIPT
             $method === 'GET' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'receipt' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('view_contribution');
+                self::authorize('finances.view');
 
                 $contributionId = self::getIdFromPath($pathParts, 2, 'Contribution ID');
 
@@ -211,7 +218,7 @@ class ContributionRoutes extends BaseRoute
             // GET MEMBER CONTRIBUTION STATEMENT
             $method === 'GET' && $pathParts[0] === 'contribution' && ($pathParts[1] ?? '') === 'statement' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('view_contribution');
+                self::authorize('finances.view');
 
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
                 $fiscalYearId = !empty($_GET['fiscal_year_id']) ? (int)$_GET['fiscal_year_id'] : null;

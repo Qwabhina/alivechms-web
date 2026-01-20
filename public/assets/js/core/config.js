@@ -59,35 +59,81 @@ const Config = {
     CURRENCY: 'GHS',
     CURRENCY_SYMBOL: '₵',
     
-    // Permissions (should match backend)
+    // Permissions (matches backend database)
+    // These are dynamically loaded from the backend, but we keep constants for code completion
     PERMISSIONS: {
-        VIEW_MEMBERS: 'view_members',
-        EDIT_MEMBERS: 'edit_members',
-        DELETE_MEMBERS: 'delete_members',
-        CREATE_MEMBERS: 'create_members',
+        // Members
+        VIEW_MEMBERS: 'members.view',
+        EDIT_MEMBERS: 'members.edit',
+        DELETE_MEMBERS: 'members.delete',
+        CREATE_MEMBERS: 'members.create',
         
-        VIEW_CONTRIBUTION: 'view_contribution',
-        CREATE_CONTRIBUTION: 'create_contribution',
-        EDIT_CONTRIBUTION: 'edit_contribution',
-        DELETE_CONTRIBUTION: 'delete_contribution',
+        // Visitors
+        VIEW_VISITORS: 'visitors.view',
+        CREATE_VISITORS: 'visitors.create',
+        MANAGE_VISITORS: 'visitors.manage',
         
-        VIEW_EXPENSES: 'view_expenses',
-        CREATE_EXPENSE: 'create_expense',
-        APPROVE_EXPENSES: 'approve_expenses',
+        // Contributions
+        VIEW_CONTRIBUTION: 'contributions.view',
+        CREATE_CONTRIBUTION: 'contributions.create',
+        EDIT_CONTRIBUTION: 'contributions.edit',
+        DELETE_CONTRIBUTION: 'contributions.delete',
         
-        VIEW_EVENTS: 'view_events',
-        MANAGE_EVENTS: 'manage_events',
-        RECORD_ATTENDANCE: 'record_attendance',
+        // Expenses
+        VIEW_EXPENSES: 'expenses.view',
+        CREATE_EXPENSE: 'expenses.create',
+        APPROVE_EXPENSES: 'expenses.approve',
+        DELETE_EXPENSES: 'expenses.delete',
         
-        VIEW_GROUPS: 'view_groups',
-        MANAGE_GROUPS: 'manage_groups',
+        // Events
+        VIEW_EVENTS: 'events.view',
+        CREATE_EVENTS: 'events.create',
+        EDIT_EVENTS: 'events.edit',
+        DELETE_EVENTS: 'events.delete',
+        MANAGE_EVENTS: 'events.edit', // Alias for backward compatibility
         
-        VIEW_FINANCIAL_REPORTS: 'view_financial_reports',
-        VIEW_DASHBOARD: 'view_dashboard',
+        // Groups
+        VIEW_GROUPS: 'groups.view',
+        MANAGE_GROUPS: 'groups.manage',
         
-        MANAGE_ROLES: 'manage_roles',
-        MANAGE_PERMISSIONS: 'manage_permissions'
+        // Finances
+        VIEW_FINANCES: 'finances.view',
+        VIEW_FINANCIAL_REPORTS: 'reports.view',
+        
+        // Communications
+        VIEW_COMMUNICATIONS: 'communications.view',
+        SEND_COMMUNICATIONS: 'communications.send',
+        
+        // Reports
+        VIEW_REPORTS: 'reports.view',
+        EXPORT_REPORTS: 'reports.export',
+        VIEW_DASHBOARD: 'reports.view', // Dashboard is a type of report
+        
+        // Settings
+        VIEW_SETTINGS: 'settings.view',
+        EDIT_SETTINGS: 'settings.edit',
+        
+        // Roles & Permissions
+        MANAGE_ROLES: 'roles.manage',
+        MANAGE_PERMISSIONS: 'roles.manage',
+        
+        // Assets
+        VIEW_ASSETS: 'assets.view',
+        MANAGE_ASSETS: 'assets.manage',
+        
+        // Budgets (using finances permissions)
+        APPROVE_BUDGETS: 'expenses.approve', // Same approval permission
+        VIEW_BUDGETS: 'finances.view',
+        CREATE_BUDGETS: 'finances.view',
+        EDIT_BUDGETS: 'finances.view',
+        
+        // Attendance (using events permissions)
+        RECORD_ATTENDANCE: 'events.edit',
+        VIEW_ATTENDANCE: 'events.view'
     },
+    
+    // Available permissions cache (loaded from backend)
+    _availablePermissions: null,
     
     // Status Options
     STATUS: {
@@ -141,33 +187,6 @@ const Config = {
         church5: '#9f7aea'
     },
     
-    // DataTable Configuration
-    DATATABLE_CONFIG: {
-        pageLength: 10,
-        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
-        ordering: true,
-        searching: true,
-        processing: true,
-        responsive: true,
-        language: {
-            emptyTable: "No data available",
-            info: "Showing _START_ to _END_ of _TOTAL_ entries",
-            infoEmpty: "Showing 0 to 0 of 0 entries",
-            infoFiltered: "(filtered from _MAX_ total entries)",
-            lengthMenu: "Show _MENU_ entries",
-            loadingRecords: "Loading...",
-            processing: "Processing...",
-            search: "Search:",
-            zeroRecords: "No matching records found",
-            paginate: {
-                first: "First",
-                last: "Last",
-                next: "Next",
-                previous: "Previous"
-            }
-        }
-    },
-    
     // SweetAlert2 Configuration
     SWAL_CONFIG: {
         confirmButtonColor: '#0d6efd',
@@ -178,8 +197,8 @@ const Config = {
         reverseButtons: true
     },
     
-    // Development Mode
-    DEBUG: window.location.hostname === 'localhost',
+    // Development Mode - temporarily enabled for debugging
+    DEBUG: true, // window.location.hostname === 'localhost',
     
     // Helper Methods
     log: function(...args) {
@@ -204,16 +223,37 @@ const Config = {
             const response = await fetch(`${this.API_BASE_URL}/public/settings`);
             if (response.ok) {
                 const data = await response.json();
-                // Update settings
-                if (data.data) {
-                    Object.assign(this.SETTINGS, data.data);
-                } else if (data) {
-                    Object.assign(this.SETTINGS, data);
+                
+                // Transform backend response to settings object
+                // Backend returns array of {SettingKey, SettingValue, SettingType}
+                const settingsMap = {};
+                
+                if (Array.isArray(data)) {
+                    // Direct array response
+                    data.forEach(setting => {
+                        if (setting.SettingKey && setting.SettingValue !== undefined) {
+                            settingsMap[setting.SettingKey] = setting.SettingValue;
+                        }
+                    });
+                } else if (data.data && Array.isArray(data.data)) {
+                    // Wrapped in data property
+                    data.data.forEach(setting => {
+                        if (setting.SettingKey && setting.SettingValue !== undefined) {
+                            settingsMap[setting.SettingKey] = setting.SettingValue;
+                        }
+                    });
+                } else if (typeof data === 'object') {
+                    // Already an object (fallback for old format)
+                    Object.assign(settingsMap, data);
                 }
+                
+                // Update settings with loaded values
+                Object.assign(this.SETTINGS, settingsMap);
+                
                 this.log('Settings loaded:', this.SETTINGS);
                 
                 // Update page title if on dashboard
-                if (document.title.includes('AliveChMS')) {
+                if (document.title.includes('AliveChMS') && this.SETTINGS.church_name) {
                     document.title = document.title.replace('AliveChMS', this.SETTINGS.church_name);
                 }
                 
@@ -257,6 +297,78 @@ const Config = {
     formatCurrency: function(amount) {
         const formatted = parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
         return `${this.SETTINGS.currency_symbol} ${formatted}`;
+    },
+    
+    /**
+     * Load available permissions from backend
+     * This fetches all permissions defined in the system
+     * User's actual permissions come from Auth (login response)
+     */
+    loadAvailablePermissions: async function() {
+        try {
+            const response = await fetch(`${this.API_BASE_URL}/public/permissions`);
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Handle both wrapped and unwrapped responses
+                const permissions = Array.isArray(data) ? data : (data.data || []);
+                
+                // Cache the permissions
+                this._availablePermissions = permissions;
+                
+                this.log('Available permissions loaded:', permissions.length);
+                
+                // Dispatch event for other components
+                window.dispatchEvent(new CustomEvent('permissionsLoaded', { 
+                    detail: permissions 
+                }));
+                
+                return permissions;
+            } else {
+                this.warn('Permissions endpoint returned non-OK status:', response.status);
+                return [];
+            }
+        } catch (error) {
+            this.warn('Failed to load available permissions:', error);
+            return [];
+        }
+    },
+    
+    /**
+     * Get available permissions (cached)
+     * @returns {Array} Array of permission objects
+     */
+    getAvailablePermissions: function() {
+        return this._availablePermissions || [];
+    },
+    
+    /**
+     * Get permissions grouped by category
+     * @returns {Object} Permissions grouped by category
+     */
+    getPermissionsByCategory: function() {
+        const permissions = this.getAvailablePermissions();
+        const grouped = {};
+        
+        permissions.forEach(perm => {
+            const category = perm.CategoryName || 'Other';
+            if (!grouped[category]) {
+                grouped[category] = [];
+            }
+            grouped[category].push(perm);
+        });
+        
+        return grouped;
+    },
+    
+    /**
+     * Check if a permission exists in the system
+     * @param {string} permissionName - Permission name to check
+     * @returns {boolean} True if permission exists
+     */
+    permissionExists: function(permissionName) {
+        const permissions = this.getAvailablePermissions();
+        return permissions.some(p => p.PermissionName === permissionName);
     }
 };
 
@@ -268,9 +380,13 @@ Object.freeze(Config.CHART_COLORS);
 // Load settings on page load
 if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => Config.loadSettings());
+        document.addEventListener('DOMContentLoaded', () => {
+            Config.loadSettings();
+            Config.loadAvailablePermissions(); // Load available permissions
+        });
     } else {
         Config.loadSettings();
+        Config.loadAvailablePermissions(); // Load available permissions
     }
 }
 

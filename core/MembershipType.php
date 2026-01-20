@@ -33,13 +33,15 @@ class MembershipType
 
       $name = trim($data['name']);
 
-      if (!empty($orm->getWhere('membershiptype', ['MshipTypeName' => $name]))) {
-            Helpers::sendFeedback('Membership type name already exists', 400);
+      if (!empty($orm->getWhere('membership_type', ['MshipTypeName' => $name]))) {
+         ResponseHelper::error('Membership type name already exists', 400);
       }
 
-      $typeId = $orm->insert('membershiptype', [
+      $typeId = $orm->insert('membership_type', [
          'MshipTypeName'        => $name,
-            'MshipTypeDescription' => $data['description'] ?? null
+         'MshipTypeDescription' => $data['description'] ?? null,
+         'IsActive'             => $data['is_active'] ?? 1,
+         'RequiresApproval'     => $data['requires_approval'] ?? 0
       ])['id'];
 
       return ['status' => 'success', 'type_id' => $typeId];
@@ -56,20 +58,20 @@ class MembershipType
    {
       $orm = new ORM();
 
-      $type = $orm->getWhere('membershiptype', ['MshipTypeID' => $typeId]);
+      $type = $orm->getWhere('membership_type', ['MshipTypeID' => $typeId]);
       if (empty($type)) {
-            Helpers::sendFeedback('Membership type not found', 404);
+         ResponseHelper::error('Membership type not found', 404);
       }
 
       $update = [];
 
       if (!empty($data['name'])) {
          $name = trim($data['name']);
-         if (!empty($orm->getWhere('membershiptype', [
+         if (!empty($orm->getWhere('membership_type', [
             'MshipTypeName'   => $name,
             'MshipTypeID <>'  => $typeId
          ]))) {
-            Helpers::sendFeedback('Membership type name already exists', 400);
+            ResponseHelper::error('Membership type name already exists', 400);
             }
          $update['MshipTypeName'] = $name;
       }
@@ -78,8 +80,16 @@ class MembershipType
          $update['MshipTypeDescription'] = $data['description'];
       }
 
+      if (isset($data['is_active'])) {
+         $update['IsActive'] = $data['is_active'] ? 1 : 0;
+      }
+
+      if (isset($data['requires_approval'])) {
+         $update['RequiresApproval'] = $data['requires_approval'] ? 1 : 0;
+      }
+
       if (!empty($update)) {
-         $orm->update('membershiptype', $update, ['MshipTypeID' => $typeId]);
+         $orm->update('membership_type', $update, ['MshipTypeID' => $typeId]);
       }
 
       return ['status' => 'success', 'type_id' => $typeId];
@@ -95,16 +105,16 @@ class MembershipType
    {
       $orm = new ORM();
 
-      $type = $orm->getWhere('membershiptype', ['MshipTypeID' => $typeId]);
+      $type = $orm->getWhere('membership_type', ['MshipTypeID' => $typeId]);
       if (empty($type)) {
-            Helpers::sendFeedback('Membership type not found', 404);
+         ResponseHelper::error('Membership type not found', 404);
       }
 
-      if (!empty($orm->getWhere('membermembershiptype', ['MshipTypeID' => $typeId]))) {
-            Helpers::sendFeedback('Cannot delete membership type with assignments', 400);
+      if (!empty($orm->getWhere('member_membership_type', ['MshipTypeID' => $typeId]))) {
+         ResponseHelper::error('Cannot delete membership type with assignments', 400);
       }
 
-      $orm->delete('membershiptype', ['MshipTypeID' => $typeId]);
+      $orm->delete('membership_type', ['MshipTypeID' => $typeId]);
       return ['status' => 'success'];
    }
 
@@ -118,9 +128,9 @@ class MembershipType
    {
       $orm = new ORM();
 
-      $type = $orm->getWhere('membershiptype', ['MshipTypeID' => $typeId]);
+      $type = $orm->getWhere('membership_type', ['MshipTypeID' => $typeId]);
       if (empty($type)) {
-            Helpers::sendFeedback('Membership type not found', 404);
+         ResponseHelper::error('Membership type not found', 404);
       }
 
       return $type[0];
@@ -147,10 +157,10 @@ class MembershipType
             $params[':name'] = '%' . trim($filters['name']) . '%';
       }
 
-      $types = $orm->getWhere('membershiptype', $conditions, $params, $limit, $offset);
+      $types = $orm->getWhere('membership_type', $conditions, $params, $limit, $offset);
 
       $total = $orm->runQuery(
-         "SELECT COUNT(*) AS total FROM membershiptype" .
+         "SELECT COUNT(*) AS total FROM membership_type" .
             (!empty($conditions) ? ' WHERE ' . implode(' AND ', array_keys($conditions)) : ''),
             $params
       )[0]['total'];
@@ -183,29 +193,31 @@ class MembershipType
       ]);
 
       // Validate member
-      $member = $orm->getWhere('churchmember', [
-         'MbrID'              => $memberId,
-            'MbrMembershipStatus' => 'Active',
-         'Deleted'            => 0
-      ]);
+      $member = $orm->runQuery(
+         "SELECT cm.MbrID 
+          FROM churchmember cm
+          JOIN membership_status ms ON cm.MembershipStatusID = ms.MembershipStatusID
+          WHERE cm.MbrID = :id AND ms.StatusName = 'Active' AND cm.Deleted = 0",
+         [':id' => $memberId]
+      );
       if (empty($member)) {
-            Helpers::sendFeedback('Invalid or inactive member', 400);
+         ResponseHelper::error('Invalid or inactive member', 400);
       }
 
       // Validate type
-      if (empty($orm->getWhere('membershiptype', ['MshipTypeID' => (int)$data['type_id']]))) {
-         Helpers::sendFeedback('Invalid membership type', 400);
+      if (empty($orm->getWhere('membership_type', ['MshipTypeID' => (int)$data['type_id']]))) {
+         ResponseHelper::error('Invalid membership type', 400);
       }
 
       // Prevent multiple active assignments
-      if (!empty($orm->getWhere('membermembershiptype', [
+      if (!empty($orm->getWhere('member_membership_type', [
          'MbrID'    => $memberId,
          'EndDate'  => null
       ]))) {
-            Helpers::sendFeedback('Member already has an active membership type', 400);
+         ResponseHelper::error('Member already has an active membership type', 400);
       }
 
-      $assignmentId = $orm->insert('membermembershiptype', [
+      $assignmentId = $orm->insert('member_membership_type', [
          'MbrID'       => $memberId,
          'MshipTypeID' => (int)$data['type_id'],
          'StartDate'   => $data['start_date'],
@@ -226,21 +238,21 @@ class MembershipType
    {
       $orm = new ORM();
 
-      $assignment = $orm->getWhere('membermembershiptype', ['MemberMshipTypeID' => $assignmentId]);
+      $assignment = $orm->getWhere('member_membership_type', ['MemberMshipTypeID' => $assignmentId]);
       if (empty($assignment)) {
-         Helpers::sendFeedback('Assignment not found', 404);
+         ResponseHelper::error('Assignment not found', 404);
       }
 
       $update = [];
       if (isset($data['end_date'])) {
          if ($data['end_date'] < $assignment[0]['StartDate']) {
-            Helpers::sendFeedback('End date cannot be before start date', 400);
+            ResponseHelper::error('End date cannot be before start date', 400);
          }
          $update['EndDate'] = $data['end_date'];
       }
 
       if (!empty($update)) {
-         $orm->update('membermembershiptype', $update, ['MemberMshipTypeID' => $assignmentId]);
+         $orm->update('member_membership_type', $update, ['MemberMshipTypeID' => $assignmentId]);
       }
 
       return ['status' => 'success', 'assignment_id' => $assignmentId];
@@ -258,7 +270,7 @@ class MembershipType
       $orm = new ORM();
 
       if (empty($orm->getWhere('churchmember', ['MbrID' => $memberId, 'Deleted' => 0]))) {
-            Helpers::sendFeedback('Invalid member', 400);
+         ResponseHelper::error('Invalid member', 400);
       }
 
       $conditions = ['mmt.MbrID' => ':mid'];
@@ -278,8 +290,8 @@ class MembershipType
 
       return [
          'data' => $orm->selectWithJoin(
-            baseTable: 'membermembershiptype mmt',
-            joins: [['table' => 'membershiptype mt', 'on' => 'mmt.MshipTypeID = mt.MshipTypeID']],
+            baseTable: 'member_membership_type mmt',
+            joins: [['table' => 'membership_type mt', 'on' => 'mmt.MshipTypeID = mt.MshipTypeID']],
             fields: [
                'mmt.MemberMshipTypeID',
                'mmt.MshipTypeID',

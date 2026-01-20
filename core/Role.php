@@ -15,14 +15,17 @@
  * - Comprehensive audit logging
  *
  * All operations are atomic, secure, and strictly typed.
+ * Uses simplified schema: church_role, member_role, permission, role_permission
  *
  * @package  AliveChMS\Core
- * @version  1.0.0
+ * @version  2.0.0
  * @author   Benjamin Ebo Yankson
  * @since    2025-November
  */
 
 declare(strict_types=1);
+
+require_once __DIR__ . '/PermissionAudit.php';
 
 class Role
 {
@@ -46,14 +49,27 @@ class Role
 
       $name = trim($data['name']);
 
-      if (!empty($orm->getWhere('churchrole', ['RoleName' => $name]))) {
+      if (!empty($orm->getWhere('church_role', ['RoleName' => $name]))) {
          Helpers::sendFeedback('Role name already exists', 400);
       }
 
-      $roleId = $orm->insert('churchrole', [
-         'RoleName'    => $name,
-         'Description' => $data['description'] ?? null
+      $roleId = $orm->insert('church_role', [
+         'RoleName'        => $name,
+         'RoleDescription' => $data['description'] ?? null,
+         'IsActive'        => 1,
+         'IsSystemRole'    => 0
       ])['id'];
+
+      // Audit log
+      try {
+         $performedBy = Auth::getCurrentUserId();
+         PermissionAudit::log('role_created', $performedBy, [
+            'role_id' => $roleId,
+            'new_value' => ['name' => $name, 'description' => $data['description'] ?? null]
+         ]);
+      } catch (Exception $e) {
+         // Don't fail if audit logging fails
+      }
 
       Helpers::logError("New role created: ID $roleId – $name");
       return ['status' => 'success', 'role_id' => $roleId];
@@ -72,7 +88,7 @@ class Role
    {
       $orm = new ORM();
 
-      $role = $orm->getWhere('churchrole', ['RoleID' => $roleId]);
+      $role = $orm->getWhere('church_role', ['RoleID' => $roleId]);
       if (empty($role)) {
          Helpers::sendFeedback('Role not found', 404);
       }
@@ -81,18 +97,31 @@ class Role
 
       if (!empty($data['name'])) {
          $newName = trim($data['name']);
-         if (!empty($orm->getWhere('churchrole', ['RoleName' => $newName, 'RoleID <>' => $roleId]))) {
+         if (!empty($orm->getWhere('church_role', ['RoleName' => $newName, 'RoleID <>' => $roleId]))) {
             Helpers::sendFeedback('Role name already exists', 400);
          }
          $update['RoleName'] = $newName;
       }
 
       if (isset($data['description'])) {
-         $update['Description'] = $data['description'];
+         $update['RoleDescription'] = $data['description'];
       }
 
       if (!empty($update)) {
-         $orm->update('churchrole', $update, ['RoleID' => $roleId]);
+         $orm->update('church_role', $update, ['RoleID' => $roleId]);
+
+         // Audit log
+         try {
+            $performedBy = Auth::getCurrentUserId();
+            PermissionAudit::log('role_updated', $performedBy, [
+               'role_id' => $roleId,
+               'old_value' => $role[0],
+               'new_value' => $update
+            ]);
+         } catch (Exception $e) {
+            // Don't fail if audit logging fails
+         }
+
          Helpers::logError("Role updated: ID $roleId");
       }
 
@@ -111,22 +140,33 @@ class Role
    {
       $orm = new ORM();
 
-      $role = $orm->getWhere('churchrole', ['RoleID' => $roleId]);
+      $role = $orm->getWhere('church_role', ['RoleID' => $roleId]);
       if (empty($role)) {
          Helpers::sendFeedback('Role not found', 404);
       }
 
       // Check if role is assigned to any member
-      $assigned = $orm->getWhere('memberrole', ['ChurchRoleID' => $roleId]);
+      $assigned = $orm->getWhere('member_role', ['RoleID' => $roleId, 'IsActive' => 1]);
       if (!empty($assigned)) {
          Helpers::sendFeedback('Cannot delete role assigned to one or more members', 400);
       }
 
       $orm->beginTransaction();
       try {
-         $orm->delete('rolepermission', ['ChurchRoleID' => $roleId]);  // Clean up permissions
-         $orm->delete('churchrole', ['RoleID' => $roleId]);
+         $orm->delete('role_permission', ['RoleID' => $roleId]);  // Clean up permissions
+         $orm->delete('church_role', ['RoleID' => $roleId]);
          $orm->commit();
+
+         // Audit log
+         try {
+            $performedBy = Auth::getCurrentUserId();
+            PermissionAudit::log('role_deleted', $performedBy, [
+               'role_id' => $roleId,
+               'old_value' => $role[0]
+            ]);
+         } catch (Exception $e) {
+            // Don't fail if audit logging fails
+         }
 
          Helpers::logError("Role deleted: ID $roleId – {$role[0]['RoleName']}");
       } catch (Exception $e) {
@@ -152,7 +192,7 @@ class Role
       $orm = new ORM();
 
       // Validate role exists
-      if (empty($orm->getWhere('churchrole', ['RoleID' => $roleId]))) {
+      if (empty($orm->getWhere('church_role', ['RoleID' => $roleId]))) {
          Helpers::sendFeedback('Role not found', 404);
       }
 
@@ -166,17 +206,29 @@ class Role
       $orm->beginTransaction();
       try {
          // Remove all existing permissions
-         $orm->delete('rolepermission', ['ChurchRoleID' => $roleId]);
+         $orm->delete('role_permission', ['RoleID' => $roleId]);
 
          // Insert new ones
          foreach ($permissionIds as $permId) {
-            $orm->insert('rolepermission', [
-               'ChurchRoleID'  => $roleId,
-               'PermissionID'  => (int)$permId
+            $orm->insert('role_permission', [
+               'RoleID'       => $roleId,
+               'PermissionID' => (int)$permId
             ]);
          }
 
          $orm->commit();
+
+         // Audit log
+         try {
+            $performedBy = Auth::getCurrentUserId();
+            PermissionAudit::log('permissions_assigned', $performedBy, [
+               'role_id' => $roleId,
+               'new_value' => ['permission_ids' => $permissionIds]
+            ]);
+         } catch (Exception $e) {
+            // Don't fail if audit logging fails
+         }
+
          Helpers::logError("Permissions updated for Role ID $roleId");
       } catch (Exception $e) {
          $orm->rollBack();
@@ -197,10 +249,10 @@ class Role
       $orm = new ORM();
 
       $result = $orm->selectWithJoin(
-         baseTable: 'churchrole r',
+         baseTable: 'church_role r',
          joins: [
-            ['table' => 'rolepermission rp', 'on' => 'r.RoleID = rp.ChurchRoleID', 'type' => 'LEFT'],
-            ['table' => 'permission p',      'on' => 'rp.PermissionID = p.PermissionID', 'type' => 'LEFT']
+            ['table' => 'role_permission rp', 'on' => 'r.RoleID = rp.RoleID', 'type' => 'LEFT'],
+            ['table' => 'permission p',       'on' => 'rp.PermissionID = p.PermissionID', 'type' => 'LEFT']
          ],
          fields: ['r.*', 'p.PermissionID', 'p.PermissionName'],
          conditions: ['r.RoleID' => ':id'],
@@ -239,13 +291,13 @@ class Role
       $orm = new ORM();
 
       $rows = $orm->selectWithJoin(
-         baseTable: 'churchrole r',
+         baseTable: 'church_role r',
          joins: [
-            ['table' => 'rolepermission rp', 'on' => 'r.RoleID = rp.ChurchRoleID', 'type' => 'LEFT'],
-            ['table' => 'permission p',      'on' => 'rp.PermissionID = p.PermissionID', 'type' => 'LEFT']
+            ['table' => 'role_permission rp', 'on' => 'r.RoleID = rp.RoleID', 'type' => 'LEFT'],
+            ['table' => 'permission p',       'on' => 'rp.PermissionID = p.PermissionID', 'type' => 'LEFT']
          ],
-         fields: ['r.RoleID', 'r.RoleName', 'p.PermissionID', 'p.PermissionName'],
-         orderBy: ['r.RoleName' => 'ASC']
+         fields: ['r.RoleID', 'r.RoleName', 'r.RoleDescription', 'p.PermissionID', 'p.PermissionName'],
+         orderBy: ['r.DisplayOrder' => 'ASC', 'r.RoleName' => 'ASC']
       );
 
       $roles = [];
@@ -253,9 +305,10 @@ class Role
          $id = $row['RoleID'];
          if (!isset($roles[$id])) {
             $roles[$id] = [
-               'RoleID'      => $id,
-               'RoleName'    => $row['RoleName'],
-               'permissions' => []
+               'RoleID'          => $id,
+               'RoleName'        => $row['RoleName'],
+               'RoleDescription' => $row['RoleDescription'],
+               'permissions'     => []
             ];
          }
          if ($row['PermissionID']) {
@@ -272,7 +325,7 @@ class Role
    /**
     * Assign a role to a church member
     *
-    * Overwrites any existing role assignment for the member.
+    * Creates a new role assignment in member_role table.
     *
     * @param int $memberId Member ID (MbrID)
     * @param int $roleId   Role ID to assign
@@ -289,11 +342,40 @@ class Role
       }
 
       // Validate role
-      if (empty($orm->getWhere('churchrole', ['RoleID' => $roleId]))) {
+      if (empty($orm->getWhere('church_role', ['RoleID' => $roleId]))) {
          Helpers::sendFeedback('Role not found', 404);
       }
 
-      $orm->update('churchmember', ['ChurchRoleID' => $roleId], ['MbrID' => $memberId]);
+      // Check if already assigned
+      $existing = $orm->getWhere('member_role', [
+         'MbrID' => $memberId,
+         'RoleID' => $roleId,
+         'IsActive' => 1
+      ]);
+
+      if (!empty($existing)) {
+         Helpers::sendFeedback('Member already has this role', 400);
+      }
+
+      // Insert new role assignment
+      $orm->insert('member_role', [
+         'MbrID'      => $memberId,
+         'RoleID'     => $roleId,
+         'IsActive'   => 1,
+         'AssignedBy' => Auth::getCurrentUserId(),
+         'AssignedAt' => date('Y-m-d H:i:s')
+      ]);
+
+      // Audit log
+      try {
+         $performedBy = Auth::getCurrentUserId();
+         PermissionAudit::log('role_assigned_to_member', $performedBy, [
+            'role_id' => $roleId,
+            'member_id' => $memberId
+         ]);
+      } catch (Exception $e) {
+         // Don't fail if audit logging fails
+      }
 
       Helpers::logError("Role $roleId assigned to Member ID $memberId");
       return ['status' => 'success'];

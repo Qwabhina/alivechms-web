@@ -29,13 +29,14 @@ class PledgeType
 
       $name = trim($data['name']);
 
-      if (!empty($orm->getWhere('pledge_type', ['PledgeTypeName' => $name]))) {
+      if (!empty($orm->getWhere('pledge_type', ['PledgeTypeName' => $name, 'IsActive' => 1]))) {
          ResponseHelper::error('Pledge type name already exists', 400);
       }
 
       $typeId = $orm->insert('pledge_type', [
          'PledgeTypeName' => $name,
          'Description' => $data['description'] ?? null,
+         'IsActive' => 1,
          'CreatedAt' => date('Y-m-d H:i:s')
       ])['id'];
 
@@ -49,7 +50,7 @@ class PledgeType
    {
       $orm = new ORM();
 
-      $type = $orm->getWhere('pledge_type', ['PledgeTypeID' => $typeId]);
+      $type = $orm->getWhere('pledge_type', ['PledgeTypeID' => $typeId, 'IsActive' => 1]);
       if (empty($type)) {
          ResponseHelper::error('Pledge type not found', 404);
       }
@@ -59,7 +60,7 @@ class PledgeType
       if (!empty($data['name'])) {
          $name = trim($data['name']);
          $existing = $orm->runQuery(
-            "SELECT PledgeTypeID FROM pledge_type WHERE PledgeTypeName = :name AND PledgeTypeID != :id",
+            "SELECT PledgeTypeID FROM pledge_type WHERE PledgeTypeName = :name AND PledgeTypeID != :id AND IsActive = 1",
             [':name' => $name, ':id' => $typeId]
          );
          if (!empty($existing)) {
@@ -86,7 +87,7 @@ class PledgeType
    {
       $orm = new ORM();
 
-      $type = $orm->getWhere('pledge_type', ['PledgeTypeID' => $typeId]);
+      $type = $orm->getWhere('pledge_type', ['PledgeTypeID' => $typeId, 'IsActive' => 1]);
       if (empty($type)) {
          ResponseHelper::error('Pledge type not found', 404);
       }
@@ -95,7 +96,8 @@ class PledgeType
          ResponseHelper::error('Cannot delete pledge type that is in use', 400);
       }
 
-      $orm->delete('pledge_type', ['PledgeTypeID' => $typeId]);
+      // Soft delete
+      $orm->update('pledge_type', ['IsActive' => 0], ['PledgeTypeID' => $typeId]);
       return ['status' => 'success'];
    }
 
@@ -106,7 +108,7 @@ class PledgeType
    {
       $orm = new ORM();
 
-      $type = $orm->getWhere('pledge_type', ['PledgeTypeID' => $typeId]);
+      $type = $orm->getWhere('pledge_type', ['PledgeTypeID' => $typeId, 'IsActive' => 1]);
       if (empty($type)) {
          ResponseHelper::error('Pledge type not found', 404);
       }
@@ -121,7 +123,10 @@ class PledgeType
    {
       $orm = new ORM();
       $types = $orm->runQuery(
-         "SELECT PledgeTypeID, PledgeTypeName, Description, CreatedAt FROM pledge_type ORDER BY PledgeTypeName ASC"
+         "SELECT PledgeTypeID, PledgeTypeName, Description, IsActive, CreatedAt 
+          FROM pledge_type 
+          WHERE IsActive = 1
+          ORDER BY PledgeTypeName ASC"
       );
 
       return ['data' => $types];
