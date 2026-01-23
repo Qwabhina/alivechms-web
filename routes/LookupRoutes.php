@@ -46,69 +46,63 @@ class LookupRoutes extends BaseRoute
 
                $result = [
                   'marital_statuses' => $orm->runQuery(
-                     "SELECT StatusID as id, StatusName as name, DisplayOrder 
+                     "SELECT StatusID as id, StatusName as name 
                              FROM marital_status 
                              WHERE IsActive = 1 
-                             ORDER BY DisplayOrder"
+                             ORDER BY StatusName"
                   ),
                   'education_levels' => $orm->runQuery(
-                     "SELECT LevelID as id, LevelName as name, DisplayOrder 
+                     "SELECT LevelID as id, LevelName as name 
                              FROM education_level 
                              WHERE IsActive = 1 
-                             ORDER BY DisplayOrder"
+                             ORDER BY LevelName"
                   ),
                   'membership_statuses' => $orm->runQuery(
-                     "SELECT StatusID as id, StatusName as name, DisplayOrder 
+                     "SELECT StatusID as id, StatusName as name 
                              FROM membership_status 
                              WHERE IsActive = 1 
-                             ORDER BY DisplayOrder"
+                             ORDER BY StatusName"
                   ),
                   'phone_types' => $orm->runQuery(
-                     "SELECT TypeID as id, TypeName as name, DisplayOrder 
+                     "SELECT TypeID as id, TypeName as name 
                              FROM phone_type 
-                             ORDER BY DisplayOrder"
+                             ORDER BY TypeName"
                   ),
                   'asset_conditions' => $orm->runQuery(
-                     "SELECT ConditionID as id, ConditionName as name, DisplayOrder 
+                     "SELECT ConditionID as id, ConditionName as name 
                              FROM asset_condition 
-                             WHERE IsActive = 1 
-                             ORDER BY DisplayOrder"
+                             ORDER BY ConditionName"
                   ),
                   'asset_statuses' => $orm->runQuery(
-                     "SELECT StatusID as id, StatusName as name, DisplayOrder 
+                     "SELECT StatusID as id, StatusName as name 
                              FROM asset_status 
-                             WHERE IsActive = 1 
-                             ORDER BY DisplayOrder"
+                             ORDER BY StatusName"
                   ),
                   'communication_channels' => $orm->runQuery(
-                     "SELECT ChannelID as id, ChannelName as name, DisplayOrder 
+                     "SELECT ChannelID as id, ChannelName as name 
                              FROM communication_channel 
-                             WHERE IsActive = 1 
-                             ORDER BY DisplayOrder"
+                             ORDER BY ChannelName"
                   ),
                   'communication_statuses' => $orm->runQuery(
-                     "SELECT StatusID as id, StatusName as name, DisplayOrder 
+                     "SELECT StatusID as id, StatusName as name 
                              FROM communication_status 
-                             WHERE IsActive = 1 
-                             ORDER BY DisplayOrder"
+                             ORDER BY StatusName"
                   ),
                   'family_relationships' => $orm->runQuery(
-                     "SELECT RelationshipID as id, RelationshipName as name, DisplayOrder 
+                     "SELECT RelationshipID as id, RelationshipName as name 
                              FROM family_relationship 
-                             WHERE IsActive = 1 
-                             ORDER BY DisplayOrder"
+                             ORDER BY RelationshipName"
                   ),
                   'document_categories' => $orm->runQuery(
-                     "SELECT CategoryID as id, CategoryName as name, DisplayOrder 
+                     "SELECT CategoryID as id, CategoryName as name 
                              FROM document_category 
-                             WHERE IsActive = 1 
-                             ORDER BY DisplayOrder"
+                             ORDER BY CategoryName"
                   ),
                   'payment_methods' => $orm->runQuery(
-                     "SELECT MethodID as id, MethodName as name, DisplayOrder 
+                     "SELECT PaymentMethodID as id, PaymentMethodName as name 
                              FROM payment_method 
                              WHERE IsActive = 1 
-                             ORDER BY DisplayOrder"
+                             ORDER BY PaymentMethodName"
                   ),
                   'branches' => $orm->runQuery(
                      "SELECT BranchID as id, BranchName as name, BranchCode as code 
@@ -131,10 +125,10 @@ class LookupRoutes extends BaseRoute
             self::authenticate();
             $orm = new ORM();
             $data = $orm->runQuery(
-               "SELECT StatusID as id, StatusName as name, DisplayOrder 
+               "SELECT StatusID as id, StatusName as name 
                      FROM marital_status 
                      WHERE IsActive = 1 
-                     ORDER BY DisplayOrder"
+                     ORDER BY StatusName"
             );
             ResponseHelper::success($data);
          })(),
@@ -144,10 +138,10 @@ class LookupRoutes extends BaseRoute
             self::authenticate();
             $orm = new ORM();
             $data = $orm->runQuery(
-               "SELECT LevelID as id, LevelName as name, DisplayOrder 
+               "SELECT LevelID as id, LevelName as name 
                      FROM education_level 
                      WHERE IsActive = 1 
-                     ORDER BY DisplayOrder"
+                     ORDER BY LevelName"
             );
             ResponseHelper::success($data);
          })(),
@@ -157,10 +151,10 @@ class LookupRoutes extends BaseRoute
             self::authenticate();
             $orm = new ORM();
             $data = $orm->runQuery(
-               "SELECT StatusID as id, StatusName as name, DisplayOrder 
+               "SELECT StatusID as id, StatusName as name 
                      FROM membership_status 
                      WHERE IsActive = 1 
-                     ORDER BY DisplayOrder"
+                     ORDER BY StatusName"
             );
             ResponseHelper::success($data);
          })(),
@@ -170,9 +164,9 @@ class LookupRoutes extends BaseRoute
             self::authenticate();
             $orm = new ORM();
             $data = $orm->runQuery(
-               "SELECT TypeID as id, TypeName as name, DisplayOrder 
+               "SELECT TypeID as id, TypeName as name 
                      FROM phone_type 
-                     ORDER BY DisplayOrder"
+                     ORDER BY TypeName"
             );
             ResponseHelper::success($data);
          })(),
@@ -182,10 +176,10 @@ class LookupRoutes extends BaseRoute
             self::authenticate();
             $orm = new ORM();
             $data = $orm->runQuery(
-               "SELECT MethodID as id, MethodName as name, DisplayOrder 
+               "SELECT PaymentMethodID as id, PaymentMethodName as name 
                      FROM payment_method 
                      WHERE IsActive = 1 
-                     ORDER BY DisplayOrder"
+                     ORDER BY PaymentMethodName"
             );
             ResponseHelper::success($data);
          })(),

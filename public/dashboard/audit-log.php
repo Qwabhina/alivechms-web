@@ -16,6 +16,75 @@ require_once '../includes/sidebar.php';
             </ol>
          </nav>
       </div>
+      <div>
+         <button class="btn btn-outline-primary btn-sm" onclick="exportAuditLog()">
+            <i class="bi bi-download me-1"></i>Export
+         </button>
+      </div>
+   </div>
+
+   <!-- Stats Cards -->
+   <div class="row mb-4">
+      <div class="col-md-3">
+         <div class="card border-0 shadow-sm">
+            <div class="card-body">
+               <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                     <div class="text-muted small">Total Logs</div>
+                     <h4 class="mb-0" id="totalLogs">-</h4>
+                  </div>
+                  <div class="text-primary">
+                     <i class="bi bi-clock-history fs-2"></i>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+      <div class="col-md-3">
+         <div class="card border-0 shadow-sm">
+            <div class="card-body">
+               <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                     <div class="text-muted small">Today's Activity</div>
+                     <h4 class="mb-0" id="todayLogs">-</h4>
+                  </div>
+                  <div class="text-success">
+                     <i class="bi bi-calendar-check fs-2"></i>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+      <div class="col-md-3">
+         <div class="card border-0 shadow-sm">
+            <div class="card-body">
+               <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                     <div class="text-muted small">Active Users</div>
+                     <h4 class="mb-0" id="activeUsers">-</h4>
+                  </div>
+                  <div class="text-info">
+                     <i class="bi bi-people fs-2"></i>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+      <div class="col-md-3">
+         <div class="card border-0 shadow-sm">
+            <div class="card-body">
+               <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                     <div class="text-muted small">Most Active</div>
+                     <div class="fw-semibold" id="mostActiveUser">-</div>
+                  </div>
+                  <div class="text-warning">
+                     <i class="bi bi-trophy fs-2"></i>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
    </div>
 
    <!-- Filters -->
@@ -26,14 +95,24 @@ require_once '../includes/sidebar.php';
       <div class="card-body">
          <div class="row g-3">
             <div class="col-md-2">
+               <label class="form-label small">User</label>
+               <select class="form-select form-select-sm" id="filterUser">
+                  <option value="">All Users</option>
+                  <!-- Will be populated dynamically -->
+               </select>
+            </div>
+            <div class="col-md-2">
                <label class="form-label small">Action</label>
                <select class="form-select form-select-sm" id="filterAction">
                   <option value="">All Actions</option>
                   <option value="create">Create</option>
                   <option value="update">Update</option>
                   <option value="delete">Delete</option>
+                  <option value="restore">Restore</option>
                   <option value="approve">Approve</option>
                   <option value="reject">Reject</option>
+                  <option value="login">Login</option>
+                  <option value="logout">Logout</option>
                </select>
             </div>
             <div class="col-md-2">
@@ -46,6 +125,9 @@ require_once '../includes/sidebar.php';
                   <option value="budget">Budget</option>
                   <option value="event">Event</option>
                   <option value="pledge">Pledge</option>
+                  <option value="role">Role</option>
+                  <option value="permission">Permission</option>
+                  <option value="settings">Settings</option>
                </select>
             </div>
             <div class="col-md-2">
@@ -126,7 +208,21 @@ require_once '../includes/sidebar.php';
    });
 
    async function initPage() {
+      await loadStats();
       initTable();
+   }
+
+   async function loadStats() {
+      try {
+         // For now, show placeholder stats
+         // In a real implementation, you'd call an API endpoint
+         document.getElementById('totalLogs').textContent = '-';
+         document.getElementById('todayLogs').textContent = '-';
+         document.getElementById('activeUsers').textContent = '-';
+         document.getElementById('mostActiveUser').textContent = 'Loading...';
+      } catch (error) {
+         Config.error('Failed to load stats:', error);
+      }
    }
 
    function initTable() {
@@ -291,6 +387,7 @@ require_once '../includes/sidebar.php';
    }
 
    function applyFilters() {
+      const user = document.getElementById('filterUser').value;
       const action = document.getElementById('filterAction').value;
       const entity = document.getElementById('filterEntity').value;
       const startDate = document.getElementById('filterStartDate').value;
@@ -299,6 +396,7 @@ require_once '../includes/sidebar.php';
       let url = `${Config.API_BASE_URL}/audit/search`;
       let params = [];
 
+      if (user) params.push(`user_id=${user}`);
       if (action) params.push(`action=${action}`);
       if (entity) params.push(`entity_type=${entity}`);
       if (startDate) params.push(`start_date=${startDate}`);
@@ -311,11 +409,17 @@ require_once '../includes/sidebar.php';
    }
 
    function clearFilters() {
+      document.getElementById('filterUser').value = '';
       document.getElementById('filterAction').value = '';
       document.getElementById('filterEntity').value = '';
       document.getElementById('filterStartDate').value = '';
       document.getElementById('filterEndDate').value = '';
       auditLogTable.ajax.url(`${Config.API_BASE_URL}/audit/search`).load();
+   }
+
+   function exportAuditLog() {
+      Alerts.info('Export functionality coming soon!');
+      // TODO: Implement CSV/PDF export
    }
 </script>
 

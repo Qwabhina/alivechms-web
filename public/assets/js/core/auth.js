@@ -85,7 +85,7 @@ const Auth = {
         try {
             // Call backend logout (clears HttpOnly cookie)
             try {
-                await api.post('auth/logout', {});
+                await api.post('/auth/logout', {});
             } catch (e) {
                 Config.warn('Logout API call failed', e);
             }

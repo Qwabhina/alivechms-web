@@ -25,7 +25,26 @@
          
          window.fetch = async function(url, options = {}) {
             // Check if this is a request to our API
-            if (typeof url === 'string' && url.includes(Config.API_BASE_URL)) {
+            // Handle both full URLs and relative paths
+            const isApiRequest = typeof url === 'string' && (
+               url.includes(Config.API_BASE_URL) || 
+               url.startsWith('/member') ||
+               url.startsWith('/family') ||
+               url.startsWith('/lookup') ||
+               url.startsWith('/auth') ||
+               url.startsWith('/dashboard') ||
+               url.startsWith('/contribution') ||
+               url.startsWith('/expense') ||
+               url.startsWith('/event') ||
+               url.startsWith('/group') ||
+               url.startsWith('/pledge') ||
+               url.startsWith('/role') ||
+               url.startsWith('/settings') ||
+               url.startsWith('/branch') ||
+               url.startsWith('/audit')
+            );
+            
+            if (isApiRequest) {
                // Add authentication headers - use Auth module to get token
                const token = Auth.getToken();
                if (token) {

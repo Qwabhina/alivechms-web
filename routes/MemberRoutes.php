@@ -32,8 +32,11 @@ class MemberRoutes extends BaseRoute
         match (true) {
             // PUBLIC: CREATE/REGISTER
             $method === 'POST' && $path === 'member/create' => (function () {
-                // No auth required for registration
+                // No auth required for registration, but rate limit to prevent spam
                 self::authenticate(false);
+
+                // Strict rate limit: 5 registrations per 5 minutes per IP
+                self::rateLimit(maxAttempts: 5, windowSeconds: 300);
 
                 // Check if this is multipart/form-data (file upload)
                 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
@@ -58,11 +61,26 @@ class MemberRoutes extends BaseRoute
                             mkdir($uploadDir, 0755, true);
                         }
 
+                        // Validate MIME type first (more secure)
+                        $finfo = new finfo(FILEINFO_MIME_TYPE);
+                        $mimeType = $finfo->file($_FILES['profile_picture']['tmp_name']);
+                        $allowedMimes = ['image/jpeg', 'image/png', 'image/gif'];
+
+                        if (!in_array($mimeType, $allowedMimes)) {
+                            ResponseHelper::error('Invalid file type. Only JPG, PNG, and GIF images are allowed.', 400);
+                        }
+
+                        // Also validate file extension
                         $fileExtension = strtolower(pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION));
                         $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
 
                         if (!in_array($fileExtension, $allowedExtensions)) {
-                            ResponseHelper::error('Invalid file type. Only JPG, PNG, and GIF are allowed.', 400);
+                            ResponseHelper::error('Invalid file extension. Only .jpg, .png, and .gif are allowed.', 400);
+                        }
+
+                        // Validate file size (5MB max)
+                        if ($_FILES['profile_picture']['size'] > 5 * 1024 * 1024) {
+                            ResponseHelper::error('File size must not exceed 5MB.', 400);
                         }
 
                         $fileName = uniqid('member_') . '.' . $fileExtension;
@@ -152,6 +170,9 @@ class MemberRoutes extends BaseRoute
                 self::authenticate();
                 self::authorize('members.view');
 
+                // Cache for 5 minutes
+                self::setCacheHeaders(300, false, true);
+
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
 
                 $member = Member::get($memberId);
@@ -161,7 +182,7 @@ class MemberRoutes extends BaseRoute
             // UPDATE MEMBER
             $method === 'PUT' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('members.view');
+                self::authorize('members.edit');
 
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
 
@@ -189,7 +210,7 @@ class MemberRoutes extends BaseRoute
             // UPDATE MEMBER (POST with file upload support)
             $method === 'POST' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('members.view');
+                self::authorize('members.edit');
 
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
 
@@ -220,11 +241,26 @@ class MemberRoutes extends BaseRoute
                             mkdir($uploadDir, 0755, true);
                         }
 
+                        // Validate MIME type first (more secure)
+                        $finfo = new finfo(FILEINFO_MIME_TYPE);
+                        $mimeType = $finfo->file($_FILES['profile_picture']['tmp_name']);
+                        $allowedMimes = ['image/jpeg', 'image/png', 'image/gif'];
+
+                        if (!in_array($mimeType, $allowedMimes)) {
+                            ResponseHelper::error('Invalid file type. Only JPG, PNG, and GIF images are allowed.', 400);
+                        }
+
+                        // Also validate file extension
                         $fileExtension = strtolower(pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION));
                         $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
 
                         if (!in_array($fileExtension, $allowedExtensions)) {
-                            ResponseHelper::error('Invalid file type. Only JPG, PNG, and GIF are allowed.', 400);
+                            ResponseHelper::error('Invalid file extension. Only .jpg, .png, and .gif are allowed.', 400);
+                        }
+
+                        // Validate file size (5MB max)
+                        if ($_FILES['profile_picture']['size'] > 5 * 1024 * 1024) {
+                            ResponseHelper::error('File size must not exceed 5MB.', 400);
                         }
 
                         $fileName = uniqid('member_') . '.' . $fileExtension;
@@ -289,6 +325,13 @@ class MemberRoutes extends BaseRoute
                 $filters['sort_dir'] = $sortDir;
 
                 $result = Member::getAll($page, $limit, $filters);
+
+                // Validate page number
+                $totalPages = ceil($result['pagination']['total'] / $limit);
+                if ($page > $totalPages && $totalPages > 0) {
+                    ResponseHelper::error("Page $page exceeds total pages ($totalPages)", 400);
+                }
+
                 ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
             })(),
 

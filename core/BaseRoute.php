@@ -327,4 +327,56 @@ abstract class BaseRoute
    {
       ResponseHelper::error($message, $code, $errors);
    }
+
+   /**
+    * Set cache headers for GET requests
+    *
+    * @param int $maxAge Cache duration in seconds (default: 5 minutes)
+    * @param bool $public Whether cache can be shared (default: false for private data)
+    * @param bool $mustRevalidate Whether to force revalidation (default: true)
+    * @return void
+    */
+   protected static function setCacheHeaders(int $maxAge = 300, bool $public = false, bool $mustRevalidate = true): void
+   {
+      $cacheControl = [];
+
+      if ($public) {
+         $cacheControl[] = 'public';
+      } else {
+         $cacheControl[] = 'private';
+      }
+
+      $cacheControl[] = "max-age={$maxAge}";
+
+      if ($mustRevalidate) {
+         $cacheControl[] = 'must-revalidate';
+      }
+
+      header('Cache-Control: ' . implode(', ', $cacheControl));
+      header('Expires: ' . gmdate('D, d M Y H:i:s', time() + $maxAge) . ' GMT');
+
+      // Add ETag for conditional requests
+      $etag = md5($_SERVER['REQUEST_URI'] . (self::$currentUserId ?? 0));
+      header("ETag: \"{$etag}\"");
+
+      // Check if client has cached version
+      if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && $_SERVER['HTTP_IF_NONE_MATCH'] === "\"{$etag}\"") {
+         http_response_code(304);
+         exit;
+      }
+   }
+
+   /**
+    * Disable caching for sensitive endpoints
+    *
+    * @return void
+    */
+   protected static function disableCache(): void
+   {
+      header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+      header('Cache-Control: post-check=0, pre-check=0', false);
+      header('Pragma: no-cache');
+      header('Expires: 0');
+   }
 }
+

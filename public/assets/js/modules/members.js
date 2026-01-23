@@ -10,6 +10,55 @@
    'use strict';
 
    // ===================================================================
+   // ERROR HANDLING
+   // ===================================================================
+   
+   /**
+    * Handle API errors with user-friendly messages
+    * @param {Error} error - The error object
+    * @param {string} context - Context of the operation
+    */
+   function handleAPIError(error, context = 'Operation') {
+      Config.error(`${context} failed:`, error);
+      
+      // Handle specific error types
+      if (error.status === 401) {
+         Alerts.error('Your session has expired. Redirecting to login...');
+         setTimeout(() => Auth.logout(), 2000);
+      } else if (error.status === 403) {
+         Alerts.error('You do not have permission to perform this action. Please contact your administrator if you believe this is an error.');
+      } else if (error.status === 404) {
+         Alerts.error('The requested resource was not found. It may have been deleted or moved.');
+      } else if (error.status === 408) {
+         Alerts.error('Request timeout. The server took too long to respond. Please check your connection and try again.');
+      } else if (error.status === 422) {
+         // Validation error - show specific field errors if available
+         if (error.data && error.data.errors) {
+            const errorMessages = Object.values(error.data.errors).flat().join('<br>');
+            Alerts.error(`Validation failed:<br>${errorMessages}`);
+         } else {
+            Alerts.error(error.message || 'Validation failed. Please check your input and try again.');
+         }
+      } else if (error.status === 429) {
+         Alerts.error('Too many requests. Please wait a moment and try again.');
+      } else if (error.status === 500) {
+         Alerts.error('Server error. Our team has been notified. Please try again later or contact support if the problem persists.');
+      } else if (error.status === 503) {
+         Alerts.error('Service temporarily unavailable. The system may be undergoing maintenance. Please try again in a few minutes.');
+      } else if (error.isNetworkError && error.isNetworkError()) {
+         if (!navigator.onLine) {
+            Alerts.error('No internet connection. Please check your network and try again.');
+         } else {
+            Alerts.error('Network error. Please check your internet connection and try again.');
+         }
+      } else {
+         // Generic error with context
+         const message = error.message || `${context} failed. Please try again.`;
+         Alerts.error(message);
+      }
+   }
+
+   // ===================================================================
    // STATE MANAGEMENT
    // ===================================================================
    
@@ -59,8 +108,7 @@
          setTimeout(() => startAutoRefresh(), 10000);
          
       } catch (error) {
-         console.error('Initialization error:', error);
-         Alerts.error('Failed to initialize page');
+         handleAPIError(error, 'Page initialization');
       }
    }
 
@@ -94,7 +142,10 @@
                title: 'Full Name',
                exportable: true,
                render: (value, row) => {
-                  const fullName = `${row.MbrFirstName || ''} ${row.MbrOtherNames ? row.MbrOtherNames + ' ' : ''}${row.MbrFamilyName || ''}`.trim();
+                  const firstName = row?.MbrFirstName || '';
+                  const otherNames = row?.MbrOtherNames || '';
+                  const familyName = row?.MbrFamilyName || '';
+                  const fullName = `${firstName} ${otherNames ? otherNames + ' ' : ''}${familyName}`.trim() || 'Unknown';
                   return `<div class="fw-medium">${fullName}</div>`;
                }
             },{
@@ -253,7 +304,7 @@
          renderGenderChart(stats.gender_distribution || {});
          renderAgeChart(stats.age_distribution || {});
       } catch (error) {
-         console.error('Load stats error:', error);
+         handleAPIError(error, 'Loading statistics');
          // Fallback to basic count
          try {
             const fallback = await api.get('member/all?limit=1');
@@ -797,7 +848,7 @@
          State.familiesData = response?.data || response || [];
          console.log(`✓ Loaded ${State.familiesData.length} families`);
       } catch (error) {
-         console.error('Load families error:', error);
+         handleAPIError(error, 'Loading families');
          State.familiesData = [];
       }
    }
@@ -808,7 +859,7 @@
          State.rolesData = Array.isArray(response) ? response : (response?.data || []);
          console.log(`✓ Loaded ${State.rolesData.length} roles`);
       } catch (error) {
-         console.error('Load roles error:', error);
+         handleAPIError(error, 'Loading roles');
          State.rolesData = [];
       }
    }
@@ -932,7 +983,7 @@
          }
       } catch (error) {
          Alerts.closeLoading();
-         console.error('Load member error:', error);
+         handleAPIError(error, 'Loading member');
          Alerts.error('Failed to load member data');
       }
    }
@@ -1004,7 +1055,7 @@
 
       } catch (error) {
          Alerts.closeLoading();
-         console.error('Save member error:', error);
+         handleAPIError(error, 'Saving member');
          Alerts.handleApiError(error);
       }
    }
@@ -1022,7 +1073,7 @@
          const member = await api.get(`member/view/${memberId}`);
          renderMemberView(member);
       } catch (error) {
-         console.error('View member error:', error);
+         handleAPIError(error, 'Viewing member');
          document.getElementById('viewMemberContent').innerHTML = `
             <div class="text-center text-danger py-5">
                <i class="bi bi-exclamation-circle fs-1"></i>
@@ -1036,15 +1087,26 @@
    }
 
    function renderMemberView(member) {
+      // Defensive null checks
+      if (!member) {
+         document.getElementById('viewMemberContent').innerHTML = `
+            <div class="text-center text-danger py-5">
+               <i class="bi bi-exclamation-circle fs-1"></i>
+               <p class="mt-2">Member data is not available</p>
+            </div>
+         `;
+         return;
+      }
+
       const photoHtml = member.MbrProfilePicture
          ? `<img src="/public/${member.MbrProfilePicture}" class="rounded-circle border border-4 border-white shadow" style="width:120px;height:120px;object-fit:cover;" alt="Profile">`
          : `<div class="rounded-circle bg-gradient d-flex align-items-center justify-content-center text-white border border-4 border-white shadow" style="width:120px;height:120px;font-size:2.5rem;font-weight:700;background:linear-gradient(135deg, var(--bs-primary) 0%, #8b5cf6 100%);">
                ${(member.MbrFirstName?.[0] || '') + (member.MbrFamilyName?.[0] || '')}
             </div>`;
 
-      const statusClass = member.MbrMembershipStatus === 'Active' ? 'success' : 'secondary';
+      const statusClass = (member.MbrMembershipStatus === 'Active' || member.MembershipStatusName === 'Active') ? 'success' : 'secondary';
       
-      // Handle phone numbers
+      // Handle phone numbers with defensive checks
       let phones = [];
       if (Array.isArray(member.PhoneNumbers)) {
          phones = member.PhoneNumbers;
@@ -1055,19 +1117,27 @@
       }
       const phoneDisplay = phones.length > 0 ? phones.join(', ') : 'Not provided';
 
-      // Calculate age
+      // Calculate age with defensive checks
       let ageDisplay = 'Not provided';
       let dobDisplay = 'Not provided';
       if (member.MbrDateOfBirth) {
-         const dob = new Date(member.MbrDateOfBirth);
-         dobDisplay = dob.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-         const today = new Date();
-         let age = today.getFullYear() - dob.getFullYear();
-         const monthDiff = today.getMonth() - dob.getMonth();
-         if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-            age--;
+         try {
+            const dob = new Date(member.MbrDateOfBirth);
+            if (!isNaN(dob.getTime())) {
+               dobDisplay = dob.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+               const today = new Date();
+               let age = today.getFullYear() - dob.getFullYear();
+               const monthDiff = today.getMonth() - dob.getMonth();
+               if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                  age--;
+               }
+               if (age >= 0 && age < 150) {
+                  ageDisplay = `${age} years old`;
+               }
+            }
+         } catch (e) {
+            Config.warn('Error calculating age:', e);
          }
-         ageDisplay = `${age} years old`;
       }
 
       // Format registration date
@@ -1359,7 +1429,7 @@
          loadStats();
       } catch (error) {
          Alerts.closeLoading();
-         console.error('Delete member error:', error);
+         handleAPIError(error, 'Deleting member');
          Alerts.handleApiError(error);
       }
    }

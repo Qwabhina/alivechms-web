@@ -382,8 +382,8 @@ require_once '../includes/sidebar.php';
    </div>
 </div>
 
-<!-- Include JavaScript -->
-<script src="../assets/js/modules/members.js"></script>
+<!-- Include JavaScript - New Modular Structure -->
+<script type="module" src="../assets/js/modules/members/index.js"></script>
 <script src="../assets/js/core/qmgrid-helper.js"></script>
 
 <style>

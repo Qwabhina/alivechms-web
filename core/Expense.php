@@ -27,6 +27,58 @@ class Expense
    private const STATUS_DECLINED = 'Declined';
 
    /**
+    * Validate expense status transition
+    * @param string|null $currentStatus Current status
+    * @param string $newStatus New status
+    * @throws Exception If transition is invalid
+    */
+   private static function validateStatusTransition(?string $currentStatus, string $newStatus): void
+   {
+      $validTransitions = [
+         null => ['Pending Approval'],  // New expense must be Pending
+         'Pending Approval' => ['Approved', 'Declined', 'Cancelled'],
+         'Approved' => ['Completed'],
+         'Declined' => [],  // Cannot change from declined
+         'Cancelled' => [],  // Cannot change from cancelled
+         'Completed' => []   // Cannot change from completed
+      ];
+
+      $allowedStatuses = $validTransitions[$currentStatus] ?? [];
+
+      if (!in_array($newStatus, $allowedStatuses)) {
+         $from = $currentStatus ?? 'new';
+         throw new Exception("Invalid status transition from '$from' to '$newStatus'");
+      }
+   }
+
+   /**
+    * Validate and format amount
+    * @param mixed $amount Amount to validate
+    * @param string $fieldName Field name for error message
+    * @return float Validated amount
+    * @throws Exception If invalid
+    */
+   private static function validateAmount($amount, string $fieldName = 'Amount'): float
+   {
+      if (!is_numeric($amount)) {
+         throw new Exception("$fieldName must be a valid number");
+      }
+
+      $amount = (float)$amount;
+
+      if ($amount <= 0) {
+         throw new Exception("$fieldName must be greater than zero");
+      }
+
+      if ($amount > 999999999.99) {
+         throw new Exception("$fieldName is too large (maximum: 999,999,999.99)");
+      }
+
+      // Round to 2 decimal places
+      return round($amount, 2);
+   }
+
+   /**
     * Get expense statistics for a fiscal year
     */
    public static function getStats(?int $fiscalYearId = null): array
@@ -65,21 +117,21 @@ class Expense
       // Approved
       $approvedResult = $orm->runQuery(
          "SELECT COALESCE(SUM(ExpAmount), 0) AS total, COUNT(*) AS count
-          FROM expense e WHERE ExpStatus = 'Approved' $fyCondition",
+          FROM expense e WHERE ApprovalStatus = 'Approved' $fyCondition",
          $fyParams
       )[0];
 
       // Pending
       $pendingResult = $orm->runQuery(
          "SELECT COALESCE(SUM(ExpAmount), 0) AS total, COUNT(*) AS count
-          FROM expense e WHERE ExpStatus = 'Pending Approval' $fyCondition",
+          FROM expense e WHERE ApprovalStatus = 'Pending' $fyCondition",
          $fyParams
       )[0];
 
       // Declined
       $declinedResult = $orm->runQuery(
          "SELECT COALESCE(SUM(ExpAmount), 0) AS total, COUNT(*) AS count
-          FROM expense e WHERE ExpStatus = 'Declined' $fyCondition",
+          FROM expense e WHERE ApprovalStatus = 'Declined' $fyCondition",
          $fyParams
       )[0];
 
@@ -120,21 +172,21 @@ class Expense
 
       // By category
       $byCategory = $orm->runQuery(
-         "SELECT ec.ExpCategoryID, ec.ExpCategoryName AS CategoryName,
+         "SELECT ec.ExpCategoryID, ec.CategoryName AS CategoryName,
                  COALESCE(SUM(e.ExpAmount), 0) AS total, COUNT(*) AS count
           FROM expense e
           JOIN expense_category ec ON e.ExpCategoryID = ec.ExpCategoryID
           WHERE 1=1 $fyCondition
-          GROUP BY ec.ExpCategoryID, ec.ExpCategoryName
+          GROUP BY ec.ExpCategoryID, ec.CategoryName
           ORDER BY total DESC",
          $fyParams
       );
 
       // By status
       $byStatus = $orm->runQuery(
-         "SELECT ExpStatus, COALESCE(SUM(ExpAmount), 0) AS total, COUNT(*) AS count
+         "SELECT ApprovalStatus, COALESCE(SUM(ExpAmount), 0) AS total, COUNT(*) AS count
           FROM expense e WHERE 1=1 $fyCondition
-          GROUP BY ExpStatus ORDER BY total DESC",
+          GROUP BY ApprovalStatus ORDER BY total DESC",
          $fyParams
       );
 
@@ -163,8 +215,8 @@ class Expense
 
       // Top expenses
       $topExpenses = $orm->runQuery(
-         "SELECT e.ExpID, e.ExpTitle, e.ExpAmount, e.ExpDate, e.ExpStatus,
-                 ec.ExpCategoryName AS CategoryName, b.BranchName
+         "SELECT e.ExpID, e.ExpTitle, e.ExpAmount, e.ExpDate, e.ApprovalStatus,
+                 ec.CategoryName AS CategoryName, b.BranchName
           FROM expense e
           JOIN expense_category ec ON e.ExpCategoryID = ec.ExpCategoryID
           LEFT JOIN branch b ON e.BranchID = b.BranchID
@@ -223,15 +275,17 @@ class Expense
          'purpose'        => 'max:1000|nullable',
       ]);
 
-      $amount = (float)$data['amount'];
+      // Force new expenses to Pending status
+      if (isset($data['status']) && $data['status'] !== self::STATUS_PENDING) {
+         throw new Exception('New expenses must have Pending Approval status');
+      }
+
+      // Validate and format amount
+      $amount = self::validateAmount($data['amount'], 'Expense amount');
       $expenseDate = $data['expense_date'];
       $categoryId = (int)$data['category_id'];
       $fiscalYearId = !empty($data['fiscal_year_id']) ? (int)$data['fiscal_year_id'] : null;
       $branchId = !empty($data['branch_id']) ? (int)$data['branch_id'] : null;
-
-      if ($amount <= 0) {
-         ResponseHelper::error('Expense amount must be greater than zero', 400);
-      }
 
       if ($expenseDate > date('Y-m-d')) {
          ResponseHelper::error('Expense date cannot be in the future', 400);
@@ -273,15 +327,16 @@ class Expense
 
       $expenseId = $orm->insert('expense', [
          'ExpTitle'      => $data['title'],
-         'ExpPurpose'    => $data['purpose'] ?? null,
+         'ExpDescription'    => $data['purpose'] ?? null,
          'ExpAmount'     => $amount,
          'ExpDate'       => $expenseDate,
          'ExpCategoryID' => $categoryId,
          'FiscalYearID'  => $fiscalYearId,
          'BranchID'      => $branchId,
-         'ExpStatus'     => self::STATUS_PENDING,
-         'MbrID'         => $currentUserId,
+         'ApprovalStatus'     => self::STATUS_PENDING,
+         // 'MbrID'         => $currentUserId,
          'RequestedBy'   => $currentUserId,
+         'BranchID' => 1,
          'RequestedAt'   => date('Y-m-d H:i:s')
       ])['id'];
 
@@ -301,7 +356,7 @@ class Expense
          ResponseHelper::error('Expense not found', 404);
       }
 
-      if ($expense['ExpStatus'] !== self::STATUS_PENDING) {
+      if ($expense['ApprovalStatus'] !== self::STATUS_PENDING) {
          ResponseHelper::error('Only pending expenses can be updated', 400);
       }
 
@@ -314,13 +369,18 @@ class Expense
          'purpose'        => 'max:1000|nullable',
       ]);
 
+      // Validate status transition if status is being changed
+      if (isset($data['status']) && $data['status'] !== $expense['ApprovalStatus']) {
+         self::validateStatusTransition($expense['ApprovalStatus'], $data['status']);
+      }
+
       $update = [];
 
       if (!empty($data['title'])) {
          $update['ExpTitle'] = $data['title'];
       }
-      if (isset($data['amount']) && (float)$data['amount'] > 0) {
-         $update['ExpAmount'] = (float)$data['amount'];
+      if (isset($data['amount'])) {
+         $update['ExpAmount'] = self::validateAmount($data['amount'], 'Expense amount');
       }
       if (!empty($data['expense_date'])) {
          if ($data['expense_date'] > date('Y-m-d')) {
@@ -335,7 +395,7 @@ class Expense
          $update['FiscalYearID'] = !empty($data['fiscal_year_id']) ? (int)$data['fiscal_year_id'] : null;
       }
       if (isset($data['purpose'])) {
-         $update['ExpPurpose'] = $data['purpose'];
+         $update['ExpDescription'] = $data['purpose'];
       }
       if (!empty($data['branch_id'])) {
          $update['BranchID'] = (int)$data['branch_id'];
@@ -388,7 +448,8 @@ class Expense
          ResponseHelper::error('Expense not found', 404);
       }
 
-      if ($expense['ExpStatus'] !== self::STATUS_PENDING) {
+      // Can only review Pending expenses
+      if ($expense['ApprovalStatus'] !== self::STATUS_PENDING) {
          ResponseHelper::error('Only pending expenses can be reviewed', 400);
       }
 
@@ -397,12 +458,16 @@ class Expense
       }
 
       $newStatus = $action === 'approve' ? self::STATUS_APPROVED : self::STATUS_DECLINED;
+
+      // Validate status transition
+      self::validateStatusTransition($expense['ApprovalStatus'], $newStatus);
+
       $approvalStatus = $action === 'approve' ? 'Approved' : 'Declined';
 
       $orm->beginTransaction();
       try {
          // Update expense status
-         $orm->update('expense', ['ExpStatus' => $newStatus], ['ExpID' => $expenseId]);
+         $orm->update('expense', ['ApprovalStatus' => $newStatus], ['ExpID' => $expenseId]);
 
          // Insert approval record
          $orm->insert('expense_approval', [
@@ -432,7 +497,7 @@ class Expense
 
       $result = $orm->runQuery(
          "SELECT e.*, 
-                 ec.ExpCategoryName AS CategoryName,
+                 ec.CategoryName AS CategoryName,
                  fy.FiscalYearName,
                  b.BranchName,
                  r.MbrFirstName AS RequesterFirstName,
@@ -463,14 +528,14 @@ class Expense
       return [
          'ExpenseID' => $expense['ExpID'],
          'ExpenseTitle' => $expense['ExpTitle'],
-         'ExpensePurpose' => $expense['ExpPurpose'],
+         'ExpensePurpose' => $expense['ExpDescription'],
          'ExpenseAmount' => $expense['ExpAmount'],
          'ExpenseDate' => $expense['ExpDate'],
-         'ExpenseStatus' => $expense['ExpStatus'],
+         'ExpenseStatus' => $expense['ApprovalStatus'],
          'ExpenseCategoryID' => $expense['ExpCategoryID'],
          'FiscalYearID' => $expense['FiscalYearID'],
          'BranchID' => $expense['BranchID'],
-         'ProofFile' => $expense['ProofFile'] ?? null,
+         'ProofFile' => $expense['ReceiptImageURL'] ?? null,
          'CategoryName' => $expense['CategoryName'],
          'FiscalYearName' => $expense['FiscalYearName'],
          'BranchName' => $expense['BranchName'],
@@ -508,7 +573,7 @@ class Expense
          $params[':cat'] = (int)$filters['category_id'];
       }
       if (!empty($filters['status'])) {
-         $where[] = 'e.ExpStatus = :status';
+         $where[] = 'e.ApprovalStatus = :status';
          $params[':status'] = $filters['status'];
       }
       if (!empty($filters['start_date'])) {
@@ -529,9 +594,9 @@ class Expense
             'ExpenseTitle' => 'e.ExpTitle',
             'ExpenseAmount' => 'e.ExpAmount',
             'ExpenseDate' => 'e.ExpDate',
-            'CategoryName' => 'ec.ExpCategoryName',
+            'CategoryName' => 'ec.CategoryName',
             'BranchName' => 'b.BranchName',
-            'ExpenseStatus' => 'e.ExpStatus'
+            'ExpenseStatus' => 'e.ApprovalStatus'
          ];
          $sortCol = $columnMap[$filters['sort_by']] ?? 'e.ExpDate';
          $sortDir = strtoupper($filters['sort_dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
@@ -539,9 +604,9 @@ class Expense
       }
 
       $expenses = $orm->runQuery(
-         "SELECT e.ExpID, e.ExpTitle, e.ExpPurpose, e.ExpAmount, e.ExpDate, e.ExpStatus,
-                 e.ExpCategoryID, e.FiscalYearID, e.BranchID, e.ProofFile,
-                 ec.ExpCategoryName, fy.FiscalYearName, b.BranchName
+         "SELECT e.ExpID, e.ExpTitle, e.ExpDescription, e.ExpAmount, e.ExpDate, e.ApprovalStatus,
+                 e.ExpCategoryID, e.FiscalYearID, e.BranchID, e.ReceiptImageURL,
+                 ec.CategoryName, fy.FiscalYearName, b.BranchName
           FROM expense e
           JOIN expense_category ec ON e.ExpCategoryID = ec.ExpCategoryID
           LEFT JOIN fiscal_year fy ON e.FiscalYearID = fy.FiscalYearID
@@ -557,14 +622,14 @@ class Expense
          return [
             'ExpenseID' => $e['ExpID'],
             'ExpenseTitle' => $e['ExpTitle'],
-            'ExpensePurpose' => $e['ExpPurpose'],
+            'ExpensePurpose' => $e['ExpDescription'],
             'ExpenseAmount' => $e['ExpAmount'],
             'ExpenseDate' => $e['ExpDate'],
-            'ExpenseStatus' => $e['ExpStatus'],
-            'CategoryName' => $e['ExpCategoryName'],
+            'ExpenseStatus' => $e['ApprovalStatus'],
+            'CategoryName' => $e['CategoryName'],
             'FiscalYearName' => $e['FiscalYearName'],
             'BranchName' => $e['BranchName'],
-            'ProofFile' => $e['ProofFile'] ?? null
+            'ProofFile' => $e['ReceiptImageURL'] ?? null
          ];
       }, $expenses);
 
@@ -597,7 +662,7 @@ class Expense
       }
 
       // Only allow proof upload for approved expenses
-      if ($expense['ExpStatus'] !== self::STATUS_APPROVED) {
+      if ($expense['ApprovalStatus'] !== self::STATUS_APPROVED) {
          ResponseHelper::error('Proof can only be uploaded for approved expenses', 400);
       }
 
@@ -634,8 +699,8 @@ class Expense
       $relativePath = 'uploads/expenses/' . date('Y/m') . '/' . $filename;
 
       // Delete old proof file if exists
-      if (!empty($expense['ProofFile']) && file_exists(__DIR__ . '/../' . $expense['ProofFile'])) {
-         unlink(__DIR__ . '/../' . $expense['ProofFile']);
+      if (!empty($expense['ReceiptImageURL']) && file_exists(__DIR__ . '/../' . $expense['ReceiptImageURL'])) {
+         unlink(__DIR__ . '/../' . $expense['ReceiptImageURL']);
       }
 
       // Move uploaded file
@@ -644,7 +709,7 @@ class Expense
       }
 
       // Update database
-      $orm->update('expense', ['ProofFile' => $relativePath], ['ExpID' => $expenseId]);
+      $orm->update('expense', ['ReceiptImageURL' => $relativePath], ['ExpID' => $expenseId]);
 
       Helpers::logError("Proof file uploaded for expense $expenseId: $relativePath");
 
@@ -666,18 +731,18 @@ class Expense
          ResponseHelper::error('Expense not found', 404);
       }
 
-      if (empty($expense['ProofFile'])) {
+      if (empty($expense['ReceiptImageURL'])) {
          ResponseHelper::error('No proof file to delete', 400);
       }
 
       // Delete file
-      $filepath = __DIR__ . '/../' . $expense['ProofFile'];
+      $filepath = __DIR__ . '/../' . $expense['ReceiptImageURL'];
       if (file_exists($filepath)) {
          unlink($filepath);
       }
 
       // Update database
-      $orm->update('expense', ['ProofFile' => null], ['ExpID' => $expenseId]);
+      $orm->update('expense', ['ReceiptImageURL' => null], ['ExpID' => $expenseId]);
 
       return ['status' => 'success'];
    }
@@ -694,14 +759,14 @@ class Expense
          ResponseHelper::error('Expense not found', 404);
       }
 
-      if ($expense['ExpStatus'] !== self::STATUS_PENDING) {
+      if ($expense['ApprovalStatus'] !== self::STATUS_PENDING) {
          ResponseHelper::error('Only pending expenses can be cancelled', 400);
       }
 
       $orm->beginTransaction();
       try {
          // Update expense status to Declined
-         $orm->update('expense', ['ExpStatus' => self::STATUS_DECLINED], ['ExpID' => $expenseId]);
+         $orm->update('expense', ['ApprovalStatus' => self::STATUS_DECLINED], ['ExpID' => $expenseId]);
 
          // Insert cancellation record in approval table
          $orm->insert('expense_approval', [
