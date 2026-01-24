@@ -134,6 +134,54 @@ class VolunteerRoutes extends BaseRoute
             ResponseHelper::success($result, 'Volunteer removed from event');
          })(),
 
+         // ASSIGN VOLUNTEER ROLE TO MEMBER
+         $method === 'POST' && $pathParts[0] === 'volunteer' && ($pathParts[1] ?? '') === 'member' && isset($pathParts[2]) && ($pathParts[3] ?? '') === 'assign' => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('members.edit');
+
+            $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
+
+            $payload = self::getPayload();
+
+            $result = Volunteer::assignRoleToMember($memberId, $payload);
+            ResponseHelper::created($result, 'Volunteer role assigned to member');
+         })(),
+
+         // REMOVE VOLUNTEER ROLE FROM MEMBER
+         $method === 'DELETE' && $pathParts[0] === 'volunteer' && ($pathParts[1] ?? '') === 'member' && ($pathParts[2] ?? '') === 'remove' && isset($pathParts[3]) => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('members.edit');
+
+            $assignmentId = self::getIdFromPath($pathParts, 3, 'Assignment ID');
+
+            $result = Volunteer::removeRoleFromMember($assignmentId);
+            ResponseHelper::success($result, 'Volunteer role removed from member');
+         })(),
+
+         // GET MEMBER'S VOLUNTEER ROLES
+         $method === 'GET' && $pathParts[0] === 'volunteer' && ($pathParts[1] ?? '') === 'member' && isset($pathParts[2]) && ($pathParts[3] ?? '') === 'roles' => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('members.view');
+
+            $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
+
+            $result = Volunteer::getMemberVolunteerRoles($memberId);
+            ResponseHelper::success(['data' => $result]);
+         })(),
+
+         // GET MEMBERS BY VOLUNTEER ROLE
+         $method === 'GET' && $pathParts[0] === 'volunteer' && ($pathParts[1] ?? '') === 'role' && isset($pathParts[2]) && ($pathParts[3] ?? '') === 'members' => (function () use ($pathParts) {
+            self::authenticate();
+            self::authorize('members.view');
+
+            $roleId = self::getIdFromPath($pathParts, 2, 'Role ID');
+
+            [$page, $limit] = self::getPagination(50, 100);
+
+            $result = Volunteer::getMembersByRole($roleId, $page, $limit);
+            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+         })(),
+
          // FALLBACK
          default => ResponseHelper::notFound('Volunteer endpoint not found'),
       };

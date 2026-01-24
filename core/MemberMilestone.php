@@ -47,11 +47,11 @@ class MemberMilestone
 
       // By type
       $byType = $orm->runQuery(
-         "SELECT mt.MilestoneTypeID, mt.MilestoneTypeName, mt.Icon, mt.Color, COUNT(mm.MilestoneID) AS count
+         "SELECT mt.MilestoneTypeID, mt.TypeName AS MilestoneTypeName, COUNT(mm.MilestoneID) AS count
           FROM milestone_type mt
           LEFT JOIN member_milestone mm ON mt.MilestoneTypeID = mm.MilestoneTypeID AND mm.Deleted = 0
           WHERE mt.IsActive = 1
-          GROUP BY mt.MilestoneTypeID, mt.MilestoneTypeName, mt.Icon, mt.Color
+          GROUP BY mt.MilestoneTypeID, mt.TypeName
           ORDER BY count DESC"
       );
 
@@ -68,7 +68,7 @@ class MemberMilestone
 
       // Recent milestones
       $recent = $orm->runQuery(
-         "SELECT mm.MilestoneID, mm.MilestoneDate, mt.MilestoneTypeName, mt.Icon, mt.Color,
+         "SELECT mm.MilestoneID, mm.MilestoneDate, mt.TypeName AS MilestoneTypeName,
                  m.MbrFirstName, m.MbrFamilyName
           FROM member_milestone mm
           JOIN milestone_type mt ON mm.MilestoneTypeID = mt.MilestoneTypeID
@@ -240,7 +240,7 @@ class MemberMilestone
 
       $result = $orm->runQuery(
          "SELECT mm.*, 
-                 mt.MilestoneTypeName, mt.Icon, mt.Color,
+                 mt.TypeName AS MilestoneTypeName,
                  m.MbrFirstName, m.MbrFamilyName, m.MbrEmailAddress,
                  r.MbrFirstName AS RecorderFirstName, r.MbrFamilyName AS RecorderFamilyName
           FROM member_milestone mm
@@ -265,8 +265,6 @@ class MemberMilestone
          'MbrEmailAddress' => $m['MbrEmailAddress'],
          'MilestoneTypeID' => $m['MilestoneTypeID'],
          'MilestoneTypeName' => $m['MilestoneTypeName'],
-         'Icon' => $m['Icon'],
-         'Color' => $m['Color'],
          'MilestoneDate' => $m['MilestoneDate'],
          'Location' => $m['Location'],
          'OfficiatingPastor' => $m['OfficiatingPastor'],
@@ -315,7 +313,7 @@ class MemberMilestone
       }
 
       if (!empty($filters['search'])) {
-         $where[] = "(m.MbrFirstName LIKE :search OR m.MbrFamilyName LIKE :search OR mt.MilestoneTypeName LIKE :search)";
+         $where[] = "(m.MbrFirstName LIKE :search OR m.MbrFamilyName LIKE :search OR mt.TypeName LIKE :search)";
          $params[':search'] = '%' . $filters['search'] . '%';
       }
 
@@ -327,7 +325,7 @@ class MemberMilestone
          $columnMap = [
             'MilestoneDate' => 'mm.MilestoneDate',
             'MemberName' => 'm.MbrFirstName',
-            'MilestoneTypeName' => 'mt.MilestoneTypeName'
+            'MilestoneTypeName' => 'mt.TypeName'
          ];
          $sortCol = $columnMap[$filters['sort_by']] ?? 'mm.MilestoneDate';
          $sortDir = strtoupper($filters['sort_dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
@@ -338,7 +336,7 @@ class MemberMilestone
          "SELECT mm.MilestoneID, mm.MbrID, mm.MilestoneTypeID, mm.MilestoneDate, 
                  mm.Location, mm.OfficiatingPastor, mm.CertificateNumber, mm.Notes,
                  mm.RecordedAt,
-                 mt.MilestoneTypeName, mt.Icon, mt.Color,
+                 mt.TypeName AS MilestoneTypeName,
                  m.MbrFirstName, m.MbrFamilyName
           FROM member_milestone mm
           JOIN milestone_type mt ON mm.MilestoneTypeID = mt.MilestoneTypeID
@@ -358,8 +356,6 @@ class MemberMilestone
             'MbrFamilyName' => $m['MbrFamilyName'],
             'MilestoneTypeID' => $m['MilestoneTypeID'],
             'MilestoneTypeName' => $m['MilestoneTypeName'],
-            'Icon' => $m['Icon'],
-            'Color' => $m['Color'],
             'MilestoneDate' => $m['MilestoneDate'],
             'Location' => $m['Location'],
             'OfficiatingPastor' => $m['OfficiatingPastor'],
@@ -397,7 +393,7 @@ class MemberMilestone
       $orm = new ORM();
 
       $milestones = $orm->runQuery(
-         "SELECT mm.*, mt.MilestoneTypeName, mt.Icon, mt.Color,
+         "SELECT mm.*, mt.TypeName AS MilestoneTypeName,
                  r.MbrFirstName AS RecorderFirstName, r.MbrFamilyName AS RecorderFamilyName
           FROM member_milestone mm
           JOIN milestone_type mt ON mm.MilestoneTypeID = mt.MilestoneTypeID

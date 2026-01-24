@@ -41,10 +41,7 @@ class Family
         Helpers::validateInput($data, [
             'family_name' => 'required|max:100',
             'head_id'     => 'numeric|nullable',
-            'branch_id'   => 'required|numeric',
-            'address'     => 'max:255|nullable',
-            'phone'       => 'max:20|nullable',
-            'email'       => 'email|nullable'
+            'branch_id'   => 'required|numeric'
         ]);
 
         $headId = !empty($data['head_id']) ? (int)$data['head_id'] : null;

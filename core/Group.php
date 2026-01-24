@@ -56,13 +56,13 @@ class Group
       }
 
       // Check duplicate name
-      if (!empty($orm->getWhere('churchgroup', ['GroupName' => $data['name']]))) {
+      if (!empty($orm->getWhere('church_group', ['GroupName' => $data['name']]))) {
          ResponseHelper::error('Group name already exists', 400);
       }
 
       $orm->beginTransaction();
       try {
-         $groupId = $orm->insert('churchgroup', [
+         $groupId = $orm->insert('church_group', [
             'GroupName'        => $data['name'],
             'GroupLeaderID'    => $leaderId,
             'GroupDescription' => $data['description'] ?? null,
@@ -71,7 +71,7 @@ class Group
          ])['id'];
 
          // Auto-add leader as member
-         $orm->insert('groupmember', [
+         $orm->insert('group_member', [
             'GroupID'  => $groupId,
             'MbrID'    => $leaderId,
             'JoinedAt' => date('Y-m-d H:i:s')
@@ -98,7 +98,7 @@ class Group
    {
       $orm = new ORM();
 
-      $group = $orm->getWhere('churchgroup', ['GroupID' => $groupId]);
+      $group = $orm->getWhere('church_group', ['GroupID' => $groupId]);
       if (empty($group)) {
          ResponseHelper::error('Group not found', 404);
       }
@@ -106,7 +106,7 @@ class Group
       $update = [];
 
       if (!empty($data['name'])) {
-         if (!empty($orm->getWhere('churchgroup', ['GroupName' => $data['name'], 'GroupID!=' => $groupId]))) {
+         if (!empty($orm->getWhere('church_group', ['GroupName' => $data['name'], 'GroupID!=' => $groupId]))) {
             ResponseHelper::error('Group name already exists', 400);
          }
          $update['GroupName'] = $data['name'];
@@ -143,7 +143,7 @@ class Group
          if (!empty($_SESSION['user_id'])) {
             $update['UpdatedBy'] = (int)$_SESSION['user_id'];
          }
-         $orm->update('churchgroup', $update, ['GroupID' => $groupId]);
+         $orm->update('church_group', $update, ['GroupID' => $groupId]);
       }
 
       return ['status' => 'success', 'group_id' => $groupId];
@@ -159,12 +159,12 @@ class Group
    {
       $orm = new ORM();
 
-      $group = $orm->getWhere('churchgroup', ['GroupID' => $groupId]);
+      $group = $orm->getWhere('church_group', ['GroupID' => $groupId]);
       if (empty($group)) {
          ResponseHelper::error('Group not found', 404);
       }
 
-      $members   = $orm->getWhere('groupmember', ['GroupID' => $groupId]);
+      $members   = $orm->getWhere('group_member', ['GroupID' => $groupId]);
       $messages  = $orm->getWhere('communication', ['TargetGroupID' => $groupId]);
 
       if (!empty($members) || !empty($messages)) {
@@ -181,7 +181,7 @@ class Group
          $deleteData['DeletedBy'] = (int)$_SESSION['user_id'];
       }
 
-      $orm->update('churchgroup', $deleteData, ['GroupID' => $groupId]);
+      $orm->update('church_group', $deleteData, ['GroupID' => $groupId]);
       return ['status' => 'success'];
    }
 
@@ -196,7 +196,7 @@ class Group
       $orm = new ORM();
 
       $result = $orm->selectWithJoin(
-            baseTable: 'churchgroup g',
+         baseTable: 'church_group g',
             joins: [
             ['table' => 'churchmember l', 'on' => 'g.GroupLeaderID = l.MbrID'],
             ['table' => 'group_type t',    'on' => 'g.GroupTypeID = t.GroupTypeID']
@@ -206,7 +206,7 @@ class Group
             'l.MbrFirstName AS LeaderFirstName',
             'l.MbrFamilyName AS LeaderFamilyName',
             't.GroupTypeName',
-            '(SELECT COUNT(*) FROM groupmember gm WHERE gm.GroupID = g.GroupID) AS MemberCount'
+            '(SELECT COUNT(*) FROM group_member gm WHERE gm.GroupID = g.GroupID) AS MemberCount'
             ],
          conditions: ['g.GroupID' => ':id', 'g.Deleted' => 0],
             params: [':id' => $groupId]
@@ -270,7 +270,7 @@ class Group
       }
 
       $groups = $orm->selectWithJoin(
-            baseTable: 'churchgroup g',
+         baseTable: 'church_group g',
             joins: [
             ['table' => 'churchmember l', 'on' => 'g.GroupLeaderID = l.MbrID'],
             ['table' => 'group_type t',    'on' => 'g.GroupTypeID = t.GroupTypeID']
@@ -283,7 +283,7 @@ class Group
             'l.MbrFirstName AS LeaderFirstName',
             'l.MbrFamilyName AS LeaderFamilyName',
             't.GroupTypeName',
-            '(SELECT COUNT(*) FROM groupmember gm WHERE gm.GroupID = g.GroupID) AS MemberCount'
+            '(SELECT COUNT(*) FROM group_member gm WHERE gm.GroupID = g.GroupID) AS MemberCount'
             ],
             conditions: $conditions,
             params: $params,
@@ -293,7 +293,7 @@ class Group
       );
 
       $total = $orm->runQuery(
-         "SELECT COUNT(*) AS total FROM churchgroup g" .
+         "SELECT COUNT(*) AS total FROM church_group g" .
             " LEFT JOIN churchmember l ON g.GroupLeaderID = l.MbrID WHERE g.Deleted = 0" .
             (count($conditions) > 1 ? " AND " . implode(' AND ', array_slice(array_keys($conditions), 1)) : ''),
             $params
@@ -321,7 +321,7 @@ class Group
    {
       $orm = new ORM();
 
-      $group = $orm->getWhere('churchgroup', ['GroupID' => $groupId]);
+      $group = $orm->getWhere('church_group', ['GroupID' => $groupId]);
       if (empty($group)) {
          ResponseHelper::error('Group not found', 404);
       }
@@ -339,12 +339,12 @@ class Group
          ResponseHelper::error('Invalid or inactive member', 400);
       }
 
-      $existing = $orm->getWhere('groupmember', ['GroupID' => $groupId, 'MbrID' => $memberId]);
+      $existing = $orm->getWhere('group_member', ['GroupID' => $groupId, 'MbrID' => $memberId]);
       if (!empty($existing)) {
          ResponseHelper::error('Member already in group', 400);
       }
 
-      $orm->insert('groupmember', [
+      $orm->insert('group_member', [
          'GroupID'  => $groupId,
          'MbrID'    => $memberId,
          'JoinedAt' => date('Y-m-d H:i:s')
@@ -364,7 +364,7 @@ class Group
    {
       $orm = new ORM();
 
-      $group = $orm->getWhere('churchgroup', ['GroupID' => $groupId]);
+      $group = $orm->getWhere('church_group', ['GroupID' => $groupId]);
       if (empty($group)) {
          ResponseHelper::error('Group not found', 404);
       }
@@ -373,12 +373,12 @@ class Group
          ResponseHelper::error('Cannot remove group leader', 400);
       }
 
-      $existing = $orm->getWhere('groupmember', ['GroupID' => $groupId, 'MbrID' => $memberId]);
+      $existing = $orm->getWhere('group_member', ['GroupID' => $groupId, 'MbrID' => $memberId]);
       if (empty($existing)) {
          ResponseHelper::error('Member not in group', 400);
       }
 
-      $orm->delete('groupmember', ['GroupID' => $groupId, 'MbrID' => $memberId]);
+      $orm->delete('group_member', ['GroupID' => $groupId, 'MbrID' => $memberId]);
 
       return ['status' => 'success', 'group_id' => $groupId, 'member_id' => $memberId];
    }
@@ -397,13 +397,14 @@ class Group
       $offset = ($page - 1) * $limit;
 
       $members = $orm->selectWithJoin(
-            baseTable: 'groupmember gm',
+         baseTable: 'group_member gm',
          joins: [['table' => 'churchmember m', 'on' => 'gm.MbrID = m.MbrID']],
          fields: [
             'm.MbrID',
             'm.MbrFirstName',
             'm.MbrFamilyName',
             'm.MbrEmailAddress',
+            'm.MbrProfilePicture',
             'gm.JoinedAt'
             ],
             conditions: ['gm.GroupID' => ':group_id'],
@@ -413,7 +414,7 @@ class Group
             offset: $offset
       );
 
-      $total = $orm->runQuery("SELECT COUNT(*) AS total FROM groupmember WHERE GroupID = :id", [':id' => $groupId])[0]['total'];
+      $total = $orm->runQuery("SELECT COUNT(*) AS total FROM group_member WHERE GroupID = :id", [':id' => $groupId])[0]['total'];
 
       return [
             'data' => $members,

@@ -211,10 +211,58 @@ export class MemberForm {
          this.state.membershipStatuses = lookupsData.membership_statuses || [];
          this.state.phoneTypes = lookupsData.phone_types || [];
 
+         // Populate the select dropdowns
+         this.populateMaritalStatusSelect();
+         this.populateEducationLevelSelect();
+
          console.log(`✓ Loaded ${this.state.familiesData.length} families and lookup data`);
       } catch (error) {
          console.error('Failed to load lookup data:', error);
       }
+   }
+
+   populateMaritalStatusSelect() {
+      const select = document.getElementById('maritalStatus');
+      if (!select) return;
+
+      // Store current value if editing
+      const currentValue = select.value;
+
+      // Clear existing options except the first one
+      select.innerHTML = '<option value="">Select status</option>';
+
+      // Add options from lookup data
+      this.state.maritalStatuses.forEach(status => {
+         const option = document.createElement('option');
+         option.value = status.id;
+         option.textContent = status.name;
+         if (currentValue && status.id == currentValue) {
+            option.selected = true;
+         }
+         select.appendChild(option);
+      });
+   }
+
+   populateEducationLevelSelect() {
+      const select = document.getElementById('educationLevel');
+      if (!select) return;
+
+      // Store current value if editing
+      const currentValue = select.value;
+
+      // Clear existing options except the first one
+      select.innerHTML = '<option value="">Select education level</option>';
+
+      // Add options from lookup data
+      this.state.educationLevels.forEach(level => {
+         const option = document.createElement('option');
+         option.value = level.id;
+         option.textContent = level.name;
+         if (currentValue && level.id == currentValue) {
+            option.selected = true;
+         }
+         select.appendChild(option);
+      });
    }
 
    async populateForm(member) {
@@ -228,6 +276,14 @@ export class MemberForm {
       document.getElementById('occupation').value = member.MbrOccupation || '';
       document.getElementById('email').value = member.MbrEmailAddress || '';
       document.getElementById('address').value = member.MbrResidentialAddress || '';
+
+      // Set marital status and education level IDs
+      if (member.MbrMaritalStatusID) {
+         document.getElementById('maritalStatus').value = member.MbrMaritalStatusID;
+      }
+      if (member.MbrEducationLevelID) {
+         document.getElementById('educationLevel').value = member.MbrEducationLevelID;
+      }
 
       // Profile picture
       if (member.MbrProfilePicture) {
@@ -361,8 +417,8 @@ export class MemberForm {
          formData.append('email_address', document.getElementById('email').value.trim());
          formData.append('address', document.getElementById('address').value.trim() || '');
          formData.append('occupation', document.getElementById('occupation').value.trim() || '');
-         formData.append('marital_status', document.getElementById('maritalStatus')?.value || '');
-         formData.append('education_level', document.getElementById('educationLevel')?.value || '');
+         formData.append('marital_status_id', document.getElementById('maritalStatus')?.value || '');
+         formData.append('education_level_id', document.getElementById('educationLevel')?.value || '');
          formData.append('family_id', document.getElementById('familySelect').value || '');
          formData.append('branch_id', '1');
          formData.append('phone_numbers', JSON.stringify(phones));
@@ -585,7 +641,7 @@ export class MemberForm {
                      <div class="col-md-6">
                         <div class="info-item">
                            <span class="info-label text-muted small">Marital Status</span>
-                           <span class="info-value fw-medium">${member.MbrMaritalStatus || 'Not provided'}</span>
+                           <span class="info-value fw-medium">${member.MaritalStatusName || member.MbrMaritalStatus || 'Not provided'}</span>
                         </div>
                      </div>
                      <div class="col-md-6">
@@ -597,7 +653,7 @@ export class MemberForm {
                      <div class="col-md-6">
                         <div class="info-item">
                            <span class="info-label text-muted small">Education Level</span>
-                           <span class="info-value fw-medium">${member.MbrHighestEducationLevel || 'Not provided'}</span>
+                           <span class="info-value fw-medium">${member.EducationLevelName || member.MbrHighestEducationLevel || 'Not provided'}</span>
                         </div>
                      </div>
                      <div class="col-md-6">
