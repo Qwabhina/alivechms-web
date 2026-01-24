@@ -180,14 +180,14 @@ require_once '../includes/sidebar.php';
          }
 
          // Render each category
-         renderCategorySettings('general', 'generalSettings');
-         renderCategorySettings('regional', 'regionalSettings');
-         renderCategorySettings('email', 'emailSettings');
-         renderCategorySettings('sms', 'smsSettings');
-         renderCategorySettings('notifications', 'notificationsSettings');
-         renderCategorySettings('financial', 'financialSettings');
-         renderCategorySettings('system', 'systemSettings');
-         renderCategorySettings('backup', 'backupSettings');
+         renderCategorySettings('General', 'generalSettings');
+         renderCategorySettings('Regional', 'regionalSettings');
+         renderCategorySettings('Email', 'emailSettings');
+         renderCategorySettings('SMS', 'smsSettings');
+         renderCategorySettings('Notifications', 'notificationsSettings');
+         renderCategorySettings('Financial', 'financialSettings');
+         renderCategorySettings('System', 'systemSettings');
+         renderCategorySettings('Backup', 'backupSettings');
 
          Alerts.closeLoading();
       } catch (error) {

@@ -41,10 +41,7 @@ class Family
         Helpers::validateInput($data, [
             'family_name' => 'required|max:100',
             'head_id'     => 'numeric|nullable',
-            'branch_id'   => 'required|numeric',
-            'address'     => 'max:255|nullable',
-            'phone'       => 'max:20|nullable',
-            'email'       => 'email|nullable'
+            'branch_id'   => 'required|numeric'
         ]);
 
         $headId = !empty($data['head_id']) ? (int)$data['head_id'] : null;
@@ -146,7 +143,7 @@ class Family
             $updates['UpdatedBy'] = (int)$_SESSION['user_id'];
         }
 
-        $affected = $orm->update('family', $updates, ['FamilyID' => $familyId, 'Deleted' => 0]);
+        $affected = $orm->update('family', $updates, ['FamilyID' => $familyId]);
 
         if ($affected === 0) {
             ResponseHelper::error('Family not found', 404);
@@ -177,17 +174,8 @@ class Family
             ResponseHelper::error('Cannot delete family with active members', 400);
         }
 
-        // Soft delete with audit trail
-        $deleteData = [
-            'Deleted' => 1,
-            'DeletedAt' => date('Y-m-d H:i:s')
-        ];
-
-        if (!empty($_SESSION['user_id'])) {
-            $deleteData['DeletedBy'] = (int)$_SESSION['user_id'];
-        }
-
-        $affected = $orm->update('family', $deleteData, ['FamilyID' => $familyId, 'Deleted' => 0]);
+        // Hard delete (family table has no Deleted column)
+        $affected = $orm->delete('family', ['FamilyID' => $familyId]);
 
         if ($affected === 0) {
             ResponseHelper::error('Family not found', 404);
@@ -222,7 +210,7 @@ class Family
                 CONCAT(m.MbrFirstName, ' ', m.MbrFamilyName) AS HeadOfHouseholdName
              FROM family f
              LEFT JOIN churchmember m ON f.HeadOfHouseholdID = m.MbrID
-             WHERE f.FamilyID = :family_id AND f.Deleted = 0",
+             WHERE f.FamilyID = :family_id",
             [':family_id' => $familyId]
         );
 
@@ -263,8 +251,8 @@ class Family
 
         $offset = ($page - 1) * $limit;
 
-        // Build WHERE conditions
-        $whereConditions = ['f.Deleted = 0'];
+        // Build WHERE conditions (family table has no Deleted column)
+        $whereConditions = ['1=1'];
         $params = [];
 
         if (!empty($filters['branch_id'])) {
@@ -324,7 +312,7 @@ class Family
         Helpers::validateInput($data, ['role' => 'required|max:50']);
 
         // Check existence
-        if (!$orm->exists('family', ['FamilyID' => $familyId, 'Deleted' => 0])) {
+        if (!$orm->exists('family', ['FamilyID' => $familyId])) {
             ResponseHelper::error('Family not found', 404);
         }
 

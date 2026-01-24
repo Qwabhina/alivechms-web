@@ -341,7 +341,6 @@ require_once '../includes/sidebar.php';
    </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="../assets/js/core/qmgrid-helper.js"></script>
 <script>
    (function() {
@@ -427,17 +426,17 @@ require_once '../includes/sidebar.php';
             selectable: false,
             exportable: true,
             columns: [{
-                  key: 'ExpenseTitle',
+                  key: 'ExpTitle',
                   title: 'Title',
                   render: (v) => `<div class="fw-medium">${v || '-'}</div>`
                },
                {
-                  key: 'ExpenseAmount',
+                  key: 'ExpAmount',
                   title: 'Amount',
                   render: (v) => `<span class="fw-semibold text-danger">${formatCurrency(v)}</span>`
                },
                {
-                  key: 'ExpenseDate',
+                  key: 'ExpDate',
                   title: 'Date',
                   render: (v) => QMGridHelper.formatDate(v, 'short')
                },
@@ -471,7 +470,7 @@ require_once '../includes/sidebar.php';
                   render: (v) => v ? `<a href="${Config.API_BASE_URL}/../${v}" target="_blank" class="btn btn-sm btn-outline-success" title="View Proof"><i class="bi bi-file-earmark-check"></i></a>` : '<span class="text-muted">-</span>'
                },
                {
-                  key: 'ExpenseID',
+                  key: 'ExpID',
                   title: 'Actions',
                   width: '140px',
                   sortable: false,
@@ -711,7 +710,7 @@ require_once '../includes/sidebar.php';
             const filterCategorySelect = document.getElementById('filterCategory');
             filterCategorySelect.innerHTML = '<option value="">All Categories</option>';
             State.categoriesData.forEach(c => {
-               filterCategorySelect.innerHTML += `<option value="${c.ExpenseCategoryID}">${c.CategoryName}</option>`;
+               filterCategorySelect.innerHTML += `<option value="${c.ExpCategoryID}">${c.CategoryName}</option>`;
             });
          } catch (error) {
             console.error('Load dropdowns error:', error);
@@ -720,7 +719,7 @@ require_once '../includes/sidebar.php';
 
       function initEventListeners() {
          document.getElementById('addExpenseBtn')?.addEventListener('click', () => {
-            if (!Auth.hasPermission('create_expense')) {
+            if (!Auth.hasPermission('expenses.create')) {
                Alerts.error('You do not have permission to request expenses');
                return;
             }
@@ -770,8 +769,8 @@ require_once '../includes/sidebar.php';
                   <td class="fw-medium">${c.CategoryName}</td>
                   <td>
                      <div class="btn-group btn-group-sm">
-                        <button class="btn btn-warning btn-sm" onclick="editCategory(${c.ExpenseCategoryID}, '${c.CategoryName.replace(/'/g, "\\'")}')" title="Edit"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.ExpenseCategoryID}, '${c.CategoryName.replace(/'/g, "\\'")}')" title="Delete"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-warning btn-sm" onclick="editCategory(${c.ExpCategoryID}, '${c.CategoryName.replace(/'/g, "\\'")}')" title="Edit"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.ExpCategoryID}, '${c.CategoryName.replace(/'/g, "\\'")}')" title="Delete"><i class="bi bi-trash"></i></button>
                      </div>
                   </td>
                </tr>
@@ -781,7 +780,7 @@ require_once '../includes/sidebar.php';
             const filterCategorySelect = document.getElementById('filterCategory');
             filterCategorySelect.innerHTML = '<option value="">All Categories</option>';
             categories.forEach(c => {
-               filterCategorySelect.innerHTML += `<option value="${c.ExpenseCategoryID}">${c.CategoryName}</option>`;
+               filterCategorySelect.innerHTML += `<option value="${c.ExpCategoryID}">${c.CategoryName}</option>`;
             });
          } catch (error) {
             console.error('Load categories error:', error);
@@ -871,7 +870,7 @@ require_once '../includes/sidebar.php';
          const categorySelect = document.getElementById('categoryId');
          categorySelect.innerHTML = '<option value="">Select Category</option>';
          State.categoriesData.forEach(c => {
-            categorySelect.innerHTML += `<option value="${c.ExpenseCategoryID}">${c.CategoryName}</option>`;
+            categorySelect.innerHTML += `<option value="${c.ExpCategoryID}">${c.CategoryName}</option>`;
          });
          if (State.categoryChoices) State.categoryChoices.destroy();
          State.categoryChoices = new Choices(categorySelect, {
@@ -1072,7 +1071,7 @@ require_once '../includes/sidebar.php';
       window.printExpense = printExpense;
 
       async function reviewExpense(expenseId) {
-         if (!Auth.hasPermission('approve_expenses')) {
+         if (!Auth.hasPermission('expenses.approve')) {
             Alerts.error('You do not have permission to review expenses');
             return;
          }

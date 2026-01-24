@@ -23,6 +23,18 @@ class Member
     private const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
     /**
+     * Validate Ghana phone number format
+     * @param string $phone Phone number to validate
+     * @return bool True if valid
+     */
+    private static function isValidGhanaPhone(string $phone): bool
+    {
+        // Ghana phone format: +233XXXXXXXXX or 0XXXXXXXXX
+        // Valid prefixes: 02, 03, 05 (MTN, Vodafone, AirtelTigo)
+        return preg_match('/^(\+?233|0)[2-5][0-9]{8}$/', $phone) === 1;
+    }
+
+    /**
      * Upload profile picture for a member
      *
      * @param int $mbrId Member ID
@@ -138,14 +150,30 @@ class Member
             }
 
             // Uniqueness check for username
-            if (!empty($orm->getWhere('userauthentication', ['Username' => $data['username']]))) {
+            if (!empty($orm->getWhere('user_authentication', ['Username' => $data['username']]))) {
                 ResponseHelper::error('Username already exists', 400);
             }
         }
 
         // Email uniqueness check
-        if (!empty($orm->getWhere('churchmember', ['MbrEmailAddress' => $data['email_address']]))) {
+        if (!empty($orm->getWhere('churchmember', ['MbrEmailAddress' => $data['email_address'], 'Deleted' => 0]))) {
             ResponseHelper::error('Email address already in use', 400);
+        }
+
+        // Validate phone numbers if provided
+        if (!empty($data['phone_numbers']) && is_array($data['phone_numbers'])) {
+            foreach ($data['phone_numbers'] as $phoneData) {
+                // Support both simple array and object format
+                if (is_string($phoneData)) {
+                    $phone = trim($phoneData);
+                } else {
+                    $phone = trim($phoneData['number'] ?? $phoneData['PhoneNumber'] ?? '');
+                }
+
+                if ($phone !== '' && !self::isValidGhanaPhone($phone)) {
+                    throw new Exception('Invalid Ghana phone number format: ' . $phone);
+                }
+            }
         }
 
         $orm->beginTransaction();
@@ -265,6 +293,33 @@ class Member
         );
         if (!empty($conflict)) {
             ResponseHelper::error('Email address already in use by another member', 400);
+        }
+
+        // Validate phone numbers if provided
+        if (!empty($data['phone_numbers'])) {
+            $phoneNumbers = $data['phone_numbers'];
+
+            // Handle JSON string if not already decoded
+            if (is_string($phoneNumbers)) {
+                $phoneJson = html_entity_decode($phoneNumbers, ENT_QUOTES, 'UTF-8');
+                $decoded = json_decode($phoneJson, true);
+                $phoneNumbers = is_array($decoded) ? $decoded : [];
+            }
+
+            if (is_array($phoneNumbers)) {
+                foreach ($phoneNumbers as $phoneData) {
+                    // Support both simple array and object format
+                    if (is_string($phoneData)) {
+                        $phone = trim($phoneData);
+                    } else {
+                        $phone = trim($phoneData['number'] ?? $phoneData['PhoneNumber'] ?? '');
+                    }
+
+                    if ($phone !== '' && !self::isValidGhanaPhone($phone)) {
+                        throw new Exception('Invalid Ghana phone number format: ' . $phone);
+                    }
+                }
+            }
         }
 
         $updateData = [
@@ -468,7 +523,8 @@ class Member
             ])
             ->leftJoin('member_phone p', 'c.MbrID', '=', 'p.MbrID')
             ->leftJoin('userauthentication u', 'c.MbrID', '=', 'u.MbrID')
-            ->where('c.MbrMembershipStatus', 'Active')
+            ->leftJoin('membership_status mst', 'c.MbrMembershipStatusID', '=', 'mst.StatusID')
+            ->where('mst.StatusName', 'Active')
             ->where('c.Deleted', 0)
             ->groupBy('c.MbrID')
             ->orderBy('c.MbrRegistrationDate', 'DESC')
@@ -545,10 +601,10 @@ class Member
                 'MbrFamilyName' => 'c.MbrFamilyName',
                 'MbrRegistrationDate' => 'c.MbrRegistrationDate',
                 'MbrEmailAddress' => 'c.MbrEmailAddress',
-                'MbrMembershipStatus' => 'c.MbrMembershipStatus',
+                'MbrMembershipStatus' => 'mst.StatusName',
                 'name' => 'c.MbrFirstName',
                 'email' => 'c.MbrEmailAddress',
-                'status' => 'c.MbrMembershipStatus',
+                'status' => 'mst.StatusName',
                 'date' => 'c.MbrRegistrationDate'
             ];
 
@@ -586,6 +642,7 @@ class Member
         $totalResult = $orm->runQuery(
             "SELECT COUNT(DISTINCT c.MbrID) AS total 
              FROM `churchmember` c
+             LEFT JOIN `membership_status` mst ON c.MbrMembershipStatusID = mst.StatusID
              LEFT JOIN `member_phone` p ON c.MbrID = p.MbrID
              WHERE $whereClause",
             $params
@@ -684,8 +741,9 @@ class Member
             "SELECT 
                 MbrGender,
                 COUNT(*) AS count
-             FROM churchmember 
-             WHERE Deleted = 0 AND MbrMembershipStatus = 'Active'
+             FROM churchmember c
+             JOIN membership_status mst ON c.MbrMembershipStatusID = mst.StatusID
+             WHERE c.Deleted = 0 AND mst.StatusName = 'Active'
              GROUP BY MbrGender"
         );
 

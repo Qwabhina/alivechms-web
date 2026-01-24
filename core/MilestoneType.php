@@ -40,17 +40,10 @@ class MilestoneType
          ResponseHelper::error('Milestone type name already exists', 400);
       }
 
-      // Get max display order
-      $maxOrder = $orm->runQuery("SELECT MAX(DisplayOrder) AS max_order FROM milestone_type")[0]['max_order'] ?? 0;
-
       $typeId = $orm->insert('milestone_type', [
          'TypeName' => $name,
          'Description' => $data['description'] ?? null,
-         'Icon' => $data['icon'] ?? 'trophy',
-         'Color' => $data['color'] ?? 'primary',
-         'DisplayOrder' => $maxOrder + 1,
-         'IsActive' => 1,
-         'CreatedAt' => date('Y-m-d H:i:s')
+         'IsActive' => 1
       ])['id'];
 
       return ['status' => 'success', 'milestone_type_id' => $typeId];
@@ -84,14 +77,6 @@ class MilestoneType
 
       if (isset($data['description'])) {
          $update['Description'] = $data['description'] ?: null;
-      }
-
-      if (!empty($data['icon'])) {
-         $update['Icon'] = $data['icon'];
-      }
-
-      if (!empty($data['color'])) {
-         $update['Color'] = $data['color'];
       }
 
       if (isset($data['is_active'])) {
@@ -155,8 +140,8 @@ class MilestoneType
 
       $where = $activeOnly ? "WHERE IsActive = 1" : "";
       $types = $orm->runQuery(
-         "SELECT MilestoneTypeID, TypeName, Description, Icon, Color, DisplayOrder, IsActive, CreatedAt 
-          FROM milestone_type $where ORDER BY DisplayOrder ASC, TypeName ASC"
+         "SELECT MilestoneTypeID, TypeName, Description, IsActive, CreatedAt 
+          FROM milestone_type $where ORDER BY TypeName ASC"
       );
 
       return ['data' => $types];

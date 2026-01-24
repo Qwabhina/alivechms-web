@@ -115,6 +115,19 @@ class ContributionRoutes extends BaseRoute
                     'search'
                 ]);
 
+                // Validate fiscal year if provided
+                if (!empty($filters['fiscal_year_id'])) {
+                    $orm = new ORM();
+                    $fiscalYear = $orm->getWhere('fiscal_year', [
+                        'FiscalYearID' => $filters['fiscal_year_id'],
+                        'Status' => 'Active'
+                    ]);
+
+                    if (empty($fiscalYear)) {
+                        ResponseHelper::error('Invalid or deleted fiscal year', 400);
+                    }
+                }
+
                 // Get sorting parameters with allowed columns
                 [$sortBy, $sortDir] = self::getSorting(
                     'ContributionDate',
@@ -125,6 +138,13 @@ class ContributionRoutes extends BaseRoute
                 $filters['sort_dir'] = $sortDir;
 
                 $result = Contribution::getAll($page, $limit, $filters);
+
+                // Validate page number
+                $totalPages = ceil($result['pagination']['total'] / $limit);
+                if ($page > $totalPages && $totalPages > 0) {
+                    ResponseHelper::error("Page $page exceeds total pages ($totalPages)", 400);
+                }
+
                 ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
             })(),
 
@@ -151,6 +171,20 @@ class ContributionRoutes extends BaseRoute
                 self::authorize('finances.view');
 
                 $fiscalYearId = !empty($_GET['fiscal_year_id']) ? (int)$_GET['fiscal_year_id'] : null;
+
+                // Validate fiscal year if provided
+                if ($fiscalYearId !== null) {
+                    $orm = new ORM();
+                    $fiscalYear = $orm->getWhere('fiscal_year', [
+                        'FiscalYearID' => $fiscalYearId,
+                        'Status' => 'Active'
+                    ]);
+
+                    if (empty($fiscalYear)) {
+                        ResponseHelper::error('Invalid or deleted fiscal year', 400);
+                    }
+                }
+
                 $result = Contribution::getStats($fiscalYearId);
                 ResponseHelper::success($result);
             })(),

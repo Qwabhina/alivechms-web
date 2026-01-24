@@ -24,6 +24,33 @@ declare(strict_types=1);
 class Contribution
 {
    /**
+    * Validate and format amount
+    * @param mixed $amount Amount to validate
+    * @param string $fieldName Field name for error message
+    * @return float Validated amount
+    * @throws Exception If invalid
+    */
+   private static function validateAmount($amount, string $fieldName = 'Amount'): float
+   {
+      if (!is_numeric($amount)) {
+         throw new Exception("$fieldName must be a valid number");
+      }
+
+      $amount = (float)$amount;
+
+      if ($amount < 0) {
+         throw new Exception("$fieldName cannot be negative");
+      }
+
+      if ($amount > 999999999.99) {
+         throw new Exception("$fieldName is too large (maximum: 999,999,999.99)");
+      }
+
+      // Round to 2 decimal places
+      return round($amount, 2);
+   }
+
+   /**
     * Create a new contribution record
     *
     * @param array $data Contribution payload
@@ -44,7 +71,8 @@ class Contribution
          'description'          => 'max:500|nullable',
       ]);
 
-      $amount           = (float)$data['amount'];
+      // Validate and format amount
+      $amount           = self::validateAmount($data['amount'], 'Contribution amount');
       $contributionDate = $data['date'];
       $memberId         = (int)$data['member_id'];
       $typeId           = (int)$data['contribution_type_id'];
@@ -65,7 +93,7 @@ class Contribution
              JOIN membership_status ms ON c.MbrMembershipStatusID = ms.StatusID 
              WHERE c.MbrID = :mid AND c.Deleted = 0 AND ms.StatusName = 'Active') AS member_ok,
             (SELECT COUNT(*) FROM contribution_type WHERE ContributionTypeID = :tid AND IsActive = 1) AS type_ok,
-            (SELECT COUNT(*) FROM payment_method WHERE MethodID = :pmid AND IsActive = 1) AS payment_ok";
+            (SELECT COUNT(*) FROM payment_method WHERE PaymentMethodID = :pmid AND IsActive = 1) AS payment_ok";
 
       $validationParams = [
          ':mid' => $memberId,
@@ -98,7 +126,7 @@ class Contribution
             'PaymentMethodID'          => $paymentMethodId,
             'MbrID'                    => $memberId,
             'FiscalYearID'             => $fiscalYearId,
-            'ContributionDescription'  => $data['description'] ?? null,
+            'Notes'  => $data['description'] ?? null,
             'Deleted'                  => 0,
             'RecordedBy'               => Auth::getCurrentUserId(),
             'RecordedAt'               => date('Y-m-d H:i:s')
@@ -142,8 +170,8 @@ class Contribution
 
       $update = [];
 
-      if (isset($data['amount']) && (float)$data['amount'] > 0) {
-         $update['ContributionAmount'] = (float)$data['amount'];
+      if (isset($data['amount'])) {
+         $update['ContributionAmount'] = self::validateAmount($data['amount'], 'Contribution amount');
       }
       if (!empty($data['date'])) {
          if ($data['date'] > date('Y-m-d')) {
@@ -161,7 +189,7 @@ class Contribution
          $update['FiscalYearID'] = !empty($data['fiscal_year_id']) ? (int)$data['fiscal_year_id'] : null;
       }
       if (isset($data['description'])) {
-         $update['ContributionDescription'] = $data['description'];
+         $update['Notes'] = $data['description'];
       }
 
       if (!empty($update)) {
@@ -230,7 +258,7 @@ class Contribution
             joins: [
             ['table' => 'churchmember m',       'on' => 'c.MbrID = m.MbrID'],
             ['table' => 'contribution_type ct', 'on' => 'c.ContributionTypeID = ct.ContributionTypeID'],
-            ['table' => 'payment_method pm',    'on' => 'c.PaymentMethodID = pm.MethodID'],
+            ['table' => 'payment_method pm',    'on' => 'c.PaymentMethodID = pm.PaymentMethodID'],
             ['table' => 'fiscal_year fy',       'on' => 'c.FiscalYearID = fy.FiscalYearID', 'type' => 'LEFT']
             ],
             fields: [
@@ -238,7 +266,7 @@ class Contribution
             'm.MbrFirstName',
             'm.MbrFamilyName',
             'ct.ContributionTypeName',
-            'pm.MethodName as PaymentMethodName',
+            'pm.PaymentMethodName as PaymentMethodName',
             'fy.FiscalYearName'
             ],
          conditions: ['c.ContributionID' => ':id', 'c.Deleted' => 0],
@@ -265,7 +293,9 @@ class Contribution
       $orm    = new ORM();
       $offset = ($page - 1) * $limit;
 
-      $conditions = ['c.Deleted' => 0];
+      // Handle include_deleted filter
+      $includeDeleted = !empty($filters['include_deleted']) && $filters['include_deleted'] === '1';
+      $conditions = $includeDeleted ? [] : ['c.Deleted' => 0];
       $params     = [];
 
       if (!empty($filters['contribution_type_id'])) {
@@ -317,22 +347,23 @@ class Contribution
          joins: [
             ['table' => 'churchmember m',       'on' => 'c.MbrID = m.MbrID'],
             ['table' => 'contribution_type ct', 'on' => 'c.ContributionTypeID = ct.ContributionTypeID'],
-            ['table' => 'payment_method pm',    'on' => 'c.PaymentMethodID = pm.MethodID'],
+            ['table' => 'payment_method pm',    'on' => 'c.PaymentMethodID = pm.PaymentMethodID'],
             ['table' => 'fiscal_year fy',       'on' => 'c.FiscalYearID = fy.FiscalYearID', 'type' => 'LEFT']
          ],
          fields: [
             'c.ContributionID',
             'c.ContributionAmount',
             'c.ContributionDate',
-            'c.ContributionDescription',
+            'c.Notes',
             'c.MbrID',
             'c.ContributionTypeID',
             'c.PaymentMethodID',
             'c.FiscalYearID',
+            'c.Deleted',
             'm.MbrFirstName',
             'm.MbrFamilyName',
             'ct.ContributionTypeName',
-            'pm.MethodName as PaymentMethodName',
+            'pm.PaymentMethodName as PaymentMethodName',
             'fy.FiscalYearName'
          ],
          conditions: $conditions,
@@ -344,7 +375,7 @@ class Contribution
 
       // FIXED: Simplified total count query logic
       // Build WHERE clause for count query (excluding pagination)
-      $whereConditions = ['c.Deleted = 0'];
+      $whereConditions = $includeDeleted ? [] : ['c.Deleted = 0'];
       $countParams = [];
 
       if (!empty($filters['contribution_type_id'])) {
@@ -564,14 +595,14 @@ class Contribution
       // Contributions by payment method (fiscal year)
       $byPaymentMethod = $orm->runQuery(
          "SELECT 
-            pm.MethodID,
-            pm.MethodName,
+            pm.PaymentMethodID,
+            pm.PaymentMethodName,
             COALESCE(SUM(c.ContributionAmount), 0) AS total,
             COUNT(*) AS count
          FROM contribution c
-         JOIN payment_method pm ON c.PaymentMethodID = pm.MethodID
+         JOIN payment_method pm ON c.PaymentMethodID = pm.PaymentMethodID
          WHERE c.Deleted = 0 $fyCondition
-         GROUP BY pm.MethodID, pm.MethodName
+         GROUP BY pm.PaymentMethodID, pm.PaymentMethodName
          ORDER BY total DESC",
          $fyParams
       );
@@ -659,7 +690,7 @@ class Contribution
             m.MbrEmailAddress,
             m.MbrProfilePicture,
             ct.ContributionTypeName,
-            pm.MethodName as PaymentMethodName,
+            pm.PaymentMethodName as PaymentMethodName,
             fy.FiscalYearName,
             b.BranchName,
             b.BranchAddress,
@@ -668,7 +699,7 @@ class Contribution
          FROM contribution c
          JOIN churchmember m ON c.MbrID = m.MbrID
          JOIN contribution_type ct ON c.ContributionTypeID = ct.ContributionTypeID
-         JOIN payment_method pm ON c.PaymentMethodID = pm.MethodID
+         JOIN payment_method pm ON c.PaymentMethodID = pm.PaymentMethodID
          LEFT JOIN fiscal_year fy ON c.FiscalYearID = fy.FiscalYearID
          LEFT JOIN branch b ON m.BranchID = b.BranchID
          WHERE c.ContributionID = :id AND c.Deleted = 0",
@@ -692,7 +723,7 @@ class Contribution
          'type' => $contribution['ContributionTypeName'],
          'payment_method' => $contribution['PaymentMethodName'],
          'fiscal_year' => $contribution['FiscalYearName'],
-         'description' => $contribution['ContributionDescription'],
+         'description' => $contribution['Notes'],
          'recorded_at' => $contribution['RecordedAt'],
          'member' => [
             'id' => $contribution['MbrID'],
@@ -702,8 +733,8 @@ class Contribution
          'church' => [
             'name' => $contribution['BranchName'] ?? 'Church Name',
             'address' => $contribution['BranchAddress'] ?? '',
-            'phone' => $contribution['BranchPhone'] ?? '',
-            'email' => $contribution['BranchEmail'] ?? ''
+            'phone' => $contribution['BranchPhoneNumber'] ?? '',
+            'email' => $contribution['BranchEmailAddress'] ?? ''
          ],
          'generated_at' => date('Y-m-d H:i:s')
       ];
@@ -757,12 +788,12 @@ class Contribution
             c.ContributionID,
             c.ContributionAmount,
             c.ContributionDate,
-            c.ContributionDescription,
+            c.Notes,
             ct.ContributionTypeName,
-            pm.MethodName as PaymentMethodName
+            pm.PaymentMethodName as PaymentMethodName
          FROM contribution c
          JOIN contribution_type ct ON c.ContributionTypeID = ct.ContributionTypeID
-         JOIN payment_method pm ON c.PaymentMethodID = pm.MethodID
+         JOIN payment_method pm ON c.PaymentMethodID = pm.PaymentMethodID
          WHERE c.MbrID = :member_id AND c.Deleted = 0 $fyCondition
          ORDER BY c.ContributionDate DESC",
          array_merge([':member_id' => $memberId], $fyParams)
@@ -804,8 +835,8 @@ class Contribution
          'church' => [
             'name' => $member['BranchName'] ?? 'Church Name',
             'address' => $member['BranchAddress'] ?? '',
-            'phone' => $member['BranchPhone'] ?? '',
-            'email' => $member['BranchEmail'] ?? ''
+            'phone' => $member['BranchPhoneNumber'] ?? '',
+            'email' => $member['BranchEmailAddress'] ?? ''
          ],
          'contributions' => $contributions,
          'totals_by_type' => $totalsByType,
@@ -839,7 +870,7 @@ class Contribution
    {
       $orm = new ORM();
       return $orm->runQuery(
-         "SELECT MethodID, MethodName, DisplayOrder, IsActive 
+         "SELECT PaymentMethodID, PaymentMethodName, DisplayOrder, IsActive 
           FROM payment_method 
           WHERE IsActive = 1 
           ORDER BY DisplayOrder"

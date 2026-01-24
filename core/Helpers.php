@@ -473,6 +473,30 @@ class Helpers
     }
 
     /**
+     * Validate date format (YYYY-MM-DD)
+     * 
+     * @param string $date Date to validate
+     * @param string $fieldName Field name for error message
+     * @return string Validated date
+     * @throws Exception If invalid
+     */
+    public static function validateDate(string $date, string $fieldName = 'Date'): string
+    {
+        // Check format
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            throw new Exception("$fieldName must be in YYYY-MM-DD format");
+        }
+
+        // Check if valid date
+        $d = DateTime::createFromFormat('Y-m-d', $date);
+        if (!$d || $d->format('Y-m-d') !== $date) {
+            throw new Exception("$fieldName is not a valid date");
+        }
+
+        return $date;
+    }
+
+    /**
      * Log error messages with context
      * 
      * @param string $message Error message

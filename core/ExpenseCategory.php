@@ -49,7 +49,7 @@ class ExpenseCategory
     {
         $orm = new ORM();
 
-        $category = $orm->getWhere('expense_category', ['ExpenseCategoryID' => $categoryId, 'IsActive' => 1]);
+        $category = $orm->getWhere('expense_category', ['ExpCategoryID' => $categoryId, 'IsActive' => 1]);
         if (empty($category)) {
             ResponseHelper::error('Category not found', 404);
         }
@@ -62,8 +62,8 @@ class ExpenseCategory
         Helpers::validateInput(['name' => $name], ['name' => 'required|max:50']);
 
         $existing = $orm->runQuery(
-            "SELECT ExpenseCategoryID FROM expense_category 
-             WHERE CategoryName = :name AND ExpenseCategoryID != :id AND IsActive = 1",
+            "SELECT ExpCategoryID FROM expense_category 
+             WHERE CategoryName = :name AND ExpCategoryID != :id AND IsActive = 1",
             [':name' => $name, ':id' => $categoryId]
         );
 
@@ -76,7 +76,7 @@ class ExpenseCategory
             $update['CategoryDescription'] = $data['description'];
         }
 
-        $orm->update('expense_category', $update, ['ExpenseCategoryID' => $categoryId]);
+        $orm->update('expense_category', $update, ['ExpCategoryID' => $categoryId]);
         return ['status' => 'success', 'category_id' => $categoryId];
     }
 
@@ -87,17 +87,17 @@ class ExpenseCategory
     {
         $orm = new ORM();
 
-        $category = $orm->getWhere('expense_category', ['ExpenseCategoryID' => $categoryId, 'IsActive' => 1]);
+        $category = $orm->getWhere('expense_category', ['ExpCategoryID' => $categoryId, 'IsActive' => 1]);
         if (empty($category)) {
             ResponseHelper::error('Category not found', 404);
         }
 
-        if (!empty($orm->getWhere('expense', ['ExpenseCategoryID' => $categoryId]))) {
+        if (!empty($orm->getWhere('expense', ['ExpCategoryID' => $categoryId]))) {
             ResponseHelper::error('Cannot delete category used in expenses', 400);
         }
 
         // Soft delete
-        $orm->update('expense_category', ['IsActive' => 0], ['ExpenseCategoryID' => $categoryId]);
+        $orm->update('expense_category', ['IsActive' => 0], ['ExpCategoryID' => $categoryId]);
         return ['status' => 'success'];
     }
 
@@ -108,7 +108,7 @@ class ExpenseCategory
     {
         $orm = new ORM();
 
-        $category = $orm->getWhere('expense_category', ['ExpenseCategoryID' => $categoryId, 'IsActive' => 1]);
+        $category = $orm->getWhere('expense_category', ['ExpCategoryID' => $categoryId, 'IsActive' => 1]);
         if (empty($category)) {
             ResponseHelper::error('Category not found', 404);
         }
@@ -123,7 +123,7 @@ class ExpenseCategory
     {
         $orm = new ORM();
         $categories = $orm->runQuery(
-            "SELECT ExpenseCategoryID, CategoryName, CategoryDescription, IsActive 
+            "SELECT ExpCategoryID, CategoryName, CategoryDescription, IsActive 
              FROM expense_category 
              WHERE IsActive = 1
              ORDER BY CategoryName ASC"

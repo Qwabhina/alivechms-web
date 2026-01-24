@@ -103,6 +103,19 @@ class ExpenseRoutes extends BaseRoute
                'search'
             ]);
 
+            // Validate fiscal year if provided
+            if (!empty($filters['fiscal_year_id'])) {
+               $orm = new ORM();
+               $fiscalYear = $orm->getWhere('fiscal_year', [
+                  'FiscalYearID' => $filters['fiscal_year_id'],
+                  'Deleted' => 0
+               ]);
+
+               if (empty($fiscalYear)) {
+                  ResponseHelper::error('Invalid or deleted fiscal year', 400);
+               }
+            }
+
             // Get sorting parameters with allowed columns
             [$sortBy, $sortDir] = self::getSorting(
                'ExpenseDate',
@@ -113,6 +126,13 @@ class ExpenseRoutes extends BaseRoute
             $filters['sort_dir'] = $sortDir;
 
             $result = Expense::getAll($page, $limit, $filters);
+
+            // Validate page number
+            $totalPages = ceil($result['pagination']['total'] / $limit);
+            if ($page > $totalPages && $totalPages > 0) {
+               ResponseHelper::error("Page $page exceeds total pages ($totalPages)", 400);
+            }
+
             ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
          })(),
 
@@ -122,6 +142,20 @@ class ExpenseRoutes extends BaseRoute
             self::authorize('expenses.view');
 
             $fiscalYearId = !empty($_GET['fiscal_year_id']) ? (int)$_GET['fiscal_year_id'] : null;
+
+            // Validate fiscal year if provided
+            if ($fiscalYearId !== null) {
+               $orm = new ORM();
+               $fiscalYear = $orm->getWhere('fiscal_year', [
+                  'FiscalYearID' => $fiscalYearId,
+                  'Deleted' => 0
+               ]);
+
+               if (empty($fiscalYear)) {
+                  ResponseHelper::error('Invalid or deleted fiscal year', 400);
+               }
+            }
+
             $result = Expense::getStats($fiscalYearId);
             ResponseHelper::success($result);
          })(),

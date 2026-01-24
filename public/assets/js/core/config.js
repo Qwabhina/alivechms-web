@@ -7,8 +7,7 @@
 
 const Config = {
     // API Configuration
-   //  API_BASE_URL: window.location.origin + '/alivechms-backend',
-      API_BASE_URL: 'http://www.onechurch.com',
+    API_BASE_URL: window.location.origin,
     API_TIMEOUT: 30000, // 30 seconds
     
     // Authentication
@@ -57,7 +56,22 @@ const Config = {
     // Church Specific
     GHANA_PHONE_REGEX: /^(\+?233|0)[2-5][0-9]{8}$/,
     CURRENCY: 'GHS',
-    CURRENCY_SYMBOL: '₵',
+    
+    /**
+     * Get currency symbol from settings or fallback to default
+     * @returns {string} Currency symbol
+     */
+    getCurrencySymbol: function() {
+        return this.getSetting('currency_symbol', '₵');
+    },
+    
+    /**
+     * Get currency code from settings or fallback to default
+     * @returns {string} Currency code
+     */
+    getCurrencyCode: function() {
+        return this.getSetting('currency_code', 'GHS');
+    },
     
     // Permissions (matches backend database)
     // These are dynamically loaded from the backend, but we keep constants for code completion
@@ -296,7 +310,7 @@ const Config = {
     // Format currency
     formatCurrency: function(amount) {
         const formatted = parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
-        return `${this.SETTINGS.currency_symbol} ${formatted}`;
+        return `${this.getCurrencySymbol()} ${formatted}`;
     },
     
     /**

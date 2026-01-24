@@ -31,12 +31,26 @@ class Volunteer
     *
     * These roles are reusable across all events (e.g., "Sound Engineer", "Greeter").
     *
-    * @return array List of volunteer roles
+    * @return array List of volunteer roles with member counts
     */
    public static function getRoles(): array
    {
       $orm = new ORM();
-      return $orm->getAll('volunteer_role');
+
+      // Get roles with member counts
+      $roles = $orm->runQuery(
+         "SELECT 
+            vr.*,
+            (SELECT COUNT(*) 
+             FROM member_volunteer_role mvr 
+             WHERE mvr.VolunteerRoleID = vr.VolunteerRoleID 
+             AND mvr.IsActive = 1) AS MemberCount
+          FROM volunteer_role vr
+          WHERE vr.IsActive = 1
+          ORDER BY vr.RoleName ASC"
+      );
+
+      return $roles;
    }
 
    /**
@@ -113,7 +127,7 @@ class Volunteer
             $member = $orm->runQuery(
                "SELECT cm.MbrID 
                 FROM churchmember cm
-                JOIN membership_status ms ON cm.MembershipStatusID = ms.MembershipStatusID
+                JOIN membership_status ms ON cm.MbrMembershipStatusID = ms.StatusID
                 WHERE cm.MbrID = :id AND ms.StatusName = 'Active' AND cm.Deleted = 0",
                [':id' => $memberId]
             );
@@ -304,5 +318,188 @@ class Volunteer
 
       Helpers::logError("Volunteer removed from assignment ID $assignmentId");
       return ['status' => 'success', 'message' => 'Volunteer removed from event'];
+   }
+
+   /**
+    * Assign a volunteer role to a member
+    *
+    * @param int   $memberId Member ID
+    * @param array $data     Assignment data (role_id, start_date, end_date, notes)
+    * @return array{status:string, assignment_id:int} Success response
+    */
+   public static function assignRoleToMember(int $memberId, array $data): array
+   {
+      $orm = new ORM();
+
+      Helpers::validateInput($data, [
+         'role_id'    => 'required|numeric',
+         'start_date' => 'date|nullable',
+         'end_date'   => 'date|nullable',
+         'notes'      => 'max:500|nullable'
+      ]);
+
+      $roleId = (int)$data['role_id'];
+
+      // Validate member
+      $member = $orm->selectWithJoin(
+         baseTable: 'churchmember m',
+         joins: [['table' => 'membership_status ms', 'on' => 'm.MbrMembershipStatusID = ms.StatusID']],
+         fields: ['m.MbrID', 'ms.StatusName'],
+         conditions: ['m.MbrID' => ':member_id', 'm.Deleted' => 0],
+         params: [':member_id' => $memberId]
+      );
+
+      if (empty($member) || $member[0]['StatusName'] !== 'Active') {
+         ResponseHelper::error('Invalid or inactive member', 400);
+      }
+
+      // Validate role
+      $role = $orm->getWhere('volunteer_role', ['VolunteerRoleID' => $roleId, 'IsActive' => 1]);
+      if (empty($role)) {
+         ResponseHelper::error('Invalid or inactive volunteer role', 400);
+      }
+
+      // Check if already assigned and active
+      $existing = $orm->getWhere('member_volunteer_role', [
+         'MbrID' => $memberId,
+         'VolunteerRoleID' => $roleId,
+         'IsActive' => 1
+      ]);
+
+      if (!empty($existing)) {
+         ResponseHelper::error('Member already has this volunteer role assigned', 400);
+      }
+
+      $assignedBy = Auth::getCurrentUserId();
+
+      $assignmentId = $orm->insert('member_volunteer_role', [
+         'MbrID'            => $memberId,
+         'VolunteerRoleID'  => $roleId,
+         'StartDate'        => $data['start_date'] ?? null,
+         'EndDate'          => $data['end_date'] ?? null,
+         'AssignedBy'       => $assignedBy,
+         'Notes'            => $data['notes'] ?? null,
+         'IsActive'         => 1,
+         'AssignedAt'       => date('Y-m-d H:i:s')
+      ])['id'];
+
+      Helpers::logError("Volunteer role $roleId assigned to Member $memberId");
+      return ['status' => 'success', 'assignment_id' => $assignmentId];
+   }
+
+   /**
+    * Remove a volunteer role from a member
+    *
+    * @param int $assignmentId Member volunteer role assignment ID
+    * @return array{status:string, message:string} Success response
+    */
+   public static function removeRoleFromMember(int $assignmentId): array
+   {
+      $orm = new ORM();
+
+      $assignment = $orm->getWhere('member_volunteer_role', ['MemberVolunteerRoleID' => $assignmentId])[0] ?? null;
+      if (!$assignment) {
+         ResponseHelper::error('Assignment not found', 404);
+      }
+
+      // Soft delete by setting IsActive to 0
+      $orm->update('member_volunteer_role', ['IsActive' => 0], ['MemberVolunteerRoleID' => $assignmentId]);
+
+      Helpers::logError("Volunteer role removed from member: Assignment ID $assignmentId");
+      return ['status' => 'success', 'message' => 'Volunteer role removed from member'];
+   }
+
+   /**
+    * Get all volunteer roles assigned to a member
+    *
+    * @param int $memberId Member ID
+    * @return array List of assigned volunteer roles
+    */
+   public static function getMemberVolunteerRoles(int $memberId): array
+   {
+      $orm = new ORM();
+
+      $roles = $orm->selectWithJoin(
+         baseTable: 'member_volunteer_role mvr',
+         joins: [
+            ['table' => 'volunteer_role vr', 'on' => 'mvr.VolunteerRoleID = vr.VolunteerRoleID'],
+            ['table' => 'churchmember a', 'on' => 'mvr.AssignedBy = a.MbrID', 'type' => 'LEFT']
+         ],
+         fields: [
+            'mvr.MemberVolunteerRoleID',
+            'mvr.StartDate',
+            'mvr.EndDate',
+            'mvr.IsActive',
+            'mvr.AssignedAt',
+            'mvr.Notes',
+            'vr.VolunteerRoleID',
+            'vr.RoleName',
+            'vr.Description AS RoleDescription',
+            'a.MbrFirstName AS AssignedByFirstName',
+            'a.MbrFamilyName AS AssignedByFamilyName'
+         ],
+         conditions: ['mvr.MbrID' => ':member_id', 'mvr.IsActive' => 1],
+         params: [':member_id' => $memberId],
+         orderBy: ['mvr.AssignedAt' => 'DESC']
+      );
+
+      return $roles;
+   }
+
+   /**
+    * Get all members with a specific volunteer role
+    *
+    * @param int $roleId Volunteer role ID
+    * @param int $page   Page number
+    * @param int $limit  Items per page
+    * @return array{data:array, pagination:array} Paginated result
+    */
+   public static function getMembersByRole(int $roleId, int $page = 1, int $limit = 50): array
+   {
+      $orm = new ORM();
+      $offset = ($page - 1) * $limit;
+
+      $members = $orm->selectWithJoin(
+         baseTable: 'member_volunteer_role mvr',
+         joins: [
+            ['table' => 'churchmember m', 'on' => 'mvr.MbrID = m.MbrID'],
+            ['table' => 'volunteer_role vr', 'on' => 'mvr.VolunteerRoleID = vr.VolunteerRoleID']
+         ],
+         fields: [
+            'mvr.MemberVolunteerRoleID',
+            'mvr.StartDate',
+            'mvr.EndDate',
+            'mvr.AssignedAt',
+            'm.MbrID',
+            'm.MbrFirstName',
+            'm.MbrFamilyName',
+            'm.MbrEmailAddress',
+            'm.MbrProfilePicture',
+            'vr.RoleName'
+         ],
+         conditions: ['mvr.VolunteerRoleID' => ':role_id', 'mvr.IsActive' => 1, 'm.Deleted' => 0],
+         params: [':role_id' => $roleId],
+         orderBy: ['mvr.AssignedAt' => 'DESC'],
+         limit: $limit,
+         offset: $offset
+      );
+
+      $total = $orm->runQuery(
+         "SELECT COUNT(*) AS total 
+          FROM member_volunteer_role mvr
+          JOIN churchmember m ON mvr.MbrID = m.MbrID
+          WHERE mvr.VolunteerRoleID = :role_id AND mvr.IsActive = 1 AND m.Deleted = 0",
+         [':role_id' => $roleId]
+      )[0]['total'];
+
+      return [
+         'data' => $members,
+         'pagination' => [
+            'page'   => $page,
+            'limit'  => $limit,
+            'total'  => (int)$total,
+            'pages'  => (int)ceil($total / $limit)
+         ]
+      ];
    }
 }

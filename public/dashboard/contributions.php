@@ -121,6 +121,14 @@ require_once '../includes/sidebar.php';
                      <input type="date" class="form-control form-control-sm" id="filterEndDate">
                   </div>
                   <div class="col-md-2">
+                     <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" id="showDeletedCheckbox">
+                        <label class="form-check-label small" for="showDeletedCheckbox">
+                           Show Deleted
+                        </label>
+                     </div>
+                  </div>
+                  <div class="col-md-2">
                      <button class="btn btn-primary btn-sm w-100" id="applyFiltersBtn">
                         <i class="bi bi-search me-1"></i>Filter
                      </button>
@@ -512,16 +520,28 @@ require_once '../includes/sidebar.php';
                {
                   key: 'ContributionID',
                   title: 'Actions',
-                  width: '150px',
+                  width: '180px',
                   sortable: false,
                   exportable: false,
-                  render: (value) => `
-                  <div class="btn-group btn-group-sm">
-                     <button class="btn btn-primary btn-sm" onclick="viewContribution(${value})" title="View"><i class="bi bi-eye"></i></button>
-                     <button class="btn btn-success btn-sm" onclick="showReceipt(${value})" title="Receipt"><i class="bi bi-receipt"></i></button>
-                     <button class="btn btn-warning btn-sm" onclick="editContribution(${value})" title="Edit"><i class="bi bi-pencil"></i></button>
-                     <button class="btn btn-danger btn-sm" onclick="deleteContribution(${value})" title="Delete"><i class="bi bi-trash"></i></button>
-                  </div>`
+                  render: (value, row) => {
+                     const isDeleted = row.Deleted == 1;
+                     if (isDeleted) {
+                        return `
+                        <div class="btn-group btn-group-sm">
+                           <button class="btn btn-success btn-sm" onclick="restoreContribution(${value})" title="Restore">
+                              <i class="bi bi-arrow-counterclockwise"></i> Restore
+                           </button>
+                           <span class="badge bg-danger ms-2">Deleted</span>
+                        </div>`;
+                     }
+                     return `
+                     <div class="btn-group btn-group-sm">
+                        <button class="btn btn-primary btn-sm" onclick="viewContribution(${value})" title="View"><i class="bi bi-eye"></i></button>
+                        <button class="btn btn-success btn-sm" onclick="showReceipt(${value})" title="Receipt"><i class="bi bi-receipt"></i></button>
+                        <button class="btn btn-warning btn-sm" onclick="editContribution(${value})" title="Edit"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteContribution(${value})" title="Delete"><i class="bi bi-trash"></i></button>
+                     </div>`;
+                  }
                }
             ],
             onDataLoaded: (data) => {
@@ -1031,7 +1051,7 @@ require_once '../includes/sidebar.php';
             document.getElementById('contributionId').value = c.ContributionID;
             document.getElementById('amount').value = c.ContributionAmount;
             document.getElementById('contributionDate').value = c.ContributionDate;
-            document.getElementById('description').value = c.ContributionDescription || '';
+            document.getElementById('description').value = c.Notes || '';
 
             // Set Choices.js values
             if (State.memberChoices && c.MbrID) {
@@ -1133,10 +1153,10 @@ require_once '../includes/sidebar.php';
                         <div>${c.FiscalYearName || '-'}</div>
                      </div>
                   </div>
-                  ${c.ContributionDescription ? `
+                  ${c.Notes ? `
                   <div class="mt-3 pt-3 border-top">
                      <div class="text-muted small text-uppercase">Description</div>
-                     <div>${c.ContributionDescription}</div>
+                     <div>${c.Notes}</div>
                   </div>
                   ` : ''}
                </div>
@@ -1436,7 +1456,7 @@ require_once '../includes/sidebar.php';
 
          const confirmed = await Alerts.confirm({
             title: 'Delete Contribution',
-            text: 'Are you sure you want to delete this contribution record?',
+            text: 'Are you sure you want to delete this contribution record? You can restore it later if needed.',
             icon: 'warning',
             confirmButtonText: 'Yes, delete',
             confirmButtonColor: '#dc3545'
@@ -1448,7 +1468,7 @@ require_once '../includes/sidebar.php';
             Alerts.loading('Deleting contribution...');
             await api.delete(`contribution/delete/${contributionId}`);
             Alerts.closeLoading();
-            Alerts.success('Contribution deleted');
+            Alerts.success('Contribution deleted successfully. You can restore it from the deleted items view.');
             QMGridHelper.reload(State.contributionsTable);
             loadStats();
          } catch (error) {
@@ -1459,11 +1479,43 @@ require_once '../includes/sidebar.php';
       }
       window.deleteContribution = deleteContribution;
 
+      async function restoreContribution(contributionId) {
+         if (!Auth.hasPermission('delete_contribution')) {
+            Alerts.error('You do not have permission to restore contributions');
+            return;
+         }
+
+         const confirmed = await Alerts.confirm({
+            title: 'Restore Contribution',
+            text: 'Are you sure you want to restore this contribution record?',
+            icon: 'question',
+            confirmButtonText: 'Yes, restore',
+            confirmButtonColor: '#198754'
+         });
+
+         if (!confirmed) return;
+
+         try {
+            Alerts.loading('Restoring contribution...');
+            await api.post(`contribution/restore/${contributionId}`);
+            Alerts.closeLoading();
+            Alerts.success('Contribution restored successfully');
+            QMGridHelper.reload(State.contributionsTable);
+            loadStats();
+         } catch (error) {
+            Alerts.closeLoading();
+            console.error('Restore contribution error:', error);
+            Alerts.handleApiError(error);
+         }
+      }
+      window.restoreContribution = restoreContribution;
+
       function applyFilters() {
          const filters = {
             contribution_type_id: document.getElementById('filterType').value,
             start_date: document.getElementById('filterStartDate').value,
-            end_date: document.getElementById('filterEndDate').value
+            end_date: document.getElementById('filterEndDate').value,
+            include_deleted: document.getElementById('showDeletedCheckbox').checked ? '1' : '0'
          };
          Object.keys(filters).forEach(k => !filters[k] && delete filters[k]);
          initTable(filters);
@@ -1473,6 +1525,7 @@ require_once '../includes/sidebar.php';
          document.getElementById('filterType').value = '';
          document.getElementById('filterStartDate').value = '';
          document.getElementById('filterEndDate').value = '';
+         document.getElementById('showDeletedCheckbox').checked = false;
          initTable();
       }
 

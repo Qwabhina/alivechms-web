@@ -18,6 +18,27 @@ class API {
         this.timeout = Config.API_TIMEOUT;
         this.refreshing = false;
         this.refreshSubscribers = [];
+        this.isOnline = navigator.onLine;
+        
+        // Monitor network status
+        this.setupNetworkMonitoring();
+    }
+    
+    /**
+     * Setup network status monitoring
+     */
+    setupNetworkMonitoring() {
+        window.addEventListener('online', () => {
+            this.isOnline = true;
+            Config.log('Network: Back online');
+            Alerts.success('Connection restored');
+        });
+        
+        window.addEventListener('offline', () => {
+            this.isOnline = false;
+            Config.warn('Network: Offline');
+            Alerts.warning('No internet connection. Changes will be saved when connection is restored.');
+        });
     }
     
     /**
@@ -58,7 +79,9 @@ class API {
      * @returns {Promise} Response data
      */
     async request(endpoint, options = {}) {
-        const url = `${this.baseURL}/${endpoint}`;
+        // Remove leading slash from endpoint if present to avoid double slashes
+        const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+        const url = `${this.baseURL}/${cleanEndpoint}`;
         const method = options.method || 'GET';
         
         const headers = this.getHeaders(method);
@@ -99,10 +122,21 @@ class API {
             if (response.status === 403) {
                 const data = await response.clone().json().catch(() => ({}));
                 if (data.message && data.message.includes('CSRF')) {
-                    Config.log('CSRF token invalid, refreshing...');
+                    // Prevent infinite loop with retry counter
+                    const retryCount = options._csrfRetry || 0;
+                    if (retryCount >= 3) {
+                        Config.error('CSRF token refresh failed after 3 attempts');
+                        throw new APIError('CSRF token refresh failed. Please reload the page.', 403);
+                    }
+                    
+                    Config.log(`CSRF token refresh attempt ${retryCount + 1}/3`);
                     await this.refreshCsrfToken();
-                    // Retry request with new CSRF token
-                    return await this.request(endpoint, options);
+                    
+                    // Retry with incremented counter
+                    return await this.request(endpoint, { 
+                        ...options, 
+                        _csrfRetry: retryCount + 1 
+                    });
                 }
             }
             
@@ -138,17 +172,30 @@ class API {
             clearTimeout(timeoutId);
             
             if (error.name === 'AbortError') {
-                throw new APIError('Request timeout', 408);
+                throw new APIError(
+                    'Request timeout. The server took too long to respond. Please try again.',
+                    408,
+                    { type: 'timeout', endpoint }
+                );
             }
             
             if (error instanceof APIError) {
                 throw error;
             }
             
+            // Network error - check if online
+            if (!navigator.onLine) {
+                throw new APIError(
+                    'No internet connection. Please check your network and try again.',
+                    0,
+                    { type: 'offline', endpoint }
+                );
+            }
+            
             throw new APIError(
-                'Network error. Please check your internet connection.',
+                'Network error. Please check your internet connection and try again.',
                 0,
-                error
+                { type: 'network', endpoint, originalError: error }
             );
         }
     }

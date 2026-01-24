@@ -22,6 +22,7 @@
 <script src="../assets/js/core/api.js"></script>
 <script src="../assets/js/core/auth.js"></script>
 <script src="../assets/js/core/alerts.js"></script>
+<script src="../assets/js/core/optimistic.js"></script>
 <script src="../assets/js/core/components.js"></script>
 
 <!-- Layout Script -->

@@ -43,10 +43,7 @@ class FamilyRoutes extends BaseRoute
                 $payload = self::getPayload([
                     'family_name' => 'required|max:100',
                     'head_id'     => 'numeric|nullable',
-                    'branch_id'   => 'required|numeric',
-                    'address'     => 'max:255|nullable',
-                    'phone'       => 'max:20|nullable',
-                    'email'       => 'email|nullable'
+                    'branch_id'   => 'required|numeric'
                 ]);
 
                 $result = self::withTransaction(function () use ($payload) {
@@ -65,10 +62,7 @@ class FamilyRoutes extends BaseRoute
                 $payload = self::getPayload([
                     'family_name' => 'max:100|nullable',
                     'head_id'     => 'numeric|nullable',
-                    'branch_id'   => 'numeric|nullable',
-                    'address'     => 'max:255|nullable',
-                    'phone'       => 'max:20|nullable',
-                    'email'       => 'email|nullable'
+                    'branch_id'   => 'numeric|nullable'
                 ]);
 
                 $result = self::withTransaction(function () use ($familyId, $payload) {

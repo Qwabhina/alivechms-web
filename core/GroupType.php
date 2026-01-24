@@ -100,12 +100,14 @@ class GroupType
    {
       $orm = new ORM();
 
+      // Verify group type exists
       $type = $orm->getWhere('group_type', ['GroupTypeID' => $typeId, 'IsActive' => 1]);
       if (empty($type)) {
          ResponseHelper::error('Group type not found', 404);
       }
 
-      $used = $orm->getWhere('churchgroup', ['GroupTypeID' => $typeId, 'Deleted' => 0]);
+      // Check if group type is in use (correct table name: church_group)
+      $used = $orm->getWhere('church_group', ['GroupTypeID' => $typeId, 'Deleted' => 0]);
       if (!empty($used)) {
          ResponseHelper::error('Cannot delete group type in use', 400);
       }
