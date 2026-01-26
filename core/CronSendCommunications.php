@@ -24,6 +24,15 @@
 
 declare(strict_types=1);
 
+// Load Composer autoloader
+require_once __DIR__ . '/../vendor/autoload.php';
+
+// Load environment variables
+if (file_exists(__DIR__ . '/../.env')) {
+   $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
+   $dotenv->safeLoad();
+}
+
 // Minimal bootstrap – only what is needed
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/ORM.php';
@@ -71,9 +80,12 @@ foreach ($pending as $item) {
       case 'Email':
          if (!empty($item['MbrEmailAddress'])) {
             $htmlBody = nl2br(htmlspecialchars($item['Message']));
+            // Strip tags from subject to prevent header injection or display issues
+            $safeSubject = strip_tags($item['Title']);
+
             $success  = EmailGateway::send(
                $item['MbrEmailAddress'],
-               $item['Title'],
+               $safeSubject,
                $htmlBody
             );
             $errorMessage = $success ? null : 'Email gateway failed';

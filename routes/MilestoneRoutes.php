@@ -19,6 +19,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../core/MemberMilestone.php';
 require_once __DIR__ . '/../core/MilestoneType.php';
 require_once __DIR__ . '/../core/ResponseHelper.php';
+require_once __DIR__ . '/../core/BaseRoute.php';
 
 class MilestoneRoutes extends BaseRoute
 {
@@ -85,8 +86,26 @@ class MilestoneRoutes extends BaseRoute
          $method === 'GET' && $path === 'milestone/stats' => (function () {
             self::authenticate();
             self::authorize('members.view');
-            $year = !empty($_GET['year']) ? (int)$_GET['year'] : null;
-            $result = MemberMilestone::getStats($year);
+
+            $filters = [];
+            if (!empty($_GET['start_date'])) $filters['start_date'] = $_GET['start_date'];
+            if (!empty($_GET['end_date'])) $filters['end_date'] = $_GET['end_date'];
+            if (!empty($_GET['type_id'])) $filters['type_id'] = (int)$_GET['type_id'];
+            if (!empty($_GET['year'])) $filters['year'] = (int)$_GET['year'];
+
+            $result = MemberMilestone::getStats($filters);
+            ResponseHelper::success($result);
+         })(),
+
+         // GET UPCOMING ANNIVERSARIES
+         $method === 'GET' && $path === 'milestone/anniversaries' => (function () {
+            self::authenticate();
+            self::authorize('members.view');
+            $days = isset($_GET['days']) ? (int)$_GET['days'] : 30;
+            $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+            // Cap limit to avoid heavy queries
+            if ($limit > 50) $limit = 50;
+            $result = MemberMilestone::getUpcomingAnniversaries($days, $limit);
             ResponseHelper::success($result);
          })(),
 
@@ -107,7 +126,7 @@ class MilestoneRoutes extends BaseRoute
             self::authorize('members.view');
             $activeOnly = isset($_GET['active']) && $_GET['active'] === '1';
             $result = MilestoneType::getAll($activeOnly);
-            ResponseHelper::success($result['data']);
+            ResponseHelper::success($result);
          })(),
 
          // CREATE MILESTONE TYPE

@@ -58,14 +58,26 @@ class Finance
             $params
       );
 
+      $paramsExp = [':fy' => $fiscalYearId];
+      $whereExp  = "e.FiscalYearID = :fy AND e.ExpenseStatus = 'Approved'";
+
+      if ($dateFrom) {
+         $whereExp .= " AND e.ExpenseDate >= :from";
+         $paramsExp[':from'] = $dateFrom;
+      }
+      if ($dateTo) {
+         $whereExp .= " AND e.ExpenseDate <= :to";
+         $paramsExp[':to'] = $dateTo;
+      }
+
       $expenses = $orm->runQuery(
          "SELECT ec.CategoryName, SUM(e.ExpenseAmount) AS total
              FROM expense e
              JOIN expense_category ec ON e.ExpenseCategoryID = ec.ExpenseCategoryID
-             WHERE e.FiscalYearID = :fy AND e.ExpenseStatus = 'Approved'
+             WHERE $whereExp
              GROUP BY ec.ExpenseCategoryID
              ORDER BY total DESC",
-         [':fy' => $fiscalYearId]
+         $paramsExp
       );
 
       $totalIncome   = array_sum(array_column($contributions, 'total'));
@@ -188,7 +200,8 @@ class Finance
 
       return [
          'summary'     => $summary,
-         'grand_total' => number_format($grandTotal, 2)
+         'grand_total' => number_format($grandTotal, 2),
+         'raw_total'   => $grandTotal
       ];
    }
 
@@ -232,7 +245,8 @@ class Finance
 
       return [
          'summary'     => $summary,
-         'grand_total' => number_format($grandTotal, 2)
+         'grand_total' => number_format($grandTotal, 2),
+         'raw_total'   => $grandTotal
       ];
    }
 
@@ -246,8 +260,11 @@ class Finance
     */
    public static function getBalanceSheet(int $fiscalYearId, ?string $dateFrom = null, ?string $dateTo = null): array
    {
-      $income   = (float)self::getContributionSummary($fiscalYearId, $dateFrom, $dateTo)['grand_total'];
-      $expenses = (float)self::getExpenseSummary($fiscalYearId, $dateFrom, $dateTo)['grand_total'];
+      $incomeData   = self::getContributionSummary($fiscalYearId, $dateFrom, $dateTo);
+      $expenseData  = self::getExpenseSummary($fiscalYearId, $dateFrom, $dateTo);
+
+      $income   = (float)($incomeData['raw_total'] ?? 0);
+      $expenses = (float)($expenseData['raw_total'] ?? 0);
       $net      = $income - $expenses;
 
       return [

@@ -243,12 +243,23 @@ class Member
                 ])['id'];
             }
 
+            // Determine who is assigning the role (System (0) if public registration)
+            $assignedBy = 0;
+            if (Auth::getBearerToken()) {
+                try {
+                    $assignedBy = Auth::getCurrentUserId();
+                } catch (Exception $e) {
+                    // Token might be invalid or expired, default to System
+                    $assignedBy = 0;
+                }
+            }
+
             // Assign default "Member" role (RoleID 6)
             $orm->insert('member_role', [
                 'MbrID'        => $mbrId,
                 'RoleID'       => $data['member_role'] ?? 6,
                 'IsActive'     => 1,
-                'AssignedBy'   => Auth::getCurrentUserId(),
+                'AssignedBy'   => $assignedBy,
                 'AssignedAt'   => date('Y-m-d H:i:s')
             ]);
 

@@ -122,11 +122,11 @@ require_once '../includes/sidebar.php';
                            <div class="upload-placeholder" id="uploadPlaceholder">
                               <i class="bi bi-camera fs-1 text-primary"></i>
                               <div class="small mt-2 fw-medium">Upload Photo</div>
-                              <div class="text-muted" style="font-size: 0.7rem;">JPG, PNG, GIF • Max 5MB</div>
+                              <div class="text-muted" style="font-size: 0.7rem;">JPG, PNG, GIF, WebP • Max 5MB</div>
                            </div>
                            <img id="profilePreview" class="d-none" alt="Profile">
                         </div>
-                        <input type="file" id="profilePictureInput" accept="image/*" class="d-none">
+                        <input type="file" id="profilePictureInput" accept="image/jpeg,image/png,image/gif,image/webp" class="d-none">
                         <button type="button" class="btn btn-sm btn-outline-danger mt-2 d-none" id="removePhotoBtn">
                            <i class="bi bi-x-circle me-1"></i>Remove
                         </button>

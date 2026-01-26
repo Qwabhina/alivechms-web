@@ -16,77 +16,200 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/ORM.php';
+require_once __DIR__ . '/Helpers.php';
+require_once __DIR__ . '/Database.php';
+
 class MemberMilestone
 {
    /**
     * Get milestone statistics
     */
-   public static function getStats(?int $year = null): array
+   public static function getStats(array $filters = []): array
    {
       $orm = new ORM();
-      $currentYear = $year ?? (int)date('Y');
 
-      // Total milestones
+      // Build dynamic WHERE clause
+      $whereConditions = ["mm.Deleted = 0"];
+      $params = [];
+
+      if (!empty($filters['start_date'])) {
+         $whereConditions[] = "mm.MilestoneDate >= :startDate";
+         $params[':startDate'] = $filters['start_date'];
+      }
+
+      if (!empty($filters['end_date'])) {
+         $whereConditions[] = "mm.MilestoneDate <= :endDate";
+         $params[':endDate'] = $filters['end_date'];
+      }
+
+      if (!empty($filters['type_id'])) {
+         $whereConditions[] = "mm.MilestoneTypeID = :typeID";
+         $params[':typeID'] = $filters['type_id'];
+      }
+
+      // Handle legacy year parameter if passed in filters
+      if (empty($filters['start_date']) && empty($filters['end_date']) && !empty($filters['year'])) {
+         $whereConditions[] = "YEAR(mm.MilestoneDate) = :year";
+         $params[':year'] = $filters['year'];
+      }
+
+      $whereClause = implode(" AND ", $whereConditions);
+
+      // 1. Total milestones (Filtered)
       $totalResult = $orm->runQuery(
-         "SELECT COUNT(*) AS count FROM member_milestone WHERE Deleted = 0"
-      )[0];
+         "SELECT COUNT(*) AS count FROM member_milestone mm WHERE $whereClause",
+         $params
+      );
+      $totalCount = !empty($totalResult) ? (int)$totalResult[0]['count'] : 0;
 
-      // This year
-      $yearResult = $orm->runQuery(
-         "SELECT COUNT(*) AS count FROM member_milestone 
-          WHERE Deleted = 0 AND YEAR(MilestoneDate) = :year",
-         [':year' => $currentYear]
-      )[0];
-
-      // This month
-      $monthResult = $orm->runQuery(
-         "SELECT COUNT(*) AS count FROM member_milestone 
-          WHERE Deleted = 0 AND YEAR(MilestoneDate) = :year AND MONTH(MilestoneDate) = :month",
-         [':year' => $currentYear, ':month' => (int)date('m')]
-      )[0];
-
-      // By type
+      // 2. By Type (Filtered)
       $byType = $orm->runQuery(
-         "SELECT mt.MilestoneTypeID, mt.TypeName AS MilestoneTypeName, COUNT(mm.MilestoneID) AS count
+         "SELECT mt.MilestoneTypeID, mt.TypeName, mt.Icon, mt.Color, COUNT(mm.MilestoneID) AS count
           FROM milestone_type mt
-          LEFT JOIN member_milestone mm ON mt.MilestoneTypeID = mm.MilestoneTypeID AND mm.Deleted = 0
+          LEFT JOIN member_milestone mm ON mt.MilestoneTypeID = mm.MilestoneTypeID AND $whereClause
           WHERE mt.IsActive = 1
-          GROUP BY mt.MilestoneTypeID, mt.TypeName
-          ORDER BY count DESC"
+          GROUP BY mt.MilestoneTypeID, mt.TypeName, mt.Icon, mt.Color
+          HAVING count > 0
+          ORDER BY count DESC",
+         $params
       );
 
-      // Monthly trend (last 12 months)
-      $monthlyTrend = $orm->runQuery(
-         "SELECT DATE_FORMAT(MilestoneDate, '%Y-%m') AS month,
-                 DATE_FORMAT(MilestoneDate, '%b %Y') AS month_label,
-                 COUNT(*) AS count
-          FROM member_milestone
-          WHERE Deleted = 0 AND MilestoneDate >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-          GROUP BY DATE_FORMAT(MilestoneDate, '%Y-%m')
-          ORDER BY month ASC"
-      );
-
-      // Recent milestones
+      // 3. Recent milestones (Filtered)
       $recent = $orm->runQuery(
-         "SELECT mm.MilestoneID, mm.MilestoneDate, mt.TypeName AS MilestoneTypeName,
+         "SELECT mm.MilestoneID, mm.MilestoneDate, mt.TypeName, mt.Icon, mt.Color,
                  m.MbrFirstName, m.MbrFamilyName
           FROM member_milestone mm
           JOIN milestone_type mt ON mm.MilestoneTypeID = mt.MilestoneTypeID
           JOIN churchmember m ON mm.MbrID = m.MbrID
-          WHERE mm.Deleted = 0
+          WHERE $whereClause
           ORDER BY mm.MilestoneDate DESC, mm.RecordedAt DESC
-          LIMIT 10"
+          LIMIT 10",
+         $params
       );
 
+      // 4. Anniversaries this month (Always current month)
+      $anniversariesResult = $orm->runQuery(
+         "SELECT COUNT(*) AS count 
+          FROM member_milestone 
+          WHERE Deleted = 0 
+          AND MONTH(MilestoneDate) = :month",
+         [':month' => (int)date('m')]
+      );
+
+      $anniversariesCount = !empty($anniversariesResult) ? (int)$anniversariesResult[0]['count'] : 0;
+
+      // 5. Year Count (Current Year or Selected Year)
+      $targetYear = !empty($filters['year']) ? (int)$filters['year'] : (int)date('Y');
+      $yearResult = $orm->runQuery(
+         "SELECT COUNT(*) AS count FROM member_milestone WHERE Deleted = 0 AND YEAR(MilestoneDate) = :year",
+         [':year' => $targetYear]
+      );
+      $yearCount = !empty($yearResult) ? (int)$yearResult[0]['count'] : 0;
+
+      // 6. Month Count (Current Month - Milestones occurring this month)
+      $monthResult = $orm->runQuery(
+         "SELECT COUNT(*) AS count FROM member_milestone 
+          WHERE Deleted = 0 
+          AND YEAR(MilestoneDate) = :year 
+          AND MONTH(MilestoneDate) = :month",
+         [':year' => (int)date('Y'), ':month' => (int)date('m')]
+      );
+      $monthCount = !empty($monthResult) ? (int)$monthResult[0]['count'] : 0;
+
       return [
-         'total_count' => (int)$totalResult['count'],
-         'year_count' => (int)$yearResult['count'],
-         'month_count' => (int)$monthResult['count'],
-         'current_year' => $currentYear,
-         'by_type' => $byType,
-         'monthly_trend' => $monthlyTrend,
-         'recent' => $recent
+         'total_count' => $totalCount,
+         'year_count' => $yearCount,
+         'month_count' => $monthCount,
+         'current_year' => $targetYear,
+         'anniversaries_this_month' => $anniversariesCount,
+         'by_type' => array_map(function ($row) {
+            return [
+               'id' => $row['MilestoneTypeID'],
+               'name' => $row['TypeName'],
+               'icon' => $row['Icon'],
+               'color' => $row['Color'],
+               'count' => (int)$row['count']
+            ];
+         }, $byType),
+         'recent' => array_map(function ($row) {
+            return [
+               'id' => $row['MilestoneID'],
+               'date' => $row['MilestoneDate'],
+               'type' => $row['TypeName'],
+               'type_icon' => $row['Icon'],
+               'type_color' => $row['Color'],
+               'member_name' => $row['MbrFirstName'] . ' ' . $row['MbrFamilyName']
+            ];
+         }, $recent)
       ];
+   }
+
+   /**
+    * Get upcoming anniversaries
+    */
+   public static function getUpcomingAnniversaries(int $days = 30, int $limit = 10): array
+   {
+      $orm = new ORM();
+
+      // Calculate future date
+      $futureDate = date('Y-m-d', strtotime("+$days days"));
+
+      // We need to find milestones where the month/day is within the range
+      // This is complex in SQL across year boundaries, but for simplified "next 30 days":
+      // We can check if DATE_FORMAT(date, '%m-%d') is between today and future date
+      // Note: This simple logic breaks across year-end (Dec-Jan). 
+      // Robust solution: Add current year to the milestone month/day and check diff.
+
+      $query = "
+         SELECT mm.MilestoneID, mm.MilestoneDate, mm.MbrID,
+                mt.TypeName, mt.Icon, mt.Color,
+                m.MbrFirstName, m.MbrFamilyName, m.MbrProfilePicture
+         FROM member_milestone mm
+         JOIN milestone_type mt ON mm.MilestoneTypeID = mt.MilestoneTypeID
+         JOIN churchmember m ON mm.MbrID = m.MbrID
+         WHERE mm.Deleted = 0
+         AND (
+            DATE_ADD(mm.MilestoneDate, INTERVAL YEAR(CURDATE()) - YEAR(mm.MilestoneDate) + IF(DATE_FORMAT(CURDATE(), '%m%d') > DATE_FORMAT(mm.MilestoneDate, '%m%d'), 1, 0) YEAR) 
+            BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :days DAY)
+         )
+         ORDER BY DATE_FORMAT(mm.MilestoneDate, '%m%d') ASC
+         LIMIT :limit
+      ";
+
+      $anniversaries = $orm->runQuery($query, [
+         ':days' => $days,
+         ':limit' => $limit
+      ]);
+
+      return array_map(function ($row) {
+         $milestoneDate = new DateTime($row['MilestoneDate']);
+         $today = new DateTime();
+         $currentYear = (int)$today->format('Y');
+
+         // Calculate next anniversary date
+         $anniversaryDate = new DateTime($currentYear . '-' . $milestoneDate->format('m-d'));
+         if ($anniversaryDate < $today) {
+            $anniversaryDate->modify('+1 year');
+         }
+
+         $years = $anniversaryDate->format('Y') - $milestoneDate->format('Y');
+         $daysUntil = $today->diff($anniversaryDate)->days;
+
+         return [
+            'id' => $row['MilestoneID'],
+            'member_id' => $row['MbrID'],
+            'member_name' => $row['MbrFirstName'] . ' ' . $row['MbrFamilyName'],
+            'member_photo' => $row['MbrProfilePicture'],
+            'milestone_type' => $row['TypeName'],
+            'type_icon' => $row['Icon'],
+            'type_color' => $row['Color'],
+            'date' => $row['MilestoneDate'],
+            'years' => $years,
+            'anniversary_display' => $anniversaryDate->format('M j, Y'),
+            'days_until' => $daysUntil
+         ];
+      }, $anniversaries);
    }
 
    /**
@@ -125,6 +248,24 @@ class MemberMilestone
       );
       if (empty($type)) {
          ResponseHelper::error('Invalid milestone type', 400);
+      }
+
+      // Check for duplicate (Same Member, Same Type, Same Date)
+      $duplicate = $orm->runQuery(
+         "SELECT MilestoneID FROM member_milestone 
+          WHERE MbrID = :mbr_id 
+          AND MilestoneTypeID = :type_id 
+          AND MilestoneDate = :date 
+          AND Deleted = 0",
+         [
+            ':mbr_id' => $memberId,
+            ':type_id' => $typeId,
+            ':date' => $data['milestone_date']
+         ]
+      );
+
+      if (!empty($duplicate)) {
+         ResponseHelper::error('This milestone has already been recorded for this member on this date', 400);
       }
 
       $milestoneId = $orm->insert('member_milestone', [
@@ -240,7 +381,7 @@ class MemberMilestone
 
       $result = $orm->runQuery(
          "SELECT mm.*, 
-                 mt.TypeName AS MilestoneTypeName,
+                 mt.TypeName, mt.Icon, mt.Color,
                  m.MbrFirstName, m.MbrFamilyName, m.MbrEmailAddress,
                  r.MbrFirstName AS RecorderFirstName, r.MbrFamilyName AS RecorderFamilyName
           FROM member_milestone mm
@@ -257,22 +398,21 @@ class MemberMilestone
 
       $m = $result[0];
       return [
-         'MilestoneID' => $m['MilestoneID'],
-         'MbrID' => $m['MbrID'],
-         'MemberName' => $m['MbrFirstName'] . ' ' . $m['MbrFamilyName'],
-         'MbrFirstName' => $m['MbrFirstName'],
-         'MbrFamilyName' => $m['MbrFamilyName'],
-         'MbrEmailAddress' => $m['MbrEmailAddress'],
-         'MilestoneTypeID' => $m['MilestoneTypeID'],
-         'MilestoneTypeName' => $m['MilestoneTypeName'],
-         'MilestoneDate' => $m['MilestoneDate'],
-         'Location' => $m['Location'],
-         'OfficiatingPastor' => $m['OfficiatingPastor'],
-         'CertificateNumber' => $m['CertificateNumber'],
-         'Notes' => $m['Notes'],
-         'RecordedBy' => $m['RecordedBy'],
-         'RecorderName' => $m['RecorderFirstName'] ? $m['RecorderFirstName'] . ' ' . $m['RecorderFamilyName'] : null,
-         'RecordedAt' => $m['RecordedAt']
+         'id' => $m['MilestoneID'],
+         'member_id' => $m['MbrID'],
+         'member_name' => $m['MbrFirstName'] . ' ' . $m['MbrFamilyName'],
+         'type_id' => $m['MilestoneTypeID'],
+         'type_name' => $m['TypeName'],
+         'type_icon' => $m['Icon'],
+         'type_color' => $m['Color'],
+         'date' => $m['MilestoneDate'],
+         'location' => $m['Location'],
+         'officiating_pastor' => $m['OfficiatingPastor'],
+         'certificate_number' => $m['CertificateNumber'],
+         'notes' => $m['Notes'],
+         'recorded_by' => $m['RecordedBy'],
+         'recorder_name' => $m['RecorderFirstName'] ? $m['RecorderFirstName'] . ' ' . $m['RecorderFamilyName'] : null,
+         'recorded_at' => $m['RecordedAt']
       ];
    }
 
@@ -323,9 +463,9 @@ class MemberMilestone
       $orderBy = 'mm.MilestoneDate DESC, mm.RecordedAt DESC';
       if (!empty($filters['sort_by'])) {
          $columnMap = [
-            'MilestoneDate' => 'mm.MilestoneDate',
-            'MemberName' => 'm.MbrFirstName',
-            'MilestoneTypeName' => 'mt.TypeName'
+            'date' => 'mm.MilestoneDate',
+            'member_name' => 'm.MbrFirstName',
+            'type_name' => 'mt.TypeName'
          ];
          $sortCol = $columnMap[$filters['sort_by']] ?? 'mm.MilestoneDate';
          $sortDir = strtoupper($filters['sort_dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
@@ -333,10 +473,8 @@ class MemberMilestone
       }
 
       $milestones = $orm->runQuery(
-         "SELECT mm.MilestoneID, mm.MbrID, mm.MilestoneTypeID, mm.MilestoneDate, 
-                 mm.Location, mm.OfficiatingPastor, mm.CertificateNumber, mm.Notes,
-                 mm.RecordedAt,
-                 mt.TypeName AS MilestoneTypeName,
+         "SELECT mm.*,
+                 mt.TypeName, mt.Icon, mt.Color,
                  m.MbrFirstName, m.MbrFamilyName
           FROM member_milestone mm
           JOIN milestone_type mt ON mm.MilestoneTypeID = mt.MilestoneTypeID
@@ -349,19 +487,19 @@ class MemberMilestone
 
       $mapped = array_map(function ($m) {
          return [
-            'MilestoneID' => $m['MilestoneID'],
-            'MbrID' => $m['MbrID'],
-            'MemberName' => $m['MbrFirstName'] . ' ' . $m['MbrFamilyName'],
-            'MbrFirstName' => $m['MbrFirstName'],
-            'MbrFamilyName' => $m['MbrFamilyName'],
-            'MilestoneTypeID' => $m['MilestoneTypeID'],
-            'MilestoneTypeName' => $m['MilestoneTypeName'],
-            'MilestoneDate' => $m['MilestoneDate'],
-            'Location' => $m['Location'],
-            'OfficiatingPastor' => $m['OfficiatingPastor'],
-            'CertificateNumber' => $m['CertificateNumber'],
-            'Notes' => $m['Notes'],
-            'RecordedAt' => $m['RecordedAt']
+            'id' => $m['MilestoneID'],
+            'member_id' => $m['MbrID'],
+            'member_name' => $m['MbrFirstName'] . ' ' . $m['MbrFamilyName'],
+            'type_id' => $m['MilestoneTypeID'],
+            'type_name' => $m['TypeName'],
+            'type_icon' => $m['Icon'],
+            'type_color' => $m['Color'],
+            'date' => $m['MilestoneDate'],
+            'location' => $m['Location'],
+            'officiating_pastor' => $m['OfficiatingPastor'],
+            'certificate_number' => $m['CertificateNumber'],
+            'notes' => $m['Notes'],
+            'recorded_at' => $m['RecordedAt']
          ];
       }, $milestones);
 
@@ -393,7 +531,7 @@ class MemberMilestone
       $orm = new ORM();
 
       $milestones = $orm->runQuery(
-         "SELECT mm.*, mt.TypeName AS MilestoneTypeName,
+         "SELECT mm.*, mt.TypeName,
                  r.MbrFirstName AS RecorderFirstName, r.MbrFamilyName AS RecorderFamilyName
           FROM member_milestone mm
           JOIN milestone_type mt ON mm.MilestoneTypeID = mt.MilestoneTypeID
@@ -403,6 +541,20 @@ class MemberMilestone
          [':member_id' => $memberId]
       );
 
-      return ['data' => $milestones];
+      return ['data' => array_map(function ($m) {
+         return [
+            'id' => $m['MilestoneID'],
+            'type_id' => $m['MilestoneTypeID'],
+            'type_name' => $m['TypeName'],
+            'type_icon' => $m['Icon'],
+            'type_color' => $m['Color'],
+            'date' => $m['MilestoneDate'],
+            'location' => $m['Location'],
+            'officiating_pastor' => $m['OfficiatingPastor'],
+            'certificate_number' => $m['CertificateNumber'],
+            'notes' => $m['Notes'],
+            'recorder_name' => $m['RecorderFirstName'] ? $m['RecorderFirstName'] . ' ' . $m['RecorderFamilyName'] : null,
+         ];
+      }, $milestones)];
    }
 }

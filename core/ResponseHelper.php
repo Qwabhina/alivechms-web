@@ -30,6 +30,7 @@ class ResponseHelper
     public static function success($data = null, string $message = 'Success', int $statusCode = 200): never
     {
         http_response_code($statusCode);
+        header('Content-Type: application/json');
         
         $response = [
             'status' => 'success',
@@ -57,6 +58,7 @@ class ResponseHelper
     public static function error(string $message, int $statusCode = 400, array $errors = [], string $errorCode = ''): never
     {
         http_response_code($statusCode);
+        header('Content-Type: application/json');
         
         $response = [
             'status' => 'error',

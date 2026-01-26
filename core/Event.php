@@ -163,16 +163,64 @@ class Event
          ResponseHelper::error('attendances array is required', 400);
       }
 
+      // Collect Member IDs
+      $memberIds = [];
+      foreach ($data['attendances'] as $item) {
+          if (!empty($item['member_id']) && is_numeric($item['member_id'])) {
+              $memberIds[] = (int)$item['member_id'];
+          }
+      }
+      $memberIds = array_unique($memberIds);
+
+      if (empty($memberIds)) {
+          ResponseHelper::error('No valid member IDs provided', 400);
+      }
+
+      // Validate Members (Active and Not Deleted)
+      // Using chunking to avoid too many placeholders if list is large
+      $validMemberIds = [];
+      $chunks = array_chunk($memberIds, 100);
+
+      foreach ($chunks as $chunk) {
+          $placeholders = [];
+          $params = [];
+          foreach ($chunk as $i => $id) {
+              $key = ":id$i";
+              $placeholders[] = $key;
+              $params[$key] = $id;
+          }
+          $inClause = implode(',', $placeholders);
+          
+          $validMembers = $orm->runQuery(
+              "SELECT m.MbrID 
+               FROM churchmember m
+               JOIN membership_status ms ON m.MbrMembershipStatusID = ms.StatusID
+               WHERE m.MbrID IN ($inClause) 
+                 AND m.Deleted = 0 
+                 AND ms.StatusName = 'Active'",
+              $params
+          );
+          
+          foreach ($validMembers as $vm) {
+              $validMemberIds[] = $vm['MbrID'];
+          }
+      }
+
       $orm->beginTransaction();
       try {
+         $processedCount = 0;
          foreach ($data['attendances'] as $item) {
-            Helpers::validateInput($item, [
-               'member_id' => 'required|numeric',
-               'status'    => 'required|in:Present,Absent,Late,Excused'
-            ]);
+            $memberId = (int)($item['member_id'] ?? 0);
+            $status   = $item['status'] ?? '';
 
-            $memberId = (int)$item['member_id'];
-            $status   = $item['status'];
+            // Skip if not valid/active or invalid status
+            if (!in_array($memberId, $validMemberIds)) {
+                continue;
+            }
+            
+            if (!in_array($status, ['Present', 'Absent', 'Late', 'Excused'])) {
+                continue;
+            }
 
             $existing = $orm->getWhere('event_attendance', [
                'EventID' => $eventId,
@@ -192,10 +240,11 @@ class Event
                   'RecordedAt'       => date('Y-m-d H:i:s')
                ]);
             }
+            $processedCount++;
          }
 
          $orm->commit();
-         return ['status' => 'success', 'message' => 'Attendance recorded'];
+         return ['status' => 'success', 'message' => "Attendance recorded for $processedCount members"];
       } catch (Exception $e) {
          $orm->rollBack();
          throw $e;

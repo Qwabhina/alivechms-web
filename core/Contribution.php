@@ -87,11 +87,22 @@ class Contribution
          ResponseHelper::error('Contribution date cannot be in the future', 400);
       }
 
+      // Auto-assign Fiscal Year if not provided
+      if (!$fiscalYearId) {
+         $member = $orm->getWhere('churchmember', ['MbrID' => $memberId]);
+         if (!empty($member)) {
+            $branchId = (int)($member[0]['BranchID'] ?? 1);
+            $fy = FiscalYear::getForDate($contributionDate, $branchId);
+            if ($fy) {
+               $fiscalYearId = (int)$fy['FiscalYearID'];
+            }
+         }
+      }
+
       // Validate foreign keys
       $validationQuery = "SELECT
             (SELECT COUNT(*) FROM churchmember c 
-             JOIN membership_status ms ON c.MbrMembershipStatusID = ms.StatusID 
-             WHERE c.MbrID = :mid AND c.Deleted = 0 AND ms.StatusName = 'Active') AS member_ok,
+             WHERE c.MbrID = :mid AND c.Deleted = 0) AS member_ok,
             (SELECT COUNT(*) FROM contribution_type WHERE ContributionTypeID = :tid AND IsActive = 1) AS type_ok,
             (SELECT COUNT(*) FROM payment_method WHERE PaymentMethodID = :pmid AND IsActive = 1) AS payment_ok";
 

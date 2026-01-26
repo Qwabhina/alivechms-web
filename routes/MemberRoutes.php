@@ -64,18 +64,18 @@ class MemberRoutes extends BaseRoute
                         // Validate MIME type first (more secure)
                         $finfo = new finfo(FILEINFO_MIME_TYPE);
                         $mimeType = $finfo->file($_FILES['profile_picture']['tmp_name']);
-                        $allowedMimes = ['image/jpeg', 'image/png', 'image/gif'];
+                        $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
                         if (!in_array($mimeType, $allowedMimes)) {
-                            ResponseHelper::error('Invalid file type. Only JPG, PNG, and GIF images are allowed.', 400);
+                            ResponseHelper::error('Invalid file type. Only JPG, PNG, GIF, and WEBP images are allowed.', 400);
                         }
 
                         // Also validate file extension
                         $fileExtension = strtolower(pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION));
-                        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+                        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
                         if (!in_array($fileExtension, $allowedExtensions)) {
-                            ResponseHelper::error('Invalid file extension. Only .jpg, .png, and .gif are allowed.', 400);
+                            ResponseHelper::error('Invalid file extension. Only .jpg, .png, .gif, and .webp are allowed.', 400);
                         }
 
                         // Validate file size (5MB max)
@@ -182,9 +182,14 @@ class MemberRoutes extends BaseRoute
             // UPDATE MEMBER
             $method === 'PUT' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('members.edit');
 
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
+
+                // Allow users to update their own profile OR require edit_members permission
+                $currentUserId = self::getCurrentUserId();
+                if ($currentUserId != $memberId) {
+                    self::authorize('members.edit');
+                }
 
                 $payload = self::getPayload([
                     'first_name'     => 'max:100|nullable',
@@ -210,9 +215,14 @@ class MemberRoutes extends BaseRoute
             // UPDATE MEMBER (POST with file upload support)
             $method === 'POST' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
                 self::authenticate();
-                self::authorize('members.edit');
 
                 $memberId = self::getIdFromPath($pathParts, 2, 'Member ID');
+
+                // Allow users to update their own profile OR require edit_members permission
+                $currentUserId = self::getCurrentUserId();
+                if ($currentUserId != $memberId) {
+                    self::authorize('members.edit');
+                }
 
                 // Check if this is multipart/form-data (file upload)
                 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
@@ -244,18 +254,18 @@ class MemberRoutes extends BaseRoute
                         // Validate MIME type first (more secure)
                         $finfo = new finfo(FILEINFO_MIME_TYPE);
                         $mimeType = $finfo->file($_FILES['profile_picture']['tmp_name']);
-                        $allowedMimes = ['image/jpeg', 'image/png', 'image/gif'];
+                        $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
                         if (!in_array($mimeType, $allowedMimes)) {
-                            ResponseHelper::error('Invalid file type. Only JPG, PNG, and GIF images are allowed.', 400);
+                            ResponseHelper::error('Invalid file type. Only JPG, PNG, GIF, and WEBP images are allowed.', 400);
                         }
 
                         // Also validate file extension
                         $fileExtension = strtolower(pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION));
-                        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+                        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
                         if (!in_array($fileExtension, $allowedExtensions)) {
-                            ResponseHelper::error('Invalid file extension. Only .jpg, .png, and .gif are allowed.', 400);
+                            ResponseHelper::error('Invalid file extension. Only .jpg, .png, .gif, and .webp are allowed.', 400);
                         }
 
                         // Validate file size (5MB max)

@@ -103,7 +103,7 @@ class EventRoutes extends BaseRoute
          // RECORD BULK ATTENDANCE
          $method === 'POST' && $pathParts[0] === 'event' && ($pathParts[1] ?? '') === 'attendance' && ($pathParts[2] ?? '') === 'bulk' && isset($pathParts[3]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('events.view');
+            self::authorize('events.edit');
 
             $eventId = self::getIdFromPath($pathParts, 3, 'Event ID');
 
@@ -118,7 +118,7 @@ class EventRoutes extends BaseRoute
          // RECORD SINGLE ATTENDANCE (Mobile/Self-Check-in)
          $method === 'POST' && $pathParts[0] === 'event' && ($pathParts[1] ?? '') === 'attendance' && ($pathParts[2] ?? '') === 'single' && isset($pathParts[3]) => (function () use ($pathParts) {
             self::authenticate();
-            self::authorize('events.view');
+            self::authorize('events.edit');
 
             $eventId = self::getIdFromPath($pathParts, 3, 'Event ID');
 

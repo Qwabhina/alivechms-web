@@ -112,7 +112,26 @@ class Budget
    public static function submitForApproval(int $budgetId): array
    {
       $orm = new ORM();
-      self::ensureDraft($budgetId);
+      // Fetch budget to validate state and constraints
+      $budget = $orm->getWhere('churchbudget', ['BudgetID' => $budgetId, 'Deleted' => 0])[0] ?? null;
+
+      if (!$budget) {
+         ResponseHelper::error('Budget not found', 404);
+      }
+
+      if ($budget['BudgetStatus'] !== self::STATUS_DRAFT) {
+         ResponseHelper::error('Only draft budgets can be submitted', 400);
+      }
+
+      if ((float)$budget['TotalAmount'] <= 0) {
+         ResponseHelper::error('Cannot submit a budget with zero total amount', 400);
+      }
+
+      // Check Fiscal Year status
+      $fy = $orm->getWhere('fiscal_year', ['FiscalYearID' => $budget['FiscalYearID']])[0] ?? null;
+      if (!$fy || $fy['Status'] !== 'Active') {
+         ResponseHelper::error('Cannot submit budget for an inactive fiscal year', 400);
+      }
 
       $orm->update('churchbudget', [
          'BudgetStatus'  => self::STATUS_SUBMITTED,

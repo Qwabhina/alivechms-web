@@ -19,89 +19,92 @@ export class MilestoneTable {
    initQMGrid() {
       const year = this.state.getCurrentYear();
       
-      this.grid = new QMGrid('#milestonesTable', {
-         dataSource: {
-            url: `${Config.API_BASE_URL}/milestone/all?year=${year}`,
-            method: 'GET',
-            headers: () => ({
-               'Authorization': `Bearer ${Auth.getToken()}`
-            }),
-            dataPath: 'data',
-            totalPath: 'pagination.total'
-         },
-         columns: [
-            {
-               field: 'MemberName',
-               title: 'Member',
-               sortable: true,
-               render: (value, row) => `
+      this.grid = new QMGrid("#milestonesTable", {
+        dataSource: {
+          url: `${Config.API_BASE_URL}/milestone/all?year=${year}`,
+          method: "GET",
+          headers: () => ({
+            Authorization: `Bearer ${Auth.getToken()}`,
+          }),
+          dataPath: "data",
+          totalPath: "pagination.total",
+        },
+        columns: [
+          {
+            field: "member_name",
+            title: "Member",
+            sortable: true,
+            render: (value, row) => `
                   <div class="d-flex align-items-center">
                      <div>
-                        <div class="fw-semibold">${row.MbrFirstName} ${row.MbrFamilyName}</div>
-                        <small class="text-muted">${row.MilestoneTypeName}</small>
+                        <div class="fw-semibold">${row.member_name || "-"}</div>
+                        <small class="text-muted">${row.type_name || "-"}</small>
                      </div>
                   </div>
-               `
-            },
-            {
-               field: 'MilestoneDate',
-               title: 'Date',
-               sortable: true,
-               render: (value) => new Date(value).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric'
-               })
-            },
-            {
-               field: 'Location',
-               title: 'Location',
-               render: (value) => value || '-'
-            },
-            {
-               field: 'OfficiatingPastor',
-               title: 'Officiating Pastor',
-               render: (value) => value || '-'
-            },
-            {
-               field: 'CertificateNumber',
-               title: 'Certificate #',
-               render: (value) => value || '-'
-            },
-            {
-               field: 'actions',
-               title: 'Actions',
-               sortable: false,
-               render: (value, row) => `
+               `,
+          },
+          {
+            field: "date",
+            title: "Date",
+            sortable: true,
+            render: (value) =>
+              value
+                ? new Date(value).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })
+                : "-",
+          },
+          {
+            field: "location",
+            title: "Location",
+            render: (value) => value || "-",
+          },
+          {
+            field: "officiating_pastor",
+            title: "Officiating Pastor",
+            render: (value) => value || "-",
+          },
+          {
+            field: "certificate_number",
+            title: "Certificate #",
+            render: (value) => value || "-",
+          },
+          {
+            field: "actions",
+            title: "Actions",
+            sortable: false,
+            render: (value, row) => `
                   <div class="btn-group btn-group-sm">
-                     <button class="btn btn-outline-primary" onclick="viewMilestone(${row.MilestoneID})" title="View">
+                     <button class="btn btn-outline-primary" onclick="viewMilestone(${row.id})" title="View">
                         <i class="bi bi-eye"></i>
                      </button>
-                     <button class="btn btn-outline-success" onclick="editMilestone(${row.MilestoneID})" title="Edit" data-permission="manage_milestones">
+                     <button class="btn btn-outline-success" onclick="editMilestone(${row.id})" title="Edit" data-permission="manage_milestones">
                         <i class="bi bi-pencil"></i>
                      </button>
-                     <button class="btn btn-outline-danger" onclick="deleteMilestone(${row.MilestoneID})" title="Delete" data-permission="manage_milestones">
+                     <button class="btn btn-outline-danger" onclick="deleteMilestone(${row.id})" title="Delete" data-permission="manage_milestones">
                         <i class="bi bi-trash"></i>
                      </button>
                   </div>
-               `
-            }
-         ],
-         pagination: {
-            enabled: true,
-            pageSize: 25,
-            pageSizes: [10, 25, 50, 100]
-         },
-         search: {
-            enabled: true,
-            placeholder: 'Search milestones...'
-         },
-         sorting: {
-            enabled: true,
-            defaultSort: { field: 'MilestoneDate', direction: 'desc' }
-         },
-         responsive: true,
-         emptyMessage: 'No milestones found'
+               `,
+          },
+        ],
+        pagination: {
+          enabled: true,
+          pageSize: 25,
+          pageSizes: [10, 25, 50, 100],
+        },
+        search: {
+          enabled: true,
+          placeholder: "Search milestones...",
+        },
+        sorting: {
+          enabled: true,
+          defaultSort: { field: "date", direction: "desc" },
+        },
+        responsive: true,
+        emptyMessage: "No milestones found",
       });
    }
 
@@ -145,6 +148,30 @@ export class MilestoneTable {
             this.clearFilters();
          });
       }
+
+      // Apply filters button
+      const applyBtn = document.getElementById('applyFiltersBtn');
+      if (applyBtn) {
+         applyBtn.addEventListener('click', () => {
+            this.applyFilters();
+         });
+      }
+
+      // Search input (apply on Enter)
+      const searchInput = document.getElementById('filterSearch');
+      if (searchInput) {
+         searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+               this.applyFilters();
+            }
+         });
+      }
+
+      // Refresh grid button
+      const refreshBtn = document.getElementById('refreshGrid');
+      if (refreshBtn) {
+         refreshBtn.addEventListener('click', () => this.refresh());
+      }
    }
 
    applyFilters() {
@@ -152,7 +179,8 @@ export class MilestoneTable {
          type: document.getElementById('filterType')?.value || '',
          member: document.getElementById('filterMember')?.value || '',
          startDate: document.getElementById('filterStartDate')?.value || '',
-         endDate: document.getElementById('filterEndDate')?.value || ''
+         endDate: document.getElementById('filterEndDate')?.value || '',
+         search: document.getElementById('filterSearch')?.value || ''
       };
 
       this.state.setFilters(filters);
@@ -165,12 +193,14 @@ export class MilestoneTable {
       if (filters.member) params.append('member_id', filters.member);
       if (filters.startDate) params.append('start_date', filters.startDate);
       if (filters.endDate) params.append('end_date', filters.endDate);
+      if (filters.search) params.append('search', filters.search);
 
       // Update grid URL
       if (this.grid) {
          this.grid.updateDataSource({
             url: `${Config.API_BASE_URL}/milestone/all?${params.toString()}`
          });
+         this.grid.refresh();
       }
    }
 
@@ -207,7 +237,7 @@ export class MilestoneTable {
          const typeFilter = document.getElementById('filterType');
          if (typeFilter && types.length > 0) {
             typeFilter.innerHTML = '<option value="">All Types</option>' +
-               types.map(t => `<option value="${t.MilestoneTypeID}">${t.TypeName}</option>`).join('');
+               types.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
          }
       } catch (error) {
          console.error('Failed to load filter options:', error);

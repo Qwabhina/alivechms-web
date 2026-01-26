@@ -275,6 +275,30 @@ class FiscalYear
       return ['status' => 'success', 'fiscal_year_id' => $fiscalYearId];
    }
 
+   /**
+    * Get the active fiscal year for a specific date and branch
+    *
+    * @param string $date     Date to check (YYYY-MM-DD)
+    * @param int    $branchId Branch ID
+    * @return array|null Fiscal year data or null if not found
+    */
+   public static function getForDate(string $date, int $branchId): ?array
+   {
+      $orm = new ORM();
+
+      $result = $orm->runQuery(
+         "SELECT * FROM fiscal_year 
+          WHERE BranchID = :branch 
+            AND StartDate <= :date 
+            AND EndDate >= :date 
+            AND Status = 'Active' 
+          LIMIT 1",
+         [':branch' => $branchId, ':date' => $date]
+      );
+
+      return !empty($result) ? $result[0] : null;
+   }
+
    /** Private Helpers */
 
    private static function validateBranch(int $branchId): void

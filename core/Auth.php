@@ -103,9 +103,10 @@ class Auth
     {
         self::initKeys();
         $token = self::generateToken($user, self::$secretKey, self::ACCESS_TOKEN_TTL);
-        $secretPreview = substr(self::$secretKey, 0, 8) . '...';
+        // $secretPreview = substr(self::$secretKey, 0, 8) . '...';
         $tokenPreview = substr($token, 0, 30) . '...';
-        Helpers::logError("[generateAccessToken] Generated token: {$tokenPreview} with secret: {$secretPreview}");
+        // Helpers::logError("[generateAccessToken] Generated token: {$tokenPreview} with secret: {$secretPreview}");
+        Helpers::logError("[generateAccessToken] Generated token: {$tokenPreview}");
         return $token;
     }
 
@@ -166,12 +167,12 @@ class Auth
         $secretPreview = substr($secret, 0, 8) . '...';
         $isRefreshSecret = ($secret === self::$refreshSecretKey);
 
-        Helpers::logError("[verify] Token parts: " . count($tokenParts) . ", preview: {$tokenPreview}");
-        Helpers::logError("[verify] Using " . ($isRefreshSecret ? "REFRESH" : "ACCESS") . " secret: {$secretPreview}");
+        // Helpers::logError("[verify] Token parts: " . count($tokenParts) . ", preview: {$tokenPreview}");
+        // Helpers::logError("[verify] Using " . ($isRefreshSecret ? "REFRESH" : "ACCESS") . " secret: {$secretPreview}");
 
         try {
             $decoded = JWT::decode($token, new Key($secret, 'HS256'));
-            Helpers::logError("[verify] Token verified successfully for user: " . ($decoded->user_id ?? 'unknown'));
+            // Helpers::logError("[verify] Token verified successfully for user: " . ($decoded->user_id ?? 'unknown'));
             return (array) $decoded;
         } catch (ExpiredException $e) {
             Helpers::logError("[verify] Token expired: " . $e->getMessage());

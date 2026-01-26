@@ -26,9 +26,14 @@ export class MilestoneAPI {
       return await api.delete(`milestone/delete/${milestoneId}`);
    }
 
-   async getStats(year = null) {
-      const url = year ? `milestone/stats?year=${year}` : 'milestone/stats';
+   async getStats(params = {}) {
+      const queryString = new URLSearchParams(params).toString();
+      const url = queryString ? `milestone/stats?${queryString}` : 'milestone/stats';
       return await api.get(url);
+   }
+
+   async getAnniversaries(limit = 10) {
+      return await api.get(`milestone/anniversaries?limit=${limit}`);
    }
 
    async getByMember(memberId) {

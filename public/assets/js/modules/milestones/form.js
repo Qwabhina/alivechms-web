@@ -17,7 +17,7 @@ export class MilestoneForm {
 
    init() {
       this.modal = new bootstrap.Modal(document.getElementById('milestoneModal'));
-      this.typeModal = new bootstrap.Modal(document.getElementById('milestoneTypeModal'));
+      this.typeModal = new bootstrap.Modal(document.getElementById('milestoneTypesModal'));
       this.initEventListeners();
       console.log('✓ Milestone form initialized');
    }
@@ -45,10 +45,10 @@ export class MilestoneForm {
       });
 
       // Add type button
-      document.getElementById('addTypeBtn')?.addEventListener('click', () => this.openTypeModal());
+      document.getElementById('addMilestoneTypeBtn')?.addEventListener('click', () => this.addMilestoneType());
 
       // Save type button
-      document.getElementById('saveTypeBtn')?.addEventListener('click', () => this.saveType());
+      document.getElementById('saveMilestoneTypeBtn')?.addEventListener('click', () => this.updateMilestoneType());
    }
 
    // ========== Milestone CRUD ==========
@@ -58,7 +58,8 @@ export class MilestoneForm {
       
       // Reset form
       document.getElementById('milestoneForm').reset();
-      document.getElementById('milestoneModalTitle').textContent = milestoneId ? 'Edit Milestone' : 'Record Milestone';
+      document.getElementById('milestoneId').value = '';
+      document.getElementById('milestoneModalTitle').innerHTML = '<i class="bi bi-trophy me-2"></i>' + (milestoneId ? 'Edit' : 'Record') + ' Milestone';
 
       // Load members and types
       await this.loadMembersForMilestone();
@@ -105,13 +106,13 @@ export class MilestoneForm {
          const response = await this.api.getAllTypes(true);
          const types = response?.data || response;
          
-         const select = document.getElementById('milestoneType');
+         const select = document.getElementById('milestoneTypeId');
          select.innerHTML = '<option value="">Select milestone type...</option>';
          
          types.forEach(t => {
             const opt = document.createElement('option');
-            opt.value = t.MilestoneTypeID;
-            opt.textContent = t.TypeName;
+            opt.value = t.id;
+            opt.textContent = t.name;
             select.appendChild(opt);
          });
       } catch (error) {
@@ -126,17 +127,17 @@ export class MilestoneForm {
 
          // Populate form
          if (this.memberChoices) {
-            this.memberChoices.setChoiceByValue(milestone.MbrID.toString());
+            this.memberChoices.setChoiceByValue(milestone.member_id.toString());
          } else {
-            document.getElementById('milestoneMember').value = milestone.MbrID;
+            document.getElementById('milestoneMember').value = milestone.member_id;
          }
 
-         document.getElementById('milestoneType').value = milestone.MilestoneTypeID;
-         document.getElementById('milestoneDate').value = milestone.MilestoneDate;
-         document.getElementById('milestoneLocation').value = milestone.Location || '';
-         document.getElementById('milestoneOfficiant').value = milestone.OfficiatingPastor || '';
-         document.getElementById('milestoneCertificate').value = milestone.CertificateNumber || '';
-         document.getElementById('milestoneNotes').value = milestone.Notes || '';
+         document.getElementById('milestoneTypeId').value = milestone.type_id;
+         document.getElementById('milestoneDate').value = milestone.date;
+         document.getElementById('location').value = milestone.location || '';
+         document.getElementById('officiatingPastor').value = milestone.officiating_pastor || '';
+         document.getElementById('certificateNumber').value = milestone.certificate_number || '';
+         document.getElementById('notes').value = milestone.notes || '';
       } catch (error) {
          console.error('Failed to load milestone:', error);
          Alerts.error('Failed to load milestone data');
@@ -145,7 +146,7 @@ export class MilestoneForm {
 
    async saveMilestone() {
       const memberId = document.getElementById('milestoneMember').value;
-      const typeId = document.getElementById('milestoneType').value;
+      const typeId = document.getElementById('milestoneTypeId').value;
       const date = document.getElementById('milestoneDate').value;
 
       if (!memberId || !typeId || !date) {
@@ -157,10 +158,10 @@ export class MilestoneForm {
          member_id: parseInt(memberId),
          milestone_type_id: parseInt(typeId),
          milestone_date: date,
-         location: document.getElementById('milestoneLocation').value.trim() || null,
-         officiating_pastor: document.getElementById('milestoneOfficiant').value.trim() || null,
-         certificate_number: document.getElementById('milestoneCertificate').value.trim() || null,
-         notes: document.getElementById('milestoneNotes').value.trim() || null
+         location: document.getElementById('location').value.trim() || null,
+         officiating_pastor: document.getElementById('officiatingPastor').value.trim() || null,
+         certificate_number: document.getElementById('certificateNumber').value.trim() || null,
+         notes: document.getElementById('notes').value.trim() || null
       };
 
       try {
@@ -198,61 +199,80 @@ export class MilestoneForm {
          const milestone = response?.data || response;
 
          await Swal.fire({
-            title: milestone.MilestoneTypeName,
-            html: `
+           title: milestone.type_name,
+           html: `
                <div class="text-start">
                   <table class="table table-sm">
                      <tr>
                         <th class="text-muted" style="width: 40%">Member:</th>
-                        <td>${milestone.MemberName}</td>
+                        <td>${milestone.member_name}</td>
                      </tr>
                      <tr>
                         <th class="text-muted">Date:</th>
-                        <td>${new Date(milestone.MilestoneDate).toLocaleDateString('en-US', {
-                           year: 'numeric',
-                           month: 'long',
-                           day: 'numeric'
-                        })}</td>
+                        <td>${new Date(milestone.date).toLocaleDateString(
+                          "en-US",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          },
+                        )}</td>
                      </tr>
-                     ${milestone.Location ? `
+                     ${
+                       milestone.location
+                         ? `
                      <tr>
                         <th class="text-muted">Location:</th>
-                        <td>${milestone.Location}</td>
+                        <td>${milestone.location}</td>
                      </tr>
-                     ` : ''}
-                     ${milestone.OfficiatingPastor ? `
+                     `
+                         : ""
+                     }
+                     ${
+                       milestone.officiating_pastor
+                         ? `
                      <tr>
                         <th class="text-muted">Officiating Pastor:</th>
-                        <td>${milestone.OfficiatingPastor}</td>
+                        <td>${milestone.officiating_pastor}</td>
                      </tr>
-                     ` : ''}
-                     ${milestone.CertificateNumber ? `
+                     `
+                         : ""
+                     }
+                     ${
+                       milestone.certificate_number
+                         ? `
                      <tr>
                         <th class="text-muted">Certificate #:</th>
-                        <td>${milestone.CertificateNumber}</td>
+                        <td>${milestone.certificate_number}</td>
                      </tr>
-                     ` : ''}
-                     ${milestone.Notes ? `
+                     `
+                         : ""
+                     }
+                     ${
+                       milestone.notes
+                         ? `
                      <tr>
                         <th class="text-muted">Notes:</th>
-                        <td>${milestone.Notes}</td>
+                        <td>${milestone.notes}</td>
                      </tr>
-                     ` : ''}
+                     `
+                         : ""
+                     }
                      <tr>
                         <th class="text-muted">Recorded By:</th>
-                        <td>${milestone.RecorderName || 'System'}</td>
+                        <td>${milestone.recorder_name || "System"}</td>
                      </tr>
                      <tr>
                         <th class="text-muted">Recorded At:</th>
-                        <td>${new Date(milestone.RecordedAt).toLocaleString()}</td>
+                        <td>${new Date(milestone.recorded_at).toLocaleString()}</td>
                      </tr>
                   </table>
                </div>
             `,
-            icon: 'info',
-            confirmButtonText: 'Close',
-            confirmButtonColor: '#0d6efd',
-            width: '600px'
+           icon: "info",
+           confirmButtonText: "Close",
+           confirmButtonColor: "#0d6efd",
+           width: "600px",
          });
       } catch (error) {
          console.error('View milestone error:', error);
@@ -301,7 +321,7 @@ export class MilestoneForm {
          const response = await this.api.getAllTypes(false);
          const types = response?.data || response;
 
-         const tbody = document.getElementById('typesTableBody');
+         const tbody = document.getElementById('milestoneTypesBody');
          if (!tbody) return;
 
          if (types.length === 0) {
@@ -311,19 +331,16 @@ export class MilestoneForm {
 
          tbody.innerHTML = types.map(type => `
             <tr>
-               <td class="fw-semibold">${type.TypeName}</td>
-               <td>${type.Description || '-'}</td>
-               <td>
-                  <span class="badge bg-${type.IsActive ? 'success' : 'secondary'}">
-                     ${type.IsActive ? 'Active' : 'Inactive'}
-                  </span>
-               </td>
+               <td class="fw-semibold">${type.name}</td>
+               <td>${type.description || '-'}</td>
+               <td><i class="bi bi-${type.icon || 'tag'}"></i></td>
+               <td><span class="badge bg-${type.color || 'secondary'}">${type.color || 'secondary'}</span></td>
                <td>
                   <div class="btn-group btn-group-sm">
-                     <button class="btn btn-outline-success" onclick="editMilestoneType(${type.MilestoneTypeID})" title="Edit">
+                     <button class="btn btn-outline-success" onclick="editMilestoneType(${type.id})" title="Edit">
                         <i class="bi bi-pencil"></i>
                      </button>
-                     <button class="btn btn-outline-danger" onclick="deleteMilestoneType(${type.MilestoneTypeID})" title="Delete">
+                     <button class="btn btn-outline-danger" onclick="deleteMilestoneType(${type.id})" title="Delete">
                         <i class="bi bi-trash"></i>
                      </button>
                   </div>
@@ -335,74 +352,89 @@ export class MilestoneForm {
       }
    }
 
-   openTypeModal(typeId = null) {
-      this.currentTypeId = typeId;
-      
-      // Reset form
-      document.getElementById('typeForm').reset();
-      document.getElementById('typeModalTitle').textContent = typeId ? 'Edit Milestone Type' : 'Add Milestone Type';
-
-      // If editing, load type data
-      if (typeId) {
-         this.loadTypeData(typeId);
-      }
-
-      // Show modal
-      const modal = new bootstrap.Modal(document.getElementById('typeFormModal'));
-      modal.show();
-   }
-
-   async loadTypeData(typeId) {
+   editMilestoneType = async (typeId) => {
       try {
-         const types = this.state.getMilestoneTypes();
-         const type = types.find(t => t.MilestoneTypeID === typeId);
-
-         if (type) {
-            document.getElementById('typeName').value = type.TypeName;
-            document.getElementById('typeDescription').value = type.Description || '';
-            document.getElementById('typeIsActive').checked = type.IsActive === 1;
-         }
+         const response = await this.api.getType(typeId);
+         const type = response?.data || response;
+         this.currentTypeId = typeId;
+         document.getElementById('editTypeId').value = type.id;
+         document.getElementById('editTypeName').value = type.name || '';
+         document.getElementById('editTypeDesc').value = type.description || '';
+         document.getElementById('editTypeIcon').value = type.icon || '';
+         document.getElementById('editTypeColor').value = type.color || 'secondary';
+         const modal = new bootstrap.Modal(document.getElementById('editMilestoneTypeModal'));
+         modal.show();
       } catch (error) {
-         console.error('Failed to load type data:', error);
+         console.error('Failed to load type for edit:', error);
+         Alerts.error('Failed to load type details');
       }
    }
 
-   async saveType() {
-      const name = document.getElementById('typeName').value.trim();
-
+   async addMilestoneType() {
+      const name = document.getElementById('newTypeName').value.trim();
+      const desc = document.getElementById('newTypeDesc').value.trim();
+      const icon = document.getElementById('newTypeIcon').value.trim();
+      const color = document.getElementById('newTypeColor').value;
+ 
       if (!name) {
          Alerts.warning('Please enter a milestone type name');
          return;
       }
-
-      const payload = {
-         name: name,
-         description: document.getElementById('typeDescription').value.trim() || null,
-         is_active: document.getElementById('typeIsActive').checked ? 1 : 0
-      };
-
+ 
       try {
-         Alerts.loading(this.currentTypeId ? 'Updating type...' : 'Creating type...');
-         
-         if (this.currentTypeId) {
-            await this.api.updateType(this.currentTypeId, payload);
-            Alerts.closeLoading();
-            Alerts.success('Milestone type updated successfully');
-         } else {
-            await this.api.createType(payload);
-            Alerts.closeLoading();
-            Alerts.success('Milestone type created successfully');
-         }
-
-         // Close type form modal
-         const modal = bootstrap.Modal.getInstance(document.getElementById('typeFormModal'));
-         if (modal) modal.hide();
-
-         // Reload types list
+         Alerts.loading('Adding milestone type...');
+         await this.api.createType({
+            name: name,
+            description: desc,
+            icon: icon,
+            color: color,
+            is_active: 1
+         });
+         Alerts.closeLoading();
+         Alerts.success('Milestone type added successfully');
+ 
+         document.getElementById('newTypeName').value = '';
+         document.getElementById('newTypeDesc').value = '';
+         document.getElementById('newTypeIcon').value = '';
+ 
          await this.loadTypesForManagement();
       } catch (error) {
          Alerts.closeLoading();
-         console.error('Save type error:', error);
+         console.error('Add type error:', error);
+         Alerts.handleApiError(error);
+      }
+   }
+
+   async updateMilestoneType() {
+      const id = document.getElementById('editTypeId').value;
+      const name = document.getElementById('editTypeName').value.trim();
+      const desc = document.getElementById('editTypeDesc').value.trim();
+      const icon = document.getElementById('editTypeIcon').value.trim();
+      const color = document.getElementById('editTypeColor').value;
+ 
+      if (!name) {
+         Alerts.warning('Please enter a milestone type name');
+         return;
+      }
+ 
+      try {
+         Alerts.loading('Updating milestone type...');
+         await this.api.updateType(parseInt(id), {
+            name: name,
+            description: desc,
+            icon: icon,
+            color: color
+         });
+         Alerts.closeLoading();
+         Alerts.success('Milestone type updated successfully');
+ 
+         const modal = bootstrap.Modal.getInstance(document.getElementById('editMilestoneTypeModal'));
+         if (modal) modal.hide();
+ 
+         await this.loadTypesForManagement();
+      } catch (error) {
+         Alerts.closeLoading();
+         console.error('Update type error:', error);
          Alerts.handleApiError(error);
       }
    }
