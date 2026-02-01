@@ -54,6 +54,62 @@ abstract class BaseRoute
    protected static ?array $decodedToken = null;
    protected static ?int   $currentUserId = null;
 
+   // Dependency Injection support (merged from BaseRouteWithDI)
+   protected static ?Container $container = null;
+   protected static ?Auth $auth = null;
+   protected static ?Validator $validator = null;
+   protected static ?RateLimiter $rateLimiter = null;
+   protected static ?ORM $orm = null;
+
+   /**
+    * Initialize dependencies from container (optional DI support)
+    * Call this method to use DI instead of direct class instantiation
+    */
+   protected static function initializeDependencies(): void
+   {
+      if (self::$container === null && class_exists('Application')) {
+         self::$container = Application::resolve('Container');
+         self::$auth = Application::resolve('Auth');
+         self::$rateLimiter = Application::resolve('RateLimiter');
+         self::$orm = Application::resolve('ORM');
+      }
+   }
+
+   /**
+    * Get ORM instance (uses DI if initialized, otherwise creates new)
+    */
+   protected static function getORM(): ORM
+   {
+      if (self::$orm !== null) {
+         return self::$orm;
+      }
+      return new ORM();
+   }
+
+   /**
+    * Start database transaction
+    */
+   protected static function beginTransaction(): void
+   {
+      self::getORM()->beginTransaction();
+   }
+
+   /**
+    * Commit database transaction
+    */
+   protected static function commitTransaction(): void
+   {
+      self::getORM()->commit();
+   }
+
+   /**
+    * Rollback database transaction
+    */
+   protected static function rollbackTransaction(): void
+   {
+      self::getORM()->rollBack();
+   }
+
    /**
     * Get route variables from global scope
     * Ensures consistency across all route files
