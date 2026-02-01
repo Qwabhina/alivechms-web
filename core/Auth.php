@@ -272,13 +272,13 @@ class Auth
         $token = self::getBearerToken();
 
         if (!$token) {
-            Helpers::sendFeedback('Unauthorized: No authentication token', 401);
+            ResponseHelper::error('Unauthorized: No authentication token', 401);
         }
 
         $decoded = self::verify($token);
 
         if (!$decoded || !isset($decoded['user_id'])) {
-            Helpers::sendFeedback('Unauthorized: Invalid or expired token', 401);
+            ResponseHelper::error('Unauthorized: Invalid or expired token', 401);
         }
 
         $userId = (int)$decoded['user_id'];
@@ -286,7 +286,7 @@ class Auth
         // Use new RBAC system with caching and inheritance
         if (!RBAC::hasPermission($userId, $requiredPermission)) {
             Helpers::logError("Forbidden access attempt by user {$userId} for permission: $requiredPermission");
-            Helpers::sendFeedback('Forbidden: Insufficient permissions', 403);
+            ResponseHelper::error('Forbidden: Insufficient permissions', 403);
         }
     }
 
@@ -447,14 +447,14 @@ class Auth
 
         if (empty($refreshToken)) {
             Helpers::logError("[refreshAccessToken] No refresh token available");
-            Helpers::sendError('Refresh token required');
+            ResponseHelper::error('Refresh token required');
         }
 
         $decoded = self::verify($refreshToken, self::$refreshSecretKey);
 
         if (!$decoded) {
             Helpers::logError("[refreshAccessToken] Refresh token verification failed");
-            Helpers::sendError('Invalid or expired refresh token');
+            ResponseHelper::error('Invalid or expired refresh token');
         }
 
         $orm = new ORM();
@@ -467,7 +467,7 @@ class Auth
         ]);
 
         if (empty($stored)) {
-            Helpers::sendError('Refresh token revoked or invalid');
+            ResponseHelper::error('Refresh token revoked or invalid');
         }
 
         $tokenRecord = $stored[0];
@@ -477,7 +477,7 @@ class Auth
                 'IsRevoked' => 1,
                 'RevokedAt' => date('Y-m-d H:i:s')
             ], ['SessionID' => $tokenRecord['SessionID']]);
-            Helpers::sendError('Refresh token expired');
+            ResponseHelper::error('Refresh token expired');
         }
 
         // Revoke old refresh token

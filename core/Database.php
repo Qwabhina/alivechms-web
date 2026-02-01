@@ -64,7 +64,7 @@ class Database
 
         // All retries failed
         Helpers::logError("Database connection failed after $maxRetries attempts: " . $lastError->getMessage());
-        Helpers::sendFeedback('Service temporarily unavailable', 503);
+        ResponseHelper::error('Service temporarily unavailable', 503);
     }
 
     /**

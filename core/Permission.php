@@ -47,7 +47,7 @@ class Permission
 
       // Enforce uniqueness
       if (!empty($orm->getWhere('permission', ['PermissionName' => $name]))) {
-         Helpers::sendFeedback('Permission name already exists', 400);
+         ResponseHelper::error('Permission name already exists', 400);
       }
 
       $permissionId = $orm->insert('permission', [
@@ -78,7 +78,7 @@ class Permission
 
       $existing = $orm->getWhere('permission', ['PermissionID' => $permissionId]);
       if (empty($existing)) {
-         Helpers::sendFeedback('Permission not found', 404);
+         ResponseHelper::error('Permission not found', 404);
       }
 
       if (empty($data['name'])) {
@@ -95,7 +95,7 @@ class Permission
       ]);
 
       if (!empty($conflict)) {
-         Helpers::sendFeedback('Permission name already exists', 400);
+         ResponseHelper::error('Permission name already exists', 400);
       }
 
       $orm->update('permission', ['PermissionName' => $newName], ['PermissionID' => $permissionId]);
@@ -123,13 +123,13 @@ class Permission
 
       $permission = $orm->getWhere('permission', ['PermissionID' => $permissionId]);
       if (empty($permission)) {
-         Helpers::sendFeedback('Permission not found', 404);
+         ResponseHelper::error('Permission not found', 404);
       }
 
       // Check if permission is in use
       $inUse = $orm->getWhere('rolepermission', ['PermissionID' => $permissionId]);
       if (!empty($inUse)) {
-         Helpers::sendFeedback('Cannot delete permission assigned to one or more roles', 400);
+         ResponseHelper::error('Cannot delete permission assigned to one or more roles', 400);
       }
 
       $orm->delete('permission', ['PermissionID' => $permissionId]);
@@ -153,7 +153,7 @@ class Permission
 
       $permission = $orm->getWhere('permission', ['PermissionID' => $permissionId]);
       if (empty($permission)) {
-         Helpers::sendFeedback('Permission not found', 404);
+         ResponseHelper::error('Permission not found', 404);
       }
 
       $roles = $orm->selectWithJoin(

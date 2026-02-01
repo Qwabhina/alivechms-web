@@ -20,6 +20,8 @@
 
 declare(strict_types=1);
 
+use AliveChMS\Core\Services\MoneyValidator;
+
 class Expense
 {
    private const STATUS_PENDING  = 'Pending Approval';
@@ -51,32 +53,6 @@ class Expense
       }
    }
 
-   /**
-    * Validate and format amount
-    * @param mixed $amount Amount to validate
-    * @param string $fieldName Field name for error message
-    * @return float Validated amount
-    * @throws Exception If invalid
-    */
-   private static function validateAmount($amount, string $fieldName = 'Amount'): float
-   {
-      if (!is_numeric($amount)) {
-         throw new Exception("$fieldName must be a valid number");
-      }
-
-      $amount = (float)$amount;
-
-      if ($amount <= 0) {
-         throw new Exception("$fieldName must be greater than zero");
-      }
-
-      if ($amount > 999999999.99) {
-         throw new Exception("$fieldName is too large (maximum: 999,999,999.99)");
-      }
-
-      // Round to 2 decimal places
-      return round($amount, 2);
-   }
 
    /**
     * Get expense statistics for a fiscal year
@@ -281,7 +257,7 @@ class Expense
       }
 
       // Validate and format amount
-      $amount = self::validateAmount($data['amount'], 'Expense amount');
+      $amount = MoneyValidator::validateAmount($data['amount'], 'Expense amount');
       $expenseDate = $data['expense_date'];
       $categoryId = (int)$data['category_id'];
       $fiscalYearId = !empty($data['fiscal_year_id']) ? (int)$data['fiscal_year_id'] : null;
@@ -380,7 +356,7 @@ class Expense
          $update['ExpTitle'] = $data['title'];
       }
       if (isset($data['amount'])) {
-         $update['ExpAmount'] = self::validateAmount($data['amount'], 'Expense amount');
+         $update['ExpAmount'] = MoneyValidator::validateAmount($data['amount'], 'Expense amount');
       }
       if (!empty($data['expense_date'])) {
          if ($data['expense_date'] > date('Y-m-d')) {

@@ -55,41 +55,21 @@ class MemberRoutes extends BaseRoute
                     }
 
                     // Handle file upload if present
-                    if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
-                        $uploadDir = __DIR__ . '/../public/uploads/members/';
-                        if (!is_dir($uploadDir)) {
-                            mkdir($uploadDir, 0755, true);
-                        }
+                        if (isset($_FILES['profile_picture'])) {
+                            try {
+                                $payload['profile_picture'] = \AliveChMS\Core\Services\FileUploadService::handleProfileImage(
+                                $_FILES['profile_picture'],
+                                'members'
+                                );
 
-                        // Validate MIME type first (more secure)
-                        $finfo = new finfo(FILEINFO_MIME_TYPE);
-                        $mimeType = $finfo->file($_FILES['profile_picture']['tmp_name']);
-                        $allowedMimes = ['image/jpeg', 'image/png', 'image/gif'];
-
-                        if (!in_array($mimeType, $allowedMimes)) {
-                            ResponseHelper::error('Invalid file type. Only JPG, PNG, and GIF images are allowed.', 400);
-                        }
-
-                        // Also validate file extension
-                        $fileExtension = strtolower(pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION));
-                        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
-
-                        if (!in_array($fileExtension, $allowedExtensions)) {
-                            ResponseHelper::error('Invalid file extension. Only .jpg, .png, and .gif are allowed.', 400);
-                        }
-
-                        // Validate file size (5MB max)
-                        if ($_FILES['profile_picture']['size'] > 5 * 1024 * 1024) {
-                            ResponseHelper::error('File size must not exceed 5MB.', 400);
-                        }
-
-                        $fileName = uniqid('member_') . '.' . $fileExtension;
-                        $filePath = $uploadDir . $fileName;
-
-                        if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $filePath)) {
-                            // Store path relative to public folder (without 'public/' prefix)
-                            $payload['profile_picture'] = 'uploads/members/' . $fileName;
-                            Helpers::logError("Member create - Profile picture uploaded: " . $payload['profile_picture']);
+                                if ($payload['profile_picture']) {
+                                    Helpers::logError("Member create - Profile picture uploaded: " . $payload['profile_picture']);
+                                }
+                            } catch (\InvalidArgumentException $e) {
+                                ResponseHelper::error($e->getMessage(), 400);
+                            } catch (\RuntimeException $e) {
+                                Helpers::logError("Upload failed: " . $e->getMessage());
+                                ResponseHelper::error('Failed to upload profile picture', 500);
                         }
                     }
                 } else {
@@ -235,40 +215,21 @@ class MemberRoutes extends BaseRoute
                         $payload['profile_picture'] = null; // Will clear the profile picture
                     }
                     // Handle file upload if present
-                    elseif (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
-                        $uploadDir = __DIR__ . '/../public/uploads/members/';
-                        if (!is_dir($uploadDir)) {
-                            mkdir($uploadDir, 0755, true);
-                        }
+                        elseif (isset($_FILES['profile_picture'])) {
+                            try {
+                                $payload['profile_picture'] = \AliveChMS\Core\Services\FileUploadService::handleProfileImage(
+                                $_FILES['profile_picture'],
+                                'members'
+                                );
 
-                        // Validate MIME type first (more secure)
-                        $finfo = new finfo(FILEINFO_MIME_TYPE);
-                        $mimeType = $finfo->file($_FILES['profile_picture']['tmp_name']);
-                        $allowedMimes = ['image/jpeg', 'image/png', 'image/gif'];
-
-                        if (!in_array($mimeType, $allowedMimes)) {
-                            ResponseHelper::error('Invalid file type. Only JPG, PNG, and GIF images are allowed.', 400);
-                        }
-
-                        // Also validate file extension
-                        $fileExtension = strtolower(pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION));
-                        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
-
-                        if (!in_array($fileExtension, $allowedExtensions)) {
-                            ResponseHelper::error('Invalid file extension. Only .jpg, .png, and .gif are allowed.', 400);
-                        }
-
-                        // Validate file size (5MB max)
-                        if ($_FILES['profile_picture']['size'] > 5 * 1024 * 1024) {
-                            ResponseHelper::error('File size must not exceed 5MB.', 400);
-                        }
-
-                        $fileName = uniqid('member_') . '.' . $fileExtension;
-                        $filePath = $uploadDir . $fileName;
-
-                        if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $filePath)) {
-                            $payload['profile_picture'] = 'uploads/members/' . $fileName;
-                            Helpers::logError("Member update - Profile picture uploaded: " . $payload['profile_picture']);
+                                if ($payload['profile_picture']) {
+                                    Helpers::logError("Member update - Profile picture uploaded: " . $payload['profile_picture']);
+                                }
+                            } catch (\InvalidArgumentException $e) {
+                                ResponseHelper::error($e->getMessage(), 400);
+                            } catch (\RuntimeException $e) {
+                                Helpers::logError("Upload failed: " . $e->getMessage());
+                                ResponseHelper::error('Failed to upload profile picture', 500);
                         }
                     }
                 } else {

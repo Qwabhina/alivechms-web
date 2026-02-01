@@ -19,10 +19,26 @@ declare(strict_types=1);
 
 class ORM
 {
+    private static ?ORM $instance = null;
     private PDO $pdo;
 
     /**
+     * Get ORM Singleton Instance
+     * 
+     * @return ORM
+     */
+    public static function getInstance(): ORM
+    {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    /**
      * Initialise PDO connection via Database singleton
+     * Note: Constructor remains public for backward compatibility,
+     * but usage of ORM::getInstance() is preferred.
      */
     public function __construct()
     {

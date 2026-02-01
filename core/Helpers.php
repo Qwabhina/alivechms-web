@@ -22,57 +22,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/ResponseHelper.php';
 class Helpers
 {
-    /**
-     * Send standardised JSON response and terminate execution
-     *
-     * @param string $message Response message
-     * @param int    $code    HTTP status code (default 400)
-     * @param string $type    Response type: 'success' or 'error' (default 'error')
-     * @return never
-     * 
-     * @deprecated Use ResponseHelper::success() or ResponseHelper::error() instead
-     */
-    public static function sendFeedback(string $message, int $code = 400, string $type = 'error'): void
-    {
-        // Redirect to new ResponseHelper
-        if ($type === 'success') {
-            ResponseHelper::success(null, $message, $code);
-        } else {
-            ResponseHelper::error($message, $code);
-        }
-    }
-
-    /**
-     * Send JSON success response
-     * Consistent structure for all success responses
-     * 
-     * @param mixed  $data    Optional data payload
-     * @param int    $code    HTTP status code (default 200)
-     * @param string $message Optional success message
-     * @return never
-     * 
-     * @deprecated Use ResponseHelper::success() instead
-     */
-    public static function sendSuccess($data = null, int $code = 200, string $message = ''): void
-    {
-        ResponseHelper::success($data, $message ?: 'Success', $code);
-    }
-
-    /**
-     * Send JSON error response
-     * Consistent structure for all error responses
-     * 
-     * @param string $message Error message
-     * @param int    $code    HTTP status code (default 400)
-     * @param array  $errors  Optional array of validation errors
-     * @return never
-     * 
-     * @deprecated Use ResponseHelper::error() instead
-     */
-    public static function sendError(string $message, int $code = 400, array $errors = []): void
-    {
-        ResponseHelper::error($message, $code, $errors);
-    }
+    // Deprecated methods removed. Use ResponseHelper directly.
 
     /**
      * Add secure CORS headers from .env configuration

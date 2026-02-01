@@ -50,7 +50,7 @@ class Role
       $name = trim($data['name']);
 
       if (!empty($orm->getWhere('church_role', ['RoleName' => $name]))) {
-         Helpers::sendFeedback('Role name already exists', 400);
+         ResponseHelper::error('Role name already exists', 400);
       }
 
       $roleId = $orm->insert('church_role', [
@@ -90,7 +90,7 @@ class Role
 
       $role = $orm->getWhere('church_role', ['RoleID' => $roleId]);
       if (empty($role)) {
-         Helpers::sendFeedback('Role not found', 404);
+         ResponseHelper::error('Role not found', 404);
       }
 
       $update = [];
@@ -98,7 +98,7 @@ class Role
       if (!empty($data['name'])) {
          $newName = trim($data['name']);
          if (!empty($orm->getWhere('church_role', ['RoleName' => $newName, 'RoleID <>' => $roleId]))) {
-            Helpers::sendFeedback('Role name already exists', 400);
+            ResponseHelper::error('Role name already exists', 400);
          }
          $update['RoleName'] = $newName;
       }
@@ -142,13 +142,13 @@ class Role
 
       $role = $orm->getWhere('church_role', ['RoleID' => $roleId]);
       if (empty($role)) {
-         Helpers::sendFeedback('Role not found', 404);
+         ResponseHelper::error('Role not found', 404);
       }
 
       // Check if role is assigned to any member
       $assigned = $orm->getWhere('member_role', ['RoleID' => $roleId, 'IsActive' => 1]);
       if (!empty($assigned)) {
-         Helpers::sendFeedback('Cannot delete role assigned to one or more members', 400);
+         ResponseHelper::error('Cannot delete role assigned to one or more members', 400);
       }
 
       $orm->beginTransaction();
@@ -193,13 +193,13 @@ class Role
 
       // Validate role exists
       if (empty($orm->getWhere('church_role', ['RoleID' => $roleId]))) {
-         Helpers::sendFeedback('Role not found', 404);
+         ResponseHelper::error('Role not found', 404);
       }
 
       // Validate all permission IDs exist
       foreach ($permissionIds as $permId) {
          if (!is_numeric($permId) || empty($orm->getWhere('permission', ['PermissionID' => (int)$permId]))) {
-            Helpers::sendFeedback("Invalid permission ID: $permId", 400);
+            ResponseHelper::error("Invalid permission ID: $permId", 400);
          }
       }
 
@@ -260,7 +260,7 @@ class Role
       );
 
       if (empty($result)) {
-         Helpers::sendFeedback('Role not found', 404);
+         ResponseHelper::error('Role not found', 404);
       }
 
       $role = $result[0];
@@ -338,12 +338,12 @@ class Role
       // Validate member
       $member = $orm->getWhere('churchmember', ['MbrID' => $memberId, 'Deleted' => 0]);
       if (empty($member)) {
-         Helpers::sendFeedback('Member not found', 404);
+         ResponseHelper::error('Member not found', 404);
       }
 
       // Validate role
       if (empty($orm->getWhere('church_role', ['RoleID' => $roleId]))) {
-         Helpers::sendFeedback('Role not found', 404);
+         ResponseHelper::error('Role not found', 404);
       }
 
       // Check if already assigned
@@ -354,7 +354,7 @@ class Role
       ]);
 
       if (!empty($existing)) {
-         Helpers::sendFeedback('Member already has this role', 400);
+         ResponseHelper::error('Member already has this role', 400);
       }
 
       // Insert new role assignment

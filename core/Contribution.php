@@ -21,34 +21,10 @@
 
 declare(strict_types=1);
 
+use AliveChMS\Core\Services\MoneyValidator;
+
 class Contribution
 {
-   /**
-    * Validate and format amount
-    * @param mixed $amount Amount to validate
-    * @param string $fieldName Field name for error message
-    * @return float Validated amount
-    * @throws Exception If invalid
-    */
-   private static function validateAmount($amount, string $fieldName = 'Amount'): float
-   {
-      if (!is_numeric($amount)) {
-         throw new Exception("$fieldName must be a valid number");
-      }
-
-      $amount = (float)$amount;
-
-      if ($amount < 0) {
-         throw new Exception("$fieldName cannot be negative");
-      }
-
-      if ($amount > 999999999.99) {
-         throw new Exception("$fieldName is too large (maximum: 999,999,999.99)");
-      }
-
-      // Round to 2 decimal places
-      return round($amount, 2);
-   }
 
    /**
     * Create a new contribution record
@@ -72,7 +48,7 @@ class Contribution
       ]);
 
       // Validate and format amount
-      $amount           = self::validateAmount($data['amount'], 'Contribution amount');
+      $amount = MoneyValidator::validateAmount($data['amount'], 'Contribution amount');
       $contributionDate = $data['date'];
       $memberId         = (int)$data['member_id'];
       $typeId           = (int)$data['contribution_type_id'];
@@ -171,7 +147,7 @@ class Contribution
       $update = [];
 
       if (isset($data['amount'])) {
-         $update['ContributionAmount'] = self::validateAmount($data['amount'], 'Contribution amount');
+         $update['ContributionAmount'] = MoneyValidator::validateAmount($data['amount'], 'Contribution amount');
       }
       if (!empty($data['date'])) {
          if ($data['date'] > date('Y-m-d')) {
