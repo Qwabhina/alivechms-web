@@ -51,7 +51,7 @@ class Budget
 
       $orm->beginTransaction();
       try {
-         $budgetId = $orm->insert('churchbudget', [
+         $budgetId = $orm->insert('church_budget', [
             'FiscalYearID'      => $fiscalYearId,
             'BranchID'          => $branchId,
             'BudgetTitle'       => $data['title'],
@@ -64,7 +64,7 @@ class Budget
 
          $total = self::saveItemsAndRecalculate($budgetId, $data['items'], $orm);
 
-         $orm->update('churchbudget', ['TotalAmount' => $total], ['BudgetID' => $budgetId]);
+         $orm->update('church_budget', ['TotalAmount' => $total], ['BudgetID' => $budgetId]);
          $orm->commit();
 
          // Return success response
@@ -97,7 +97,7 @@ class Budget
          if (!empty($_SESSION['user_id'])) {
             $update['UpdatedBy'] = (int)$_SESSION['user_id'];
          }
-         $orm->update('churchbudget', $update, ['BudgetID' => $budgetId]);
+         $orm->update('church_budget', $update, ['BudgetID' => $budgetId]);
       }
 
       return ['status' => 'success'];
@@ -114,7 +114,7 @@ class Budget
       $orm = new ORM();
       self::ensureDraft($budgetId);
 
-      $orm->update('churchbudget', [
+      $orm->update('church_budget', [
          'BudgetStatus'  => self::STATUS_SUBMITTED,
          'SubmittedAt'   => date('Y-m-d H:i:s'),
          'SubmittedBy'   => Auth::getCurrentUserId()
@@ -136,14 +136,14 @@ class Budget
    {
       $orm = new ORM();
 
-      $budget = $orm->getWhere('churchbudget', ['BudgetID' => $budgetId, 'Deleted' => 0])[0] ?? null;
+      $budget = $orm->getWhere('church_budget', ['BudgetID' => $budgetId, 'Deleted' => 0])[0] ?? null;
       if (!$budget || $budget['BudgetStatus'] !== self::STATUS_SUBMITTED) {
          ResponseHelper::error('Only submitted budgets can be reviewed', 400);
       }
 
       $newStatus = $action === 'approve' ? self::STATUS_APPROVED : self::STATUS_REJECTED;
 
-      $orm->update('churchbudget', [
+      $orm->update('church_budget', [
          'BudgetStatus'    => $newStatus,
          'ApprovedBy'      => Auth::getCurrentUserId(),
          'ApprovedAt'      => date('Y-m-d H:i:s'),
@@ -164,7 +164,7 @@ class Budget
       $orm = new ORM();
 
       $result = $orm->selectWithJoin(
-         baseTable: 'churchbudget b',
+         baseTable: 'church_budget b',
          joins: [
             ['table' => 'fiscal_year f',  'on' => 'b.FiscalYearID = f.FiscalYearID'],
             ['table' => 'branch br',      'on' => 'b.BranchID = br.BranchID'],
@@ -225,7 +225,7 @@ class Budget
       }
 
       $budgets = $orm->selectWithJoin(
-         baseTable: 'churchbudget b',
+         baseTable: 'church_budget b',
          joins: [
             ['table' => 'fiscal_year f', 'on' => 'b.FiscalYearID = f.FiscalYearID'],
             ['table' => 'branch br',     'on' => 'b.BranchID = br.BranchID']
@@ -247,7 +247,7 @@ class Budget
       );
 
       $total = $orm->runQuery(
-         "SELECT COUNT(*) AS total FROM churchbudget b WHERE b.Deleted = 0" .
+         "SELECT COUNT(*) AS total FROM church_budget b WHERE b.Deleted = 0" .
             (count($conditions) > 1 ? " AND " . implode(' AND ', array_slice(array_keys($conditions), 1)) : ''),
          $params
       )[0]['total'];
@@ -365,7 +365,7 @@ class Budget
    private static function ensureDraft(int $budgetId): void
    {
       $orm = new ORM();
-      $b   = $orm->getWhere('churchbudget', ['BudgetID' => $budgetId, 'Deleted' => 0])[0] ?? null;
+      $b = $orm->getWhere('church_budget', ['BudgetID' => $budgetId, 'Deleted' => 0])[0] ?? null;
       if (!$b) {
          ResponseHelper::error('Budget not found', 404);
       }
@@ -397,6 +397,6 @@ class Budget
       $items = $orm->getWhere('budget_items', ['BudgetID' => $budgetId]);
       $total = array_sum(array_column($items, 'Amount'));
 
-      $orm->update('churchbudget', ['TotalAmount' => $total], ['BudgetID' => $budgetId]);
+      $orm->update('church_budget', ['TotalAmount' => $total], ['BudgetID' => $budgetId]);
    }
 }

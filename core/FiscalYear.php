@@ -144,7 +144,7 @@ class FiscalYear
 
       $used = $orm->runQuery(
          "SELECT
-                (SELECT COUNT(*) FROM churchbudget WHERE FiscalYearID = :id) +
+                (SELECT COUNT(*) FROM church_budget WHERE FiscalYearID = :id) +
                 (SELECT COUNT(*) FROM contribution WHERE FiscalYearID = :id) +
                 (SELECT COUNT(*) FROM expense WHERE FiscalYearID = :id) AS total",
             [':id' => $fiscalYearId]

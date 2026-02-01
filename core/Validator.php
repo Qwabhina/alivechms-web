@@ -408,5 +408,5 @@ Validator::registerRuleset('member_basic', [
 Validator::registerRuleset('financial', [
    'amount' => 'required|numeric|min:0',
    'date' => 'required|date',
-   'fiscal_year_id' => 'required|integer|exists:fiscalyear,FiscalYearID'
+   'fiscal_year_id' => 'required|integer|exists:fiscal_year,FiscalYearID'
 ]);

@@ -99,7 +99,7 @@ class Finance
       $budgeted = $orm->runQuery(
          "SELECT bi.Category, SUM(bi.Amount) AS budgeted
              FROM budget_items bi
-             JOIN churchbudget b ON bi.BudgetID = b.BudgetID
+             JOIN church_budget b ON bi.BudgetID = b.BudgetID
              WHERE b.FiscalYearID = :fy AND b.BudgetStatus = 'Approved' AND b.Deleted = 0
              GROUP BY bi.Category",
          [':fy' => $fiscalYearId]
