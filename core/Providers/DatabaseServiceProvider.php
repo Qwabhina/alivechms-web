@@ -18,7 +18,7 @@ namespace AliveChMS\Core\Providers;
 use AliveChMS\Core\System\ServiceProvider;
 use AliveChMS\Core\System\Database;
 use AliveChMS\Core\System\ORM;
-use AliveChMS\Core\QueryBuilder;
+use AliveChMS\Core\System\QueryBuilder;
 
 class DatabaseServiceProvider extends ServiceProvider
 {

@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Cache Manager (Legacy Compatibility Layer)
  *

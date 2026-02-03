@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Event Dispatcher
  *
@@ -23,7 +22,6 @@
 
 declare(strict_types=1);
 
-declare(strict_types=1);
 
 namespace AliveChMS\Core\Events;
 

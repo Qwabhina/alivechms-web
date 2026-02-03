@@ -264,4 +264,28 @@ class Expense
       $stats = new ExpenseStats();
       return $stats->getStats($fiscalYearId);
    }
+
+   public static function cancel(int $expenseId): array
+   {
+      $repo = new ExpenseRepository();
+      $expense = $repo->findById($expenseId);
+      if (!$expense)
+         ResponseHelper::error('Expense not found', 404);
+      if ($expense['ApprovalStatus'] !== self::STATUS_PENDING) {
+         ResponseHelper::error('Only pending expenses can be cancelled', 400);
+      }
+      $repo->update($expenseId, ['ApprovalStatus' => 'Cancelled']);
+      return ['status' => 'success', 'message' => 'Expense cancelled'];
+   }
+
+   public static function deleteProof(int $expenseId): array
+   {
+      $repo = new ExpenseRepository();
+      $expense = $repo->findById($expenseId);
+      if (!$expense)
+         ResponseHelper::error('Expense not found', 404);
+
+      $repo->update($expenseId, ['ReceiptImageURL' => null]);
+      return ['status' => 'success', 'message' => 'Proof deleted'];
+   }
 }

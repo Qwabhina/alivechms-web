@@ -53,6 +53,12 @@ class AuthRepository
         return $res[0] ?? null;
     }
 
+    public function findSessionById(int $sessionId): ?array
+    {
+        $res = $this->orm->getWhere('user_sessions', ['SessionID' => $sessionId]);
+        return $res[0] ?? null;
+    }
+
     public function revokeSession(int $sessionId): int
     {
         return $this->orm->update('user_sessions', [

@@ -16,9 +16,16 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../core/MemberMilestone.php';
-require_once __DIR__ . '/../core/MilestoneType.php';
-require_once __DIR__ . '/../core/ResponseHelper.php';
+require_once __DIR__ . "/../vendor/autoload.php";
+
+use AliveChMS\Core\Identity\Auth;
+use AliveChMS\Core\Infrastructure\RateLimiter;
+use AliveChMS\Core\People\Member;
+use AliveChMS\Core\System\BaseRoute;
+use AliveChMS\Core\System\Helpers;
+use AliveChMS\Core\System\ORM;
+use AliveChMS\Core\System\ResponseHelper;
+use Exception;
 
 class MilestoneRoutes extends BaseRoute
 {

@@ -25,9 +25,15 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../core/Pledge.php';
-require_once __DIR__ . '/../core/PledgeType.php';
-require_once __DIR__ . '/../core/ResponseHelper.php';
+require_once __DIR__ . "/../vendor/autoload.php";
+
+use AliveChMS\Core\Identity\Auth;
+use AliveChMS\Core\Infrastructure\RateLimiter;
+use AliveChMS\Core\System\BaseRoute;
+use AliveChMS\Core\System\Helpers;
+use AliveChMS\Core\System\ORM;
+use AliveChMS\Core\System\ResponseHelper;
+use Exception;
 
 class PledgeRoutes extends BaseRoute
 {

@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Background Communication Delivery Processor
  *

@@ -14,10 +14,18 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../core/Http/BaseHttpRoute.php';
-require_once __DIR__ . '/../core/Health/HealthChecker.php';
+require_once __DIR__ . "/../vendor/autoload.php";
 
-class HealthRoutes extends BaseHttpRoute
+use AliveChMS\Core\Health\HealthChecker;
+use AliveChMS\Core\Identity\Auth;
+use AliveChMS\Core\Infrastructure\RateLimiter;
+use AliveChMS\Core\System\BaseRoute;
+use AliveChMS\Core\System\Helpers;
+use AliveChMS\Core\System\ORM;
+use AliveChMS\Core\System\ResponseHelper;
+use Exception;
+
+class HealthRoutes extends BaseRoute
 {
     private HealthChecker $healthChecker;
 

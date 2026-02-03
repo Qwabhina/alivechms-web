@@ -38,4 +38,24 @@ class ContributionType
 
       return ['status' => 'success', 'contribution_type_id' => $typeId];
    }
+
+   public static function update(int $id, array $data): array
+   {
+      $orm = new ORM();
+      Helpers::validateInput($data, ['name' => 'required|max:100']);
+
+      $orm->update('contribution_type', [
+         'ContributionTypeName' => trim($data['name']),
+         'ContributionTypeDescription' => $data['description'] ?? null
+      ], ['ContributionTypeID' => $id]);
+
+      return ['status' => 'success', 'contribution_type_id' => $id];
+   }
+
+   public static function delete(int $id): array
+   {
+      $orm = new ORM();
+      $orm->update('contribution_type', ['IsActive' => 0], ['ContributionTypeID' => $id]);
+      return ['status' => 'success'];
+   }
 }

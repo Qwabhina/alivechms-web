@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Email Delivery Gateway
  *

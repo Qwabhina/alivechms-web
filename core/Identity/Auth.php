@@ -209,6 +209,28 @@ class Auth
             throw new Exception("Permission denied: $permission");
         }
     }
+
+    public static function getUserSessions(int $userId): array
+    {
+        return (new AuthRepository())->getUserSessions($userId);
+    }
+
+    public static function revokeSession(int $sessionId, int $userId): bool
+    {
+        $repo = new AuthRepository();
+        $session = $repo->findSessionById($sessionId);
+        if (!$session || (int) $session['UserID'] !== $userId) {
+            return false;
+        }
+        return $repo->revokeSession($sessionId) > 0;
+    }
+
+    public static function revokeAllSessions(int $userId, ?string $exceptRefreshToken = null): int
+    {
+        $hash = $exceptRefreshToken ? hash('sha256', $exceptRefreshToken) : null;
+        return (new AuthRepository())->revokeSessionsByUserId($userId, $hash);
+    }
+
     public static function getBearerToken(): ?string
     {
         $header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? (function_exists('getallheaders') ? (getallheaders()['Authorization'] ?? null) : null);

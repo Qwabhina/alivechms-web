@@ -1,4 +1,6 @@
 <?php
+use AliveChMS\Core\System\SettingsHelper;
+
 // Load settings helper with error handling
 try {
    require_once __DIR__ . '/../../vendor/autoload.php';
@@ -6,12 +8,6 @@ try {
    // Load environment
    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
    $dotenv->load();
-
-   require_once __DIR__ . '/../../core/Database.php';
-   require_once __DIR__ . '/../../core/ORM.php';
-   require_once __DIR__ . '/../../core/Helpers.php';
-   require_once __DIR__ . '/../../core/Settings.php';
-   require_once __DIR__ . '/../../core/SettingsHelper.php';
 
    $churchName = SettingsHelper::getChurchName();
 } catch (Exception $e) {

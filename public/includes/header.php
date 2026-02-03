@@ -1,5 +1,6 @@
 <?php
-// Load settings helper with error handling
+use AliveChMS\Core\System\SettingsHelper;
+
 try {
    // Load composer autoloader if not already loaded
    if (!class_exists('Dotenv\Dotenv')) {
@@ -10,23 +11,6 @@ try {
    if (!isset($_ENV['DB_HOST'])) {
       $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
       $dotenv->load();
-   }
-
-   // Load required classes if not already loaded
-   if (!class_exists('Database')) {
-      require_once __DIR__ . '/../../core/Database.php';
-   }
-   if (!class_exists('ORM')) {
-      require_once __DIR__ . '/../../core/ORM.php';
-   }
-   if (!class_exists('Helpers')) {
-      require_once __DIR__ . '/../../core/Helpers.php';
-   }
-   if (!class_exists('Settings')) {
-      require_once __DIR__ . '/../../core/Settings.php';
-   }
-   if (!class_exists('SettingsHelper')) {
-      require_once __DIR__ . '/../../core/SettingsHelper.php';
    }
 
    $churchName = SettingsHelper::getChurchName();
