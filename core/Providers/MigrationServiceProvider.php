@@ -13,8 +13,11 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../ServiceProvider.php';
-require_once __DIR__ . '/../Database/MigrationManager.php';
+namespace AliveChMS\Core\Providers;
+
+use AliveChMS\Core\System\ServiceProvider;
+use AliveChMS\Core\Database\MigrationManager;
+use AliveChMS\Core\Database\SchemaBuilder;
 
 class MigrationServiceProvider extends ServiceProvider
 {

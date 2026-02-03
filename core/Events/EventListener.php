@@ -14,6 +14,8 @@
 
 declare(strict_types=1);
 
+namespace AliveChMS\Core\Events;
+
 interface EventListener
 {
    /**

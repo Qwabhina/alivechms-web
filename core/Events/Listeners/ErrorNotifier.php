@@ -14,8 +14,11 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../EventListener.php';
-require_once __DIR__ . '/../SystemEvents.php';
+namespace AliveChMS\Core\Events\Listeners;
+
+use AliveChMS\Core\Events\AbstractEventListener;
+use AliveChMS\Core\Events\Event;
+use AliveChMS\Core\Events\ErrorEvent;
 
 class ErrorNotifier extends AbstractEventListener
 {

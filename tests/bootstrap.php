@@ -23,18 +23,3 @@ $testCacheDir = __DIR__ . '/../cache/test';
 if (!is_dir($testCacheDir)) {
    mkdir($testCacheDir, 0755, true);
 }
-
-// Load core classes (since we don't have autoloading yet)
-require_once __DIR__ . '/../core/Database.php';
-require_once __DIR__ . '/../core/ORM.php';
-require_once __DIR__ . '/../core/Auth.php';
-require_once __DIR__ . '/../core/Helpers.php';
-require_once __DIR__ . '/../core/Validator.php';
-require_once __DIR__ . '/../core/RateLimiter.php';
-require_once __DIR__ . '/../core/Settings.php';
-require_once __DIR__ . '/../core/Cache.php';
-require_once __DIR__ . '/../core/AuditLog.php';
-require_once __DIR__ . '/../core/Container.php';
-require_once __DIR__ . '/../core/Application.php';
-require_once __DIR__ . '/../core/Http/Request.php';
-require_once __DIR__ . '/../core/Http/Response.php';

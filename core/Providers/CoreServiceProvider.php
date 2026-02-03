@@ -13,13 +13,18 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../ServiceProvider.php';
-require_once __DIR__ . '/../Auth.php';
-require_once __DIR__ . '/../Validator.php';
-require_once __DIR__ . '/../Cache.php';
-require_once __DIR__ . '/../RateLimiter.php';
-require_once __DIR__ . '/../Settings.php';
-require_once __DIR__ . '/../AuditLog.php';
+namespace AliveChMS\Core\Providers;
+
+use AliveChMS\Core\System\ServiceProvider;
+use AliveChMS\Core\Identity\Auth;
+use AliveChMS\Core\System\Validator;
+use AliveChMS\Core\System\ResponseHelper;
+use AliveChMS\Core\System\Helpers;
+
+use AliveChMS\Core\Infrastructure\Cache;
+use AliveChMS\Core\Infrastructure\RateLimiter;
+use AliveChMS\Core\System\Settings;
+use AliveChMS\Core\System\AuditLog;
 
 class CoreServiceProvider extends ServiceProvider
 {

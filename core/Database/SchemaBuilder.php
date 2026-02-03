@@ -14,6 +14,11 @@
 
 declare(strict_types=1);
 
+namespace AliveChMS\Core\Database;
+
+use PDO;
+use Exception;
+
 class SchemaBuilder
 {
    private PDO $connection;
@@ -221,7 +226,7 @@ class Blueprint
    /**
     * Add index
     */
-   public function index(array $columns, string $name = null): void
+   public function index(array $columns, ?string $name = null): void
    {
       $name = $name ?: $this->table . '_' . implode('_', $columns) . '_index';
       $this->indexes[] = [
@@ -234,7 +239,7 @@ class Blueprint
    /**
     * Add unique index
     */
-   public function unique(array $columns, string $name = null): void
+   public function unique(array $columns, ?string $name = null): void
    {
       $name = $name ?: $this->table . '_' . implode('_', $columns) . '_unique';
       $this->indexes[] = [

@@ -21,6 +21,8 @@
 
 declare(strict_types=1);
 
+namespace AliveChMS\Core\Events;
+
 abstract class Event
 {
    protected array $data = [];

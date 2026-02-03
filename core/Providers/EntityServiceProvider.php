@@ -13,9 +13,12 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../ServiceProvider.php';
-require_once __DIR__ . '/../Member.php';
-require_once __DIR__ . '/../Expense.php';
+namespace AliveChMS\Core\Providers;
+
+use AliveChMS\Core\System\ServiceProvider;
+use AliveChMS\Core\People\Member;
+use AliveChMS\Core\Financial\Expense;
+use AliveChMS\Core\Services\MoneyValidator;
 
 class EntityServiceProvider extends ServiceProvider
 {

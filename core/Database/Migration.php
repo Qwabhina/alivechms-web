@@ -21,6 +21,11 @@
 
 declare(strict_types=1);
 
+namespace AliveChMS\Core\Database;
+
+use PDO;
+use AliveChMS\Core\Database\SchemaBuilder;
+
 abstract class Migration
 {
    protected PDO $connection;

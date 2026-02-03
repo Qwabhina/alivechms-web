@@ -17,8 +17,15 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../core/Member.php';
-require_once __DIR__ . '/../core/ResponseHelper.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use AliveChMS\Core\System\BaseRoute;
+use AliveChMS\Core\People\Member;
+use AliveChMS\Core\System\ResponseHelper;
+use AliveChMS\Core\System\Helpers;
+use AliveChMS\Core\Services\FileUploadService;
+use AliveChMS\Core\System\ORM;
+use Exception;
 
 class MemberRoutes extends BaseRoute
 {
@@ -57,7 +64,7 @@ class MemberRoutes extends BaseRoute
                     // Handle file upload if present
                         if (isset($_FILES['profile_picture'])) {
                             try {
-                                $payload['profile_picture'] = \AliveChMS\Core\Services\FileUploadService::handleProfileImage(
+                                $payload['profile_picture'] = FileUploadService::handleProfileImage(
                                 $_FILES['profile_picture'],
                                 'members'
                                 );
@@ -217,7 +224,7 @@ class MemberRoutes extends BaseRoute
                     // Handle file upload if present
                         elseif (isset($_FILES['profile_picture'])) {
                             try {
-                                $payload['profile_picture'] = \AliveChMS\Core\Services\FileUploadService::handleProfileImage(
+                                $payload['profile_picture'] = FileUploadService::handleProfileImage(
                                 $_FILES['profile_picture'],
                                 'members'
                                 );

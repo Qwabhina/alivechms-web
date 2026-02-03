@@ -13,7 +13,14 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/Event.php';
+declare(strict_types=1);
+
+namespace AliveChMS\Core\Events;
+
+use Exception;
+use Error;
+use RuntimeException;
+use LogicException;
 
 /**
  * Application Started Event
