@@ -1,1 +1,0 @@
-import{P as e}from"./PlaceholderView-BLBuNlWC.js";import{d as o,c as r,b as t}from"./index-BvAtnrVZ.js";import"./_plugin-vue_export-helper-DlAUqK2U.js";const _=o({__name:"EventsView",setup(a){return(c,n)=>(t(),r(e))}});export{_ as default};

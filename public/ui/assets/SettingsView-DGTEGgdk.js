@@ -1,0 +1,1 @@
+import{P as e}from"./PlaceholderView-8zuKIFZK.js";import{d as o,a as t,o as r}from"./index-CU-NSnW1.js";import"./_plugin-vue_export-helper-DlAUqK2U.js";const m=o({__name:"SettingsView",setup(a){return(n,s)=>(r(),t(e))}});export{m as default};

@@ -55,6 +55,18 @@ const steps = [
   { title: 'Account', description: 'System Access' }
 ]
 
+const phoneNumbers = ref([{ number: '', type_id: '1' }])
+
+const addPhone = () => {
+  phoneNumbers.value.push({ number: '', type_id: '1' })
+}
+
+const removePhone = (index: number) => {
+  if (phoneNumbers.value.length > 1) {
+    phoneNumbers.value.splice(index, 1)
+  }
+}
+
 const { handleSubmit, values, setFieldValue, validate } = useForm({
   initialValues: {
     first_name: '',
@@ -116,6 +128,13 @@ const submitMember = handleSubmit(async (formValues) => {
       if (value !== undefined && value !== null && value !== '') {
         formData.append(key, value.toString())
       }
+    })
+
+    // Append phone numbers (filter out empty)
+    const validPhones = phoneNumbers.value.filter(p => p.number.trim() !== '')
+    validPhones.forEach((p, index) => {
+      formData.append(`phone_numbers[${index}][number]`, p.number)
+      formData.append(`phone_numbers[${index}][type_id]`, p.type_id)
     })
 
     if (selectedFile.value) {
@@ -253,12 +272,64 @@ const triggerFileUpload = () => {
                     </SelectContent>
                   </Select>
                </div>
+             <div class="space-y-2">
+                <Label>Occupation</Label>
+                <Input :model-value="values.occupation"
+                  @update:model-value="v => setFieldValue('occupation', v as string)"
+                  placeholder="e.g. Teacher, Merchant" />
+              </div>
+              <div class="space-y-2">
+                <Label>Education Level</Label>
+                <Select :model-value="values.education_level_id"
+                  @update:model-value="v => setFieldValue('education_level_id', v as string)">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select education" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="e in membersStore.lookupData?.education_levels" :key="e.id"
+                      :value="e.id.toString()">
+                      {{ e.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
           <!-- Step 1: Contact -->
           <div v-show="currentStep === 1" class="space-y-6">
              <div class="grid gap-4">
+             <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <Label class="text-sm font-semibold">Phone Numbers <span class="text-red-500">*</span></Label>
+                  <Button type="button" variant="ghost" size="sm" class="h-8 text-[#00028a]" @click="addPhone">
+                    + Add Phone
+                  </Button>
+                </div>
+                <div v-for="(phone, index) in phoneNumbers" :key="index"
+                  class="flex items-end gap-2 animate-in fade-in slide-in-from-left-2">
+                  <div class="flex-1 space-y-1.5">
+                    <Input v-model="phone.number" placeholder="024 000 0000" />
+                  </div>
+                  <div class="w-32 space-y-1.5">
+                    <Select v-model="phone.type_id">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem v-for="t in membersStore.lookupData?.phone_types" :key="t.id"
+                          :value="t.id.toString()">
+                          {{ t.name }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button v-if="phoneNumbers.length > 1" type="button" variant="ghost" size="icon"
+                    class="h-10 w-10 text-red-500 hover:bg-red-50" @click="removePhone(index)">
+                    <Trash2 class="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
                 <div class="space-y-2">
                   <Label>Email Address <span class="text-red-500">*</span></Label>
                   <Input :model-value="values.email_address" @update:model-value="v => setFieldValue('email_address', v as string)" type="email" placeholder="john.doe@example.com" />

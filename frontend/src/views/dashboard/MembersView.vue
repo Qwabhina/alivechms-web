@@ -53,11 +53,14 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import AddMemberModal from '@/components/dashboard/AddMemberModal.vue'
+import ViewMemberModal from '@/components/dashboard/ViewMemberModal.vue'
 import VueApexCharts from 'vue3-apexcharts'
 import { useMembersStore } from '@/stores/members'
 import { useSettingsStore } from '@/stores/settings'
+import { Alerts } from '@/utils/alerts'
 import api, { resolveUrl } from '@/services/api'
 import dayjs from 'dayjs'
+import * as XLSX from 'xlsx'
 
 const membersStore = useMembersStore()
 const settingsStore = useSettingsStore()
@@ -66,6 +69,8 @@ const searchQuery = ref('')
 const statusFilter = ref('all')
 const branchFilter = ref('all')
 const isAddModalOpen = ref(false)
+const isViewModalOpen = ref(false)
+const selectedMemberId = ref<number | null>(null)
 
 // Debounced search
 let searchTimeout: any = null
@@ -104,6 +109,32 @@ const resetFilters = () => {
   statusFilter.value = 'all'
   branchFilter.value = 'all'
   membersStore.setFilters({ search: '', status: '', branch_id: '' })
+}
+
+const handleViewMember = (id: number) => {
+  selectedMemberId.value = id
+  isViewModalOpen.value = true
+}
+
+const handleExportCSV = () => {
+  if (!membersStore.members.length) return
+
+  const data = membersStore.members.map(m => ({
+    'ID': m.MbrUniqueID,
+    'Name': `${m.MbrFirstName} ${m.MbrFamilyName}`,
+    'Email': m.MbrEmailAddress,
+    'Gender': m.MbrGender,
+    'Branch': m.BranchName,
+    'Status': m.MembershipStatusName,
+    'Joined': dayjs(m.MbrRegistrationDate).format('YYYY-MM-DD')
+  }))
+
+  const worksheet = XLSX.utils.json_to_sheet(data)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Members')
+  XLSX.writeFile(workbook, `church_members_${dayjs().format('YYYY-MM-DD')}.xlsx`)
+
+  Alerts.success('Export started...')
 }
 
 // Charts Data
@@ -177,6 +208,8 @@ const getStatusBadge = (status: string) => {
 
     <!-- Modals -->
     <AddMemberModal :open="isAddModalOpen" @close="isAddModalOpen = false" />
+   <ViewMemberModal :open="isViewModalOpen" :member-id="selectedMemberId" @close="isViewModalOpen = false"
+      @edit="(m) => { isViewModalOpen = false; /* Implement edit modal logic later */ }" />
 
     <!-- Stats Section -->
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-12">
@@ -234,7 +267,7 @@ const getStatusBadge = (status: string) => {
             </Badge>
           </div>
           <div class="flex items-center gap-2">
-             <Button variant="ghost" size="sm" class="text-xs">
+           <Button variant="ghost" size="sm" class="text-xs" @click="handleExportCSV">
                 <Download class="w-3 h-3 mr-1" />
                 Export CSV
              </Button>
@@ -357,7 +390,7 @@ const getStatusBadge = (status: string) => {
                       <DropdownMenuContent align="end" class="w-40">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
+                       <DropdownMenuItem @click="handleViewMember(member.MbrID)">
                           <Eye class="w-4 h-4 mr-2" /> View Profile
                         </DropdownMenuItem>
                         <DropdownMenuItem>

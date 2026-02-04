@@ -97,6 +97,16 @@ const stats = computed(() => {
       color: 'text-orange-600',
       bg: 'bg-orange-50'
     },
+    { 
+      name: 'Net Balance', 
+      value: `GH₵ ${(parseFloat(f.income || 0) - parseFloat(f.expenses || 0)).toLocaleString()}`, 
+      change: 'Calculated', 
+      label: 'current surplus/deficit',
+      icon: Activity, 
+      trend: (parseFloat(f.income || 0) - parseFloat(f.expenses || 0)) >= 0 ? 'up' : 'down',
+      color: (parseFloat(f.income || 0) - parseFloat(f.expenses || 0)) >= 0 ? 'text-emerald-600' : 'text-rose-600',
+      bg: (parseFloat(f.income || 0) - parseFloat(f.expenses || 0)) >= 0 ? 'bg-emerald-50' : 'bg-rose-50'
+    },
   ]
 })
 
@@ -217,7 +227,7 @@ const getActivityColor = (type: string) => {
     </div>
 
     <!-- Stats Grid -->
-    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
       <template v-if="loading">
         <Card v-for="i in 4" :key="i" class="border-none shadow-sm animate-pulse h-32"></Card>
       </template>
@@ -305,8 +315,15 @@ const getActivityColor = (type: string) => {
       <!-- Recent Activity -->
       <Card class="lg:col-span-7 border-none shadow-sm">
         <CardHeader>
-           <CardTitle>Recent Activity</CardTitle>
-           <CardDescription>Latest system logs and transaction history.</CardDescription>
+           <div class="flex items-center justify-between">
+              <div>
+                 <CardTitle>Recent Activity</CardTitle>
+                 <CardDescription>Latest system logs and transaction history.</CardDescription>
+              </div>
+              <Badge v-if="dashboardData?.recent_activity?.length" class="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                {{ dashboardData.recent_activity.length }} total
+              </Badge>
+           </div>
         </CardHeader>
         <CardContent>
            <div v-if="loading" class="space-y-4">

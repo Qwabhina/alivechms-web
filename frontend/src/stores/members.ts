@@ -82,7 +82,7 @@ export const useMembersStore = defineStore('members', {
          if (this.lookupData) return
          try {
             const [lookupRes, rolesRes] = await Promise.all([
-               api.get('member/lookup-data'),
+               api.get('lookups/all'),
                api.get('role/names')
             ])
             this.lookupData = lookupRes.data.data
