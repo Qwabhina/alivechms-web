@@ -67,6 +67,53 @@ class VisitorRepository
         return $result[0] ?? null;
     }
 
+    public function assignFollowUp(int $visitorId, int $memberId): int
+    {
+        return $this->orm->update('visitor', ['AssignedFollowUpPerson' => $memberId], ['VisitorID' => $visitorId]);
+    }
+
+    public function getStats(array $filters, int $limit = 25, int $offset = 0): array
+    {
+        $conditions = [];
+        $params = [];
+
+        if (!empty($filters['branch_id'])) {
+            $conditions['v.BranchID'] = ':branch_id';
+            $params[':branch_id'] = (int) $filters['branch_id'];
+        }
+
+        if (!empty($filters['start_date'])) {
+            $conditions['v.FirstVisitDate'] = ':start_date';
+            $params[':start_date'] = $filters['start_date'];
+        }
+
+        if (!empty($filters['end_date'])) {
+            $conditions['v.FirstVisitDate'] = ':end_date';
+            $params[':end_date'] = $filters['end_date'];
+        }
+
+        $visitors = $this->orm->selectWithJoin(
+            baseTable: 'visitor v',
+            joins: [['table' => 'branch b', 'on' => 'v.BranchID = b.BranchID', 'type' => 'LEFT']],
+            fields: ['v.*', 'b.BranchName'],
+            conditions: $conditions,
+            params: $params,
+            orderBy: ['v.FirstVisitDate' => 'DESC'],
+            limit: $limit,
+            offset: $offset
+        );
+
+        $total = $this->orm->runQuery(
+            "SELECT COUNT(*) AS total FROM visitor v",
+            $params
+        )[0]['total'];
+
+        return [
+            'data' => $visitors,
+            'total' => (int) $total
+        ];
+    }
+
     public function findAll(int $limit, int $offset, array $filters = []): array
     {
         $conditions = [];

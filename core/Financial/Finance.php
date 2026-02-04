@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace AliveChMS\Core\Financial;
 
 use AliveChMS\Core\Financial\ReportingRepository;
-use AliveChMS\Core\System\ResponseHelper;
 
 class Finance
 {
@@ -33,6 +32,85 @@ class Finance
             'income' => $totalIncome,
             'expense' => $totalExpense,
             'net' => $totalIncome - $totalExpense
+         ]
+      ];
+   }
+
+   public static function getBalanceSheet(int $fiscalYearId): array
+   {
+      $repo = new ReportingRepository();
+      $data = $repo->getBalanceSheet($fiscalYearId);
+
+      $totalAssets = array_sum(array_column($data['assets'], 'total'));
+      $totalLiabilities = array_sum(array_column($data['liabilities'], 'total'));
+      $totalEquity = array_sum(array_column($data['equity'], 'total'));
+
+      return [
+         'assets' => $data['assets'],
+         'liabilities' => $data['liabilities'],
+         'equity' => $data['equity'],
+         'totals' => [
+            'assets' => $totalAssets,
+            'liabilities' => $totalLiabilities,
+            'equity' => $totalEquity,
+            'net' => $totalAssets - $totalLiabilities - $totalEquity
+         ]
+      ];
+   }
+
+   public static function getBudgetVsActual(int $fiscalYearId): array
+   {
+      $repo = new ReportingRepository();
+      $data = $repo->getBudgetVsActual($fiscalYearId);
+
+      $totalBudget = array_sum(array_column($data['budget'], 'total'));
+      $totalActual = array_sum(array_column($data['actual'], 'total'));
+
+      return [
+         'budget' => $data['budget'],
+         'actual' => $data['actual'],
+         'totals' => [
+            'budget' => $totalBudget,
+            'actual' => $totalActual,
+            'net' => $totalBudget - $totalActual
+         ]
+      ];
+   }
+
+   public static function getContributionSummary(int $fiscalYearId): array
+   {
+      $repo = new ReportingRepository();
+      $data = $repo->getContributionSummary($fiscalYearId);
+
+      $totalContributions = array_sum(array_column($data['contributions'], 'total'));
+      $totalPledges = array_sum(array_column($data['pledges'], 'total'));
+
+      return [
+         'contributions' => $data['contributions'],
+         'pledges' => $data['pledges'],
+         'totals' => [
+            'contributions' => $totalContributions,
+            'pledges' => $totalPledges,
+            'net' => $totalContributions - $totalPledges
+         ]
+      ];
+   }
+
+   public static function getExpenseSummary(int $fiscalYearId): array
+   {
+      $repo = new ReportingRepository();
+      $data = $repo->getExpenseSummary($fiscalYearId);
+
+      $totalExpenses = array_sum(array_column($data['expenses'], 'total'));
+      $totalBudget = array_sum(array_column($data['budget'], 'total'));
+
+      return [
+         'expenses' => $data['expenses'],
+         'budget' => $data['budget'],
+         'totals' => [
+            'expenses' => $totalExpenses,
+            'budget' => $totalBudget,
+            'net' => $totalExpenses - $totalBudget
          ]
       ];
    }

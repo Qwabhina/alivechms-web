@@ -15,7 +15,6 @@ use AliveChMS\Core\Operations\EventRepository;
 use AliveChMS\Core\System\Helpers;
 use AliveChMS\Core\System\ResponseHelper;
 use AliveChMS\Core\Identity\Auth;
-use Exception;
 
 class Event
 {
@@ -106,13 +105,14 @@ class Event
    /**
     * Attendance
     */
-   public static function recordAttendance(int $eventId, int $memberId): array
+   public static function recordAttendance(int $eventId, int $memberId, string $status = 'Present'): array
    {
       $repo = new EventRepository();
       $repo->recordAttendance([
          'EventID' => $eventId,
          'MbrID' => $memberId,
-         'CheckInTime' => date('Y-m-d H:i:s')
+         'CheckInTime' => date('Y-m-d H:i:s'),
+         'Status' => $status
       ]);
 
       return ['status' => 'success'];
@@ -142,5 +142,18 @@ class Event
             'pages' => (int) ceil($result['total'] / $limit)
          ]
       ];
+   }
+
+   public static function recordBulkAttendance(int $eventId, array $memberIds): array
+   {
+      $repo = new EventRepository();
+      foreach ($memberIds as $memberId) {
+         $repo->recordAttendance([
+            'EventID' => $eventId,
+            'MbrID' => $memberId,
+            'CheckInTime' => date('Y-m-d H:i:s')
+         ]);
+      }
+      return ['status' => 'success'];
    }
 }

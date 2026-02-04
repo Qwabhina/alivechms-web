@@ -34,3 +34,4 @@ xampp-control.ini
 # Ignore uploaded files (keep directory structure)
 /uploads/**/*
 !/uploads/**/.gitkeep
+/core/cache

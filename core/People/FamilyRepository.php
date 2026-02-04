@@ -134,4 +134,7 @@ class FamilyRepository
     {
         $this->orm->update('churchmember', ['FamilyID' => $familyId], ['MbrID' => $memberId]);
     }
+
+    // Note: Role column does not exist in churchmember table schema.
+    // Member roles are managed through member_role table via RBACRepository.
 }

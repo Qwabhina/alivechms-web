@@ -71,7 +71,7 @@ class CommunicationRepository
                 'c.CommID',
                 'c.Title',
                 'c.Message',
-                'c.Channel',
+                'c.ChannelID',
                 'c.CreatedAt',
                 'cd.Status',
                 'cd.DeliveredAt'

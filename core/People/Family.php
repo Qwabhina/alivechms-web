@@ -137,4 +137,12 @@ class Family
         Cache::invalidateTag('family_' . $familyId);
         return ['status' => 'success'];
     }
+
+    public static function updateMemberRole(int $familyId, int $memberId, string $role): array
+    {
+        $repo = new FamilyRepository();
+        $repo->updateMemberRole($familyId, $memberId, $role);
+        Cache::invalidateTag('family_' . $familyId);
+        return ['status' => 'success'];
+    }
 }

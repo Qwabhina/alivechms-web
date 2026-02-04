@@ -17,9 +17,9 @@ declare(strict_types=1);
 namespace AliveChMS\Core\Providers;
 
 use AliveChMS\Core\System\ServiceProvider;
-use AliveChMS\Core\Cache\CacheManager;
-use AliveChMS\Core\Cache\FileDriver;
-use AliveChMS\Core\Cache\MemoryDriver;
+use AliveChMS\Core\Infrastructure\Cache\CacheManager;
+use AliveChMS\Core\Infrastructure\Cache\FileDriver;
+use AliveChMS\Core\Infrastructure\Cache\MemoryDriver;
 use Exception;
 
 class CacheServiceProvider extends ServiceProvider

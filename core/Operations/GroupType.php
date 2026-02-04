@@ -37,4 +37,24 @@ class GroupType
 
       return ['status' => 'success', 'type_id' => $id];
    }
+
+   public static function delete(int $typeId): array
+   {
+      $repo = new LookupRepository('group_type', 'GroupTypeID');
+      $repo->delete($typeId);
+      return ['status' => 'success'];
+   }
+
+   public static function update(int $typeId, array $data): array
+   {
+      $repo = new LookupRepository('group_type', 'GroupTypeID');
+      $repo->update($typeId, $data);
+      return ['status' => 'success'];
+   }
+
+   public static function get(int $typeId): array
+   {
+      $repo = new LookupRepository('group_type', 'GroupTypeID');
+      return $repo->findById($typeId);
+   }
 }

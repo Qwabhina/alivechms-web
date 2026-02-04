@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace AliveChMS\Core\Financial;
 
 use AliveChMS\Core\System\ORM;
-use Exception;
 
 /**
  * Contribution Repository

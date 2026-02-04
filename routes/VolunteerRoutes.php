@@ -38,17 +38,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . "/../vendor/autoload.php";
 
-use AliveChMS\Core\Identity\Auth;
-use AliveChMS\Core\Identity\Role;
-use AliveChMS\Core\Infrastructure\RateLimiter;
-use AliveChMS\Core\Operations\Event;
-use AliveChMS\Core\People\Member;
 use AliveChMS\Core\People\Volunteer;
 use AliveChMS\Core\System\BaseRoute;
-use AliveChMS\Core\System\Helpers;
-use AliveChMS\Core\System\ORM;
 use AliveChMS\Core\System\ResponseHelper;
-use Exception;
 
 class VolunteerRoutes extends BaseRoute
 {
@@ -91,7 +83,7 @@ class VolunteerRoutes extends BaseRoute
                'volunteers' => 'required|array'
             ]);
 
-            $result = Volunteer::assign($eventId, $payload['volunteers']);
+               $result = Volunteer::assignToEvent($eventId, $payload['volunteers']);
             ResponseHelper::success($result, 'Volunteers assigned');
          })(),
 
@@ -117,7 +109,11 @@ class VolunteerRoutes extends BaseRoute
 
             $assignmentId = self::getIdFromPath($pathParts, 2, 'Assignment ID');
 
-            $result = Volunteer::completeAssignment($assignmentId);
+               $payload = self::getPayload([
+               'action' => 'required|in:complete'
+               ]);
+
+               $result = Volunteer::completeAssignment($assignmentId, $payload['action']);
             ResponseHelper::success($result, 'Assignment marked as completed');
          })(),
 
@@ -141,7 +137,7 @@ class VolunteerRoutes extends BaseRoute
 
             $assignmentId = self::getIdFromPath($pathParts, 2, 'Assignment ID');
 
-            $result = Volunteer::remove($assignmentId);
+               $result = Volunteer::removeVolunteer($assignmentId);
             ResponseHelper::success($result, 'Volunteer removed from event');
          })(),
 
@@ -165,7 +161,7 @@ class VolunteerRoutes extends BaseRoute
 
             $assignmentId = self::getIdFromPath($pathParts, 3, 'Assignment ID');
 
-            $result = Volunteer::removeRoleFromMember($assignmentId);
+               $result = Volunteer::removeMemberVolunteerRole($assignmentId);
             ResponseHelper::success($result, 'Volunteer role removed from member');
          })(),
 

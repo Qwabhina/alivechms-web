@@ -41,10 +41,7 @@ use AliveChMS\Core\Operations\Group;
 use AliveChMS\Core\Operations\GroupType;
 use AliveChMS\Core\People\Member;
 use AliveChMS\Core\System\BaseRoute;
-use AliveChMS\Core\System\Helpers;
-use AliveChMS\Core\System\ORM;
 use AliveChMS\Core\System\ResponseHelper;
-use Exception;
 
 class GroupRoutes extends BaseRoute
 {
@@ -234,10 +231,8 @@ class GroupRoutes extends BaseRoute
             self::authenticate();
             self::authorize('groups.view');
 
-            [$page, $limit] = self::getPagination(10, 100);
-
-            $result = GroupType::getAll($page, $limit);
-            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+               $result = GroupType::getAll();
+               ResponseHelper::success($result);
          })(),
 
          // FALLBACK

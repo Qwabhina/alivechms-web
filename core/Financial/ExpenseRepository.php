@@ -57,8 +57,8 @@ class ExpenseRepository
                     r.MbrFamilyName AS RequesterFamilyName,
                     ea.ApproverID,
                     ea.ApprovalStatus,
-                    ea.Comments AS ApprovalRemarks,
-                    ea.ApprovalDate AS ApprovedAt,
+                    ea.ApprovalComments AS ApprovalRemarks,
+                    ea.ApprovedAt AS ApprovedAt,
                     a.MbrFirstName AS ApproverFirstName,
                     a.MbrFamilyName AS ApproverFamilyName
              FROM expense e

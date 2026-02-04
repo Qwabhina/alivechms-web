@@ -16,8 +16,6 @@ namespace AliveChMS\Core\Identity;
 use AliveChMS\Core\Identity\RBACRepository;
 use AliveChMS\Core\System\Helpers;
 use AliveChMS\Core\System\ResponseHelper;
-use AliveChMS\Core\Identity\Auth;
-use Exception;
 
 class Role
 {
@@ -98,6 +96,99 @@ class Role
    {
       $repo = new RBACRepository();
       $repo->syncRolePermissions($roleId, $permissionIds);
+      return ['status' => 'success'];
+   }
+
+   public static function assignToMember(int $roleId, array $memberIds): array
+   {
+      $repo = new RBACRepository();
+      $repo->assignToMember($roleId, $memberIds);
+      return ['status' => 'success'];
+   }
+
+   public static function getMembers(int $roleId): array
+   {
+      $repo = new RBACRepository();
+      return $repo->getMembers($roleId);
+   }
+
+   public static function removeMember(int $roleId, int $memberId): array
+   {
+      $repo = new RBACRepository();
+      $repo->removeMember($roleId, $memberId);
+      return ['status' => 'success'];
+   }
+
+   public static function getRoles(int $memberId): array
+   {
+      $repo = new RBACRepository();
+      return $repo->getRoles($memberId);
+   }
+
+   public static function updateRoleForMember(int $roleId, int $memberId): array
+   {
+      $repo = new RBACRepository();
+      $repo->updateRoleForMember($roleId, $memberId);
+      return ['status' => 'success'];
+   }
+
+   public static function getPermissions(int $roleId): array
+   {
+      $repo = new RBACRepository();
+      return $repo->getPermissionsForRole($roleId);
+   }
+
+   public static function getRolePermissions(int $roleId): array
+   {
+      $repo = new RBACRepository();
+      return $repo->getRolePermissions($roleId);
+   }
+
+   public static function getPermissionRoles(int $permissionId): array
+   {
+      $repo = new RBACRepository();
+      return $repo->getPermissionRoles($permissionId);
+   }
+
+   public static function updatePermissionForRole(int $roleId, array $permissionIds): array
+   {
+      $repo = new RBACRepository();
+      $repo->updatePermissionForRole($roleId, $permissionIds);
+      return ['status' => 'success'];
+   }
+
+   public static function removePermissionFromRole(int $roleId): array
+   {
+      $repo = new RBACRepository();
+      $repo->removePermissionFromRole($roleId);
+      return ['status' => 'success'];
+   }
+
+   public static function updatePermission(int $permissionId, array $data): array
+   {
+      $repo = new RBACRepository();
+      $repo->updatePermission($permissionId, $data);
+      return ['status' => 'success'];
+   }
+
+   public static function deletePermission(int $permissionId): array
+   {
+      $repo = new RBACRepository();
+      $repo->deletePermission($permissionId);
+      return ['status' => 'success'];
+   }
+
+   public static function createPermission(array $data): array
+   {
+      $repo = new RBACRepository();
+      $repo->createPermission($data);
+      return ['status' => 'success'];
+   }
+
+   public static function assignPermissionToRole(int $roleId, array $permissionIds): array
+   {
+      $repo = new RBACRepository();
+      $repo->assignPermissionToRole($roleId, $permissionIds);
       return ['status' => 'success'];
    }
 }

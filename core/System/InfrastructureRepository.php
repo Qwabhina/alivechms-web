@@ -74,6 +74,18 @@ class InfrastructureRepository
         return (int) $res[0]['total'] > 0;
     }
 
+    public function getCurrentFiscalYear(): ?int
+    {
+        $res = $this->orm->runQuery("SELECT FiscalYearID FROM fiscal_year WHERE Status = 'Active'");
+        return $res[0]['FiscalYearID'] ?? null;
+    }
+
+    public function getAllFiscalYears(): array
+    {
+        $res = $this->orm->runQuery("SELECT * FROM fiscal_year");
+        return $res;
+    }
+
     /** Audit Logging */
 
     public function insertAuditLog(array $data): void

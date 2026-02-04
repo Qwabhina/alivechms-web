@@ -19,7 +19,6 @@ use AliveChMS\Core\System\BaseRoute;
 use AliveChMS\Core\System\Helpers;
 use AliveChMS\Core\System\ORM;
 use AliveChMS\Core\System\ResponseHelper;
-use Exception;
 
 class BranchRoutes extends BaseRoute
 {

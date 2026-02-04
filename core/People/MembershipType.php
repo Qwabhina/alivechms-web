@@ -25,7 +25,7 @@ class MembershipType
       return ['data' => $repo->getAll()];
    }
 
-   public static function create(array $data): array
+   public static function create(int $branchId, array $data): array
    {
       $repo = new LookupRepository('membership_type', 'MshipTypeID');
       Helpers::validateInput($data, ['name' => 'required|max:100']);
@@ -37,5 +37,45 @@ class MembershipType
       ]);
 
       return ['status' => 'success', 'type_id' => $id];
+   }
+
+   public static function update(int $id, array $data): array
+   {
+      $repo = new LookupRepository('membership_type', 'MshipTypeID');
+      Helpers::validateInput($data, ['name' => 'required|max:100']);
+
+      $id = $repo->update($id, [
+         'MshipTypeName' => trim($data['name']),
+         'MshipTypeDescription' => $data['description'] ?? null,
+         'IsActive' => 1
+      ]);
+
+      return ['status' => 'success', 'type_id' => $id];
+   }
+
+   public static function delete(int $id): array
+   {
+      $repo = new LookupRepository('membership_type', 'MshipTypeID');
+      $id = $repo->delete($id);
+
+      return ['status' => 'success', 'type_id' => $id];
+   }
+
+   public static function getById(int $branchId, int $id): array
+   {
+      $repo = new LookupRepository('membership_type', 'MshipTypeID');
+      return ['data' => $repo->getById($branchId, $id)];
+   }
+
+   public static function getByBranchId(int $branchId): array
+   {
+      $repo = new LookupRepository('membership_type', 'MshipTypeID');
+      return ['data' => $repo->getByBranchId($branchId)];
+   }
+
+   public static function getByBranchIdAndId(int $branchId, int $id): array
+   {
+      $repo = new LookupRepository('membership_type', 'MshipTypeID');
+      return ['data' => $repo->getByBranchIdAndId($branchId, $id)];
    }
 }

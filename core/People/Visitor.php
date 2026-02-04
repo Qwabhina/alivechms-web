@@ -100,4 +100,50 @@ class Visitor
          throw $e;
       }
    }
+
+   public static function update(int $visitorId, array $data): array
+   {
+      $repo = new VisitorRepository();
+      $visitor = $repo->findById($visitorId);
+      if (!$visitor)
+         ResponseHelper::error('Visitor not found', 404);
+      $repo->update($visitorId, $data);
+      return ['status' => 'success'];
+   }
+
+   public static function delete(int $visitorId): array
+   {
+      $repo = new VisitorRepository();
+      $visitor = $repo->findById($visitorId);
+      if (!$visitor)
+         ResponseHelper::error('Visitor not found', 404);
+      $repo->delete($visitorId);
+      return ['status' => 'success'];
+   }
+
+   public static function recordReturnVisit(int $visitorId, array $data): array
+   {
+      $repo = new VisitorRepository();
+      $visitor = $repo->findById($visitorId);
+      if (!$visitor)
+         ResponseHelper::error('Visitor not found', 404);
+      $repo->update($visitorId, $data);
+      return ['status' => 'success'];
+   }
+
+   public static function assignFollowUp(int $visitorId, int $memberId): array
+   {
+      $repo = new VisitorRepository();
+      $visitor = $repo->findById($visitorId);
+      if (!$visitor)
+         ResponseHelper::error('Visitor not found', 404);
+      $repo->assignFollowUp($visitorId, $memberId);
+      return ['status' => 'success'];
+   }
+
+   public static function getStats(array $filters): array
+   {
+      $repo = new VisitorRepository();
+      return $repo->getStats($filters);
+   }
 }

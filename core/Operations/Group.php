@@ -154,4 +154,11 @@ class Group
          ]
       ];
    }
+
+   public static function delete(int $groupId): array
+   {
+      $repo = new GroupRepository();
+      $repo->delete($groupId);
+      return ['status' => 'success'];
+   }
 }

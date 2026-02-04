@@ -116,4 +116,40 @@ class DocumentRepository
     {
         return !empty($this->orm->getWhere('document_category', ['CategoryID' => $id, 'IsActive' => 1]));
     }
+
+    public function findByCategory(int $categoryId, int $limit, int $offset): array
+    {
+        $documents = $this->orm->selectWithJoin(
+            baseTable: 'document d',
+            joins: [['table' => 'document_category dc', 'on' => 'd.CategoryID = dc.CategoryID', 'type' => 'LEFT']],
+            fields: ['d.DocumentID', 'd.DocumentName', 'd.FileURL', 'd.FileSize', 'd.FileType', 'd.UploadedAt', 'dc.CategoryName'],
+            conditions: ['d.CategoryID' => ':cat_id'],
+            params: [':cat_id' => $categoryId],
+            orderBy: ['d.UploadedAt' => 'DESC'],
+            limit: $limit,
+            offset: $offset
+        );
+
+        $total = $this->orm->runQuery("SELECT COUNT(*) AS total FROM document d WHERE d.CategoryID = :cat_id", [':cat_id' => $categoryId])[0]['total'];
+
+        return ['data' => $documents, 'total' => (int) $total];
+    }
+
+    public function findByMember(int $memberId, int $limit, int $offset): array
+    {
+        $documents = $this->orm->selectWithJoin(
+            baseTable: 'document d',
+            joins: [['table' => 'document_category dc', 'on' => 'd.CategoryID = dc.CategoryID', 'type' => 'LEFT']],
+            fields: ['d.DocumentID', 'd.DocumentName', 'd.FileURL', 'd.FileSize', 'd.FileType', 'd.UploadedAt', 'dc.CategoryName'],
+            conditions: ['d.UploadedBy' => ':member_id'],
+            params: [':member_id' => $memberId],
+            orderBy: ['d.UploadedAt' => 'DESC'],
+            limit: $limit,
+            offset: $offset
+        );
+
+        $total = $this->orm->runQuery("SELECT COUNT(*) AS total FROM document d WHERE d.UploadedBy = :member_id", [':member_id' => $memberId])[0]['total'];
+
+        return ['data' => $documents, 'total' => (int) $total];
+    }
 }

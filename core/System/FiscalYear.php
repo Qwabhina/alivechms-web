@@ -63,4 +63,16 @@ class FiscalYear
          ResponseHelper::error('Fiscal year not found', 404);
       return $fy;
    }
+
+   public static function getAll(): array
+   {
+      $repo = new InfrastructureRepository();
+      return $repo->getAllFiscalYears();
+   }
+
+   public static function getCurrent(): ?int
+   {
+      $repo = new InfrastructureRepository();
+      return $repo->getCurrentFiscalYear();
+   }
 }

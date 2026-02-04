@@ -38,4 +38,29 @@ class PledgeType
 
       return ['status' => 'success', 'type_id' => $id];
    }
+
+   public static function update(int $id, array $data): array
+   {
+      $repo = new LookupRepository('pledge_type', 'PledgeTypeID');
+      Helpers::validateInput($data, ['name' => 'required|max:100']);
+
+      $repo->update($id, [
+         'PledgeTypeName' => trim($data['name']),
+         'Description' => $data['description'] ?? null,
+         'UpdatedAt' => date('Y-m-d H:i:s')
+      ]);
+
+      return ['status' => 'success', 'type_id' => $id];
+   }
+
+   public static function delete(int $id): array
+   {
+      $repo = new LookupRepository('pledge_type', 'PledgeTypeID');
+      $repo->update($id, [
+         'Deleted' => 1,
+         'DeletedAt' => date('Y-m-d H:i:s')
+      ]);
+
+      return ['status' => 'success', 'type_id' => $id];
+   }
 }

@@ -18,7 +18,12 @@ namespace AliveChMS\Core\Providers;
 use AliveChMS\Core\System\ServiceProvider;
 use AliveChMS\Core\People\Member;
 use AliveChMS\Core\Financial\Expense;
+use AliveChMS\Core\Operations\Group;
+use AliveChMS\Core\Operations\GroupType;
+use AliveChMS\Core\Financial\Budget;
+use AliveChMS\Core\Operations\Event;
 use AliveChMS\Core\Services\MoneyValidator;
+use AliveChMS\Core\Operations\Dashboard;
 
 class EntityServiceProvider extends ServiceProvider
 {
@@ -34,9 +39,24 @@ class EntityServiceProvider extends ServiceProvider
             return new Expense();
         });
 
-        // Add other entity services as needed
-        // $this->container->bind('Budget', Budget::class);
-        // $this->container->bind('Event', Event::class);
-        // etc.
+        $this->container->bind('Group', function ($container) {
+            return new Group();
+        });
+
+        $this->container->bind('GroupType', function ($container) {
+            return new GroupType();
+        });
+
+        $this->container->bind('Budget', function ($container) {
+            return new Budget();
+        });
+
+        $this->container->bind('Dashboard', function ($container) {
+            return new Dashboard();
+        });
+
+        $this->container->bind('Event', function ($container) {
+            return new Event();
+        });
     }
 }

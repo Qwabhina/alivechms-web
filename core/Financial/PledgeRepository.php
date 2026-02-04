@@ -109,7 +109,7 @@ class PledgeRepository
             $params[':mid'] = (int)$filters['member_id'];
         }
         if (!empty($filters['status'])) {
-            $where[] = 'p.PledgeStatus = :status';
+            $where[] = 'p.Status = :status';
             $params[':status'] = $filters['status'];
         }
         if (!empty($filters['fiscal_year_id'])) {
@@ -120,7 +120,7 @@ class PledgeRepository
         $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 
         $pledges = $this->orm->runQuery(
-            "SELECT p.PledgeID, p.PledgeAmount, p.PledgeDate, p.DueDate, p.PledgeStatus, p.Description,
+            "SELECT p.PledgeID, p.PledgeAmount, p.PledgeDate, p.DueDate, p.Status, p.Description,
                     p.MbrID, m.MbrFirstName, m.MbrFamilyName,
                     pt.PledgeTypeName,
                     fy.FiscalYearName,
@@ -146,6 +146,19 @@ class PledgeRepository
         ];
     }
 
+    public function getPayment(int $paymentId): ?array
+    {
+        $result = $this->orm->runQuery(
+            "SELECT pp.*, r.MbrFirstName AS RecorderFirstName, r.MbrFamilyName AS RecorderFamilyName
+             FROM pledge_payment pp
+             LEFT JOIN churchmember r ON pp.RecordedBy = r.MbrID
+             WHERE pp.PaymentID = :id",
+            [':id' => $paymentId]
+        );
+
+        return $result[0] ?? null;
+    }
+
     public function getStats(?int $fyId = null): array
     {
         $fyCondition = $fyId ? "AND p.FiscalYearID = :fy_id" : "";
@@ -156,16 +169,16 @@ class PledgeRepository
         // Complex stats from Pledge.php refactored into repository
         $stats = [
             'total'     => $this->orm->runQuery("SELECT COALESCE(SUM(PledgeAmount), 0) AS total, COUNT(*) AS count FROM pledge p WHERE 1=1 $fyCondition", $params)[0],
-            'active'    => $this->orm->runQuery("SELECT COALESCE(SUM(PledgeAmount), 0) AS total, COUNT(*) AS count FROM pledge p WHERE PledgeStatus = 'Active' $fyCondition", $params)[0],
-            'fulfilled' => $this->orm->runQuery("SELECT COALESCE(SUM(PledgeAmount), 0) AS total, COUNT(*) AS count FROM pledge p WHERE PledgeStatus = 'Fulfilled' $fyCondition", $params)[0],
+            'active' => $this->orm->runQuery("SELECT COALESCE(SUM(PledgeAmount), 0) AS total, COUNT(*) AS count FROM pledge p WHERE Status = 'Active' $fyCondition", $params)[0],
+            'fulfilled' => $this->orm->runQuery("SELECT COALESCE(SUM(PledgeAmount), 0) AS total, COUNT(*) AS count FROM pledge p WHERE Status = 'Fulfilled' $fyCondition", $params)[0],
             'payments'  => $this->orm->runQuery("SELECT COALESCE(SUM(pp.PaymentAmount), 0) AS total, COUNT(*) AS count FROM pledge_payment pp JOIN pledge p ON pp.PledgeID = p.PledgeID WHERE 1=1 $fyCondition", $params)[0],
             'outstanding' => $this->orm->runQuery(
                 "SELECT COALESCE(SUM(p.PledgeAmount), 0) - COALESCE((
                     SELECT SUM(pp.PaymentAmount) FROM pledge_payment pp 
                     JOIN pledge p2 ON pp.PledgeID = p2.PledgeID 
-                    WHERE p2.PledgeStatus = 'Active' $fyCondition2
+                    WHERE p2.Status = 'Active' $fyCondition2
                  ), 0) AS outstanding
-                 FROM pledge p WHERE p.PledgeStatus = 'Active' $fyCondition",
+                 FROM pledge p WHERE p.Status = 'Active' $fyCondition",
                 $extendedParams
             )[0]['outstanding']
         ];
@@ -176,5 +189,10 @@ class PledgeRepository
     public function isValidPledgeType(int $id): bool
     {
         return !empty($this->orm->getWhere('pledge_type', ['PledgeTypeID' => $id, 'IsActive' => 1]));
+    }
+
+    public function updatePayment(int $paymentId, array $data): int
+    {
+        return $this->orm->update('pledge_payment', $data, ['PaymentID' => $paymentId]);
     }
 }

@@ -58,4 +58,10 @@ class MemberMilestone
       $repo = new MilestoneRepository();
       return $repo->getStats($year);
    }
+
+   public static function getAll(int $page = 1, int $limit = 25, array $filters = []): array
+   {
+      $repo = new MilestoneRepository();
+      return $repo->getAll($page, $limit, $filters);
+   }
 }

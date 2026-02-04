@@ -129,7 +129,7 @@ class FamilyRoutes extends BaseRoute
                 ]);
 
                 $result = self::withTransaction(function () use ($familyId, $payload) {
-                    return Family::addMember($familyId, (int)$payload['member_id'], $payload);
+                        return Family::addMember($familyId, (int) $payload['member_id']);
                 });
                 ResponseHelper::success($result, 'Member added to family');
             })(),
@@ -161,7 +161,7 @@ class FamilyRoutes extends BaseRoute
                 ]);
 
                 $result = self::withTransaction(function () use ($familyId, $memberId, $payload) {
-                    return Family::updateMemberRole($familyId, $memberId, $payload);
+                        return Family::updateMemberRole($familyId, $memberId, $payload['role']);
                 });
                 ResponseHelper::success($result, 'Member role updated');
             })(),

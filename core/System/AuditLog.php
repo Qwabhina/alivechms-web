@@ -58,4 +58,22 @@ class AuditLog
          'created_at' => date('Y-m-d H:i:s')
       ]);
    }
+
+   public static function search(array $filters, int $page, int $limit): array
+   {
+      $repo = new InfrastructureRepository();
+      return $repo->searchAuditLogs($filters, $page, $limit);
+   }
+
+   public static function getEntityLogs(string $entityType, int $entityId, int $limit): array
+   {
+      $repo = new InfrastructureRepository();
+      return $repo->getEntityLogs($entityType, $entityId, $limit);
+   }
+
+   public static function getUserActivity(int $userId, int $limit): array
+   {
+      $repo = new InfrastructureRepository();
+      return $repo->getUserActivity($userId, $limit);
+   }
 }

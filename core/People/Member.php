@@ -19,10 +19,11 @@ declare(strict_types=1);
 namespace AliveChMS\Core\People;
 
 use AliveChMS\Core\People\MemberRepository;
+use AliveChMS\Core\People\MemberStats;
 use AliveChMS\Core\System\Helpers;
 use AliveChMS\Core\System\ResponseHelper;
 use AliveChMS\Core\Identity\Auth;
-use AliveChMS\Core\System\QueryBuilder;
+use AliveChMS\Core\System\ORM;
 use Exception;
 use finfo;
 
@@ -494,7 +495,7 @@ class Member
      */
     public static function getStats(): array
     {
-        $statsRepo = new \AliveChMS\Core\Stats\MemberStats();
+        $statsRepo = new MemberStats();
         $stats = $statsRepo->getStats();
 
         // Transform logic if needed, but currently repository returns strict format.

@@ -68,7 +68,7 @@ class Pledge
          'PledgeAmount' => (float) $data['amount'],
          'PledgeDate'     => $data['pledge_date'],
          'DueDate'        => $data['due_date'] ?? null,
-         'PledgeStatus'   => self::STATUS_ACTIVE,
+         'Status' => self::STATUS_ACTIVE,
          'Description'    => $data['description'] ?? null,
          'CreatedBy'      => Auth::getCurrentUserId(),
          'CreatedAt'      => date('Y-m-d H:i:s')
@@ -86,7 +86,7 @@ class Pledge
       $repo = new PledgeRepository();
       $pledge = $repo->findById($pledgeId);
 
-      if (!$pledge || $pledge['PledgeStatus'] !== self::STATUS_ACTIVE) {
+      if (!$pledge || $pledge['Status'] !== self::STATUS_ACTIVE) {
          ResponseHelper::error('Active pledge not found', 404);
       }
 
@@ -105,7 +105,7 @@ class Pledge
 
          $paid = $repo->getTotalPaid($pledgeId);
          if ($paid >= (float)$pledge['PledgeAmount']) {
-            $repo->update($pledgeId, ['PledgeStatus' => self::STATUS_FULFILLED]);
+            $repo->update($pledgeId, ['Status' => self::STATUS_FULFILLED]);
          }
 
          $repo->commit();
@@ -145,5 +145,87 @@ class Pledge
             'pages' => (int) ceil($result['total'] / $limit)
          ]
       ];
+   }
+
+   public static function update(int $pledgeId, array $data): array
+   {
+      $repo = new PledgeRepository();
+      $pledge = $repo->findById($pledgeId);
+      if (!$pledge)
+         ResponseHelper::error('Pledge not found', 404);
+
+      Helpers::validateInput($data, ['amount' => 'required|numeric', 'pledge_date' => 'required|date']);
+
+      $repo->update($pledgeId, [
+         'PledgeAmount' => (float) $data['amount'],
+         'PledgeDate' => $data['pledge_date'],
+         'DueDate' => $data['due_date'] ?? null,
+         'Description' => $data['description'] ?? null,
+         'UpdatedBy' => Auth::getCurrentUserId(),
+         'UpdatedAt' => date('Y-m-d H:i:s')
+      ]);
+
+      return ['status' => 'success', 'message' => 'Pledge updated'];
+   }
+
+   public static function delete(int $pledgeId): array
+   {
+      $repo = new PledgeRepository();
+      $pledge = $repo->findById($pledgeId);
+      if (!$pledge)
+         ResponseHelper::error('Pledge not found', 404);
+
+      $repo->update($pledgeId, [
+         'Deleted' => 1,
+         'DeletedBy' => Auth::getCurrentUserId(),
+         'DeletedAt' => date('Y-m-d H:i:s')
+      ]);
+
+      return ['status' => 'success', 'message' => 'Pledge deleted'];
+   }
+
+   public static function getPayments(int $pledgeId): array
+   {
+      $repo = new PledgeRepository();
+      return $repo->getPayments($pledgeId);
+   }
+
+   public static function getPayment(int $paymentId): array
+   {
+      $repo = new PledgeRepository();
+      return $repo->getPayment($paymentId);
+   }
+
+   public static function updatePayment(int $paymentId, array $data): array
+   {
+      $repo = new PledgeRepository();
+      $payment = $repo->getPayment($paymentId);
+      if (!$payment)
+         ResponseHelper::error('Payment not found', 404);
+
+      $repo->updatePayment($paymentId, [
+         'PaymentAmount' => (float) $data['amount'],
+         'PaymentDate' => $data['payment_date'],
+         'UpdatedBy' => Auth::getCurrentUserId(),
+         'UpdatedAt' => date('Y-m-d H:i:s')
+      ]);
+
+      return ['status' => 'success', 'message' => 'Payment updated'];
+   }
+
+   public static function deletePayment(int $paymentId): array
+   {
+      $repo = new PledgeRepository();
+      $payment = $repo->getPayment($paymentId);
+      if (!$payment)
+         ResponseHelper::error('Payment not found', 404);
+
+      $repo->updatePayment($paymentId, [
+         'Deleted' => 1,
+         'DeletedBy' => Auth::getCurrentUserId(),
+         'DeletedAt' => date('Y-m-d H:i:s')
+      ]);
+
+      return ['status' => 'success', 'message' => 'Payment deleted'];
    }
 }

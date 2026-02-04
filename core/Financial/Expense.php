@@ -9,7 +9,7 @@ use AliveChMS\Core\Services\MoneyValidator;
 use AliveChMS\Core\Identity\Auth;
 use AliveChMS\Core\System\Helpers;
 use AliveChMS\Core\System\ResponseHelper;
-use AliveChMS\Core\Stats\ExpenseStats;
+use AliveChMS\Core\Financial\ExpenseStats;
 use Exception;
 
 /**
@@ -150,8 +150,8 @@ class Expense
             'ExpID' => $expenseId,
             'ApproverID' => Auth::getCurrentUserId(),
             'ApprovalStatus' => $approvalStatus,
-            'Comments' => $remarks,
-            'ApprovalDate' => date('Y-m-d H:i:s')
+            'ApprovalComments' => $remarks,
+            'ApprovedAt' => date('Y-m-d H:i:s')
          ]);
 
          $repo->commit();
@@ -265,7 +265,7 @@ class Expense
       return $stats->getStats($fiscalYearId);
    }
 
-   public static function cancel(int $expenseId): array
+   public static function cancel(int $expenseId, string $remarks): array
    {
       $repo = new ExpenseRepository();
       $expense = $repo->findById($expenseId);
@@ -274,7 +274,7 @@ class Expense
       if ($expense['ApprovalStatus'] !== self::STATUS_PENDING) {
          ResponseHelper::error('Only pending expenses can be cancelled', 400);
       }
-      $repo->update($expenseId, ['ApprovalStatus' => 'Cancelled']);
+      $repo->update($expenseId, ['ApprovalStatus' => 'Cancelled', 'ExpDescription' => $remarks]);
       return ['status' => 'success', 'message' => 'Expense cancelled'];
    }
 

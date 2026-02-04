@@ -147,4 +147,55 @@ class Document
          ]
       ];
    }
+   public static function download(int $documentId): void
+   {
+      $repo = new DocumentRepository();
+      $doc = $repo->findById($documentId);
+      if (!$doc)
+         ResponseHelper::error('Document not found', 404);
+
+      $filePath = __DIR__ . '/../public/' . $doc['FileURL'];
+      if (!file_exists($filePath))
+         ResponseHelper::error('File not found', 404);
+
+      header('Content-Type: ' . $doc['FileType']);
+      header('Content-Disposition: attachment; filename="' . basename($doc['FileURL']) . '"');
+      header('Content-Length: ' . $doc['FileSize']);
+      readfile($filePath);
+      exit;
+   }
+
+   public static function getByCategory(int $categoryId, int $page = 1, int $limit = 25): array
+   {
+      $repo = new DocumentRepository();
+      $offset = ($page - 1) * $limit;
+      $result = $repo->findByCategory($categoryId, $limit, $offset);
+
+      return [
+         'data' => $result['data'],
+         'pagination' => [
+            'page' => $page,
+            'limit' => $limit,
+            'total' => $result['total'],
+            'pages' => (int) ceil($result['total'] / $limit)
+         ]
+      ];
+   }
+
+   public static function getByMember(int $memberId, int $page = 1, int $limit = 25): array
+   {
+      $repo = new DocumentRepository();
+      $offset = ($page - 1) * $limit;
+      $result = $repo->findByMember($memberId, $limit, $offset);
+
+      return [
+         'data' => $result['data'],
+         'pagination' => [
+            'page' => $page,
+            'limit' => $limit,
+            'total' => $result['total'],
+            'pages' => (int) ceil($result['total'] / $limit)
+         ]
+      ];
+   }
 }

@@ -162,7 +162,12 @@ class GroupRepository
 
     public function isMember(int $groupId, int $memberId): bool
     {
-        $res = $this->orm->getWhere('group_member', ['GroupID' => $groupId, 'MbrID' => $memberId], 1);
+        $res = $this->orm->getWhere('group_member', ['GroupID' => $groupId, 'MbrID' => $memberId]);
         return !empty($res);
+    }
+
+    public function delete(int $groupId): void
+    {
+        $this->orm->update('church_group', ['Deleted' => 1], ['GroupID' => $groupId]);
     }
 }
