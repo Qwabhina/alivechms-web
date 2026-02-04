@@ -18,18 +18,22 @@ export const Alerts = {
    * Show toast notification using vue-sonner
    */
   toast(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') {
+    const options = {
+      duration: type === 'error' ? APP_CONFIG.TOAST_DURATION + 2000 : APP_CONFIG.TOAST_DURATION,
+    }
+
     switch (type) {
       case 'success':
-        toast.success(message)
+        toast.success(message, options)
         break
       case 'error':
-        toast.error(message, { duration: APP_CONFIG.TOAST_DURATION + 2000 })
+        toast.error(message, options)
         break
       case 'warning':
-        toast.warning(message)
+        toast.warning(message, options)
         break
       default:
-        toast.info(message)
+        toast.info(message, options)
     }
   },
 
@@ -58,6 +62,7 @@ export const Alerts = {
       title: 'Are you sure?',
       text: 'This action cannot be undone.',
       icon: 'warning',
+      reverseButtons: true,
       ...options,
     })
     return result.isConfirmed
@@ -66,11 +71,33 @@ export const Alerts = {
   async confirmDelete(itemName = 'this item') {
     return await this.confirm({
       title: 'Delete Confirmation',
-      text: `Are you sure you want to delete ${itemName}? This action cannot be undone.`,
+      text: `<p>Are you sure you want to delete <strong>${itemName}</strong>?</p><p class="text-xs text-slate-500 mt-2">This action cannot be undone and may affect related records.</p>`,
       icon: 'warning',
       confirmButtonText: 'Yes, delete it',
-      confirmButtonColor: '#ef4444', // Red-500
+      confirmButtonColor: '#dc3545', // Match legacy Bootstrap danger
     })
+  },
+
+  /**
+   * Show input dialog (Missing in previous version)
+   */
+  async input(options: any = {}) {
+    const result = await Swal.fire({
+      ...APP_CONFIG.SWAL_CONFIG,
+      title: 'Enter value',
+      input: 'text',
+      inputPlaceholder: 'Type here...',
+      showCancelButton: true,
+      confirmButtonText: 'Submit',
+      reverseButtons: true,
+      inputValidator: (value) => {
+        if (!value) {
+          return 'This field is required'
+        }
+      },
+      ...options,
+    })
+    return result.isConfirmed ? result.value : null
   },
 
   /**
@@ -120,7 +147,7 @@ export const Alerts = {
   },
 
   /**
-   * Handle API error and show appropriate message
+   * Handle API error and show appropriate message (Sync with legacy behavior)
    */
   handleApiError(error: any, defaultMessage = 'An error occurred. Please try again.') {
     console.error('[API Error]', error)
@@ -135,18 +162,23 @@ export const Alerts = {
         message = data.message
       }
 
-      // Handle specific error codes
+      // Handle specific error codes per legacy logic
       if (status === 401) {
         message = 'Session expired. Please login again.'
-        // Redirect logic handled by api.ts interceptor
       } else if (status === 403) {
         message = 'You do not have permission to perform this action.'
       } else if (status === 404) {
         message = 'The requested resource was not found.'
       } else if (status === 422) {
-        // Validation errors
+        // Validation errors - Format with breaks like legacy
         if (data && data.errors) {
-          message = Object.values(data.errors).flat().join('\n')
+          const errors = Object.values(data.errors).flat()
+          if (errors.length > 1) {
+            // Show as bulleted list in swal or joined string for toast
+            message = errors.join('\n')
+          } else {
+            message = errors[0] as string
+          }
         }
       } else if (status === 429) {
         message = 'Too many requests. Please try again later.'
@@ -160,6 +192,11 @@ export const Alerts = {
       }
     }
 
-    this.error(message)
+    // Use error modal for high-severity or structural errors, toast for others
+    if (error.response?.status === 422 || error.response?.status === 403) {
+      this.errorModal('Action Failed', message)
+    } else {
+      this.error(message)
+    }
   },
 }

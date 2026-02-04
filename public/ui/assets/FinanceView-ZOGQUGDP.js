@@ -1,1 +1,0 @@
-import{P as e}from"./PlaceholderView-8zuKIFZK.js";import{d as o,a,o as r}from"./index-CU-NSnW1.js";import"./_plugin-vue_export-helper-DlAUqK2U.js";const m=o({__name:"FinanceView",setup(t){return(n,c)=>(r(),a(e))}});export{m as default};

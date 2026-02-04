@@ -1,0 +1,1 @@
+import{_ as e}from"./PlaceholderView.vue_vue_type_script_setup_true_lang-kcIl_FiD.js";import{d as t,J as o,H as r}from"./vendor-ui-C1oIgmPv.js";import"./index-BAkuGiAA.js";import"./index-CxUmtwP0.js";const i=t({__name:"SettingsView",setup(a){return(n,s)=>(r(),o(e))}});export{i as default};

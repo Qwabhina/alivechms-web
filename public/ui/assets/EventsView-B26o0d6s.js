@@ -1,0 +1,1 @@
+import{_ as e}from"./PlaceholderView.vue_vue_type_script_setup_true_lang-kcIl_FiD.js";import{d as o,J as t,H as r}from"./vendor-ui-C1oIgmPv.js";import"./index-BAkuGiAA.js";import"./index-CxUmtwP0.js";const i=o({__name:"EventsView",setup(a){return(n,s)=>(r(),t(e))}});export{i as default};
