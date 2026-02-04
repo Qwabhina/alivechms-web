@@ -15,7 +15,6 @@ declare(strict_types=1);
 
 require_once __DIR__ . "/../vendor/autoload.php";
 
-use AliveChMS\Core\Infrastructure\RateLimiter;
 use AliveChMS\Core\People\Visitor;
 use AliveChMS\Core\System\BaseRoute;
 use AliveChMS\Core\System\ResponseHelper;

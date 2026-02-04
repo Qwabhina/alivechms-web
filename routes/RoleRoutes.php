@@ -39,7 +39,6 @@ declare(strict_types=1);
 
 require_once __DIR__ . "/../vendor/autoload.php";
 
-use AliveChMS\Core\Identity\Auth;
 use AliveChMS\Core\Identity\Role;
 use AliveChMS\Core\System\BaseRoute;
 use AliveChMS\Core\System\ORM;

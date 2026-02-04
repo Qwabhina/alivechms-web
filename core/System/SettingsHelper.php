@@ -14,6 +14,8 @@
 
 namespace AliveChMS\Core\System;
 
+use AliveChMS\Core\System\Settings;
+use AliveChMS\Core\System\Helpers;
 use Exception;
 
 class SettingsHelper
@@ -67,10 +69,7 @@ class SettingsHelper
             self::$cache[$setting['key']] = $setting['value'];
          }
       } catch (Exception $e) {
-         // If settings table doesn't exist or error occurs, use defaults
-         if (class_exists('Helpers')) {
-            Helpers::logError("Settings load error: " . $e->getMessage());
-         }
+         Helpers::logError("Settings load error: " . $e->getMessage());
          self::$cache = self::getDefaults();
       }
    }
@@ -161,7 +160,7 @@ class SettingsHelper
    public static function hasChurchLogo(): bool
    {
       $logo = self::getChurchLogo();
-      return !empty($logo) && file_exists(__DIR__ . '/../public/' . $logo);
+      return !empty($logo) && file_exists(__DIR__ . '/../../public/' . $logo);
    }
 
    /**

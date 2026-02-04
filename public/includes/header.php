@@ -1,11 +1,10 @@
 <?php
+
+require_once __DIR__ . '/../../vendor/autoload.php';
+
 use AliveChMS\Core\System\SettingsHelper;
 
 try {
-   // Load composer autoloader if not already loaded
-   if (!class_exists('Dotenv\Dotenv')) {
-      require_once __DIR__ . '/../../vendor/autoload.php';
-   }
 
    // Load environment if not already loaded
    if (!isset($_ENV['DB_HOST'])) {

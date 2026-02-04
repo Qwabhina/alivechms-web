@@ -95,7 +95,23 @@ class InfrastructureRepository
 
     public function insertLoginLog(array $data): void
     {
-        $this->orm->insert('login_log', $data);
+        // Map login event to unified audit_log structure
+        $auditData = [
+            'user_id' => $data['user_id'] ?? null,
+            'action' => ($data['success'] ?? false) ? 'LOGIN_SUCCESS' : 'LOGIN_FAILED',
+            'entity_type' => 'Authentication',
+            'entity_id' => $data['user_id'] ?? 0,
+            'changes' => null,
+            'metadata' => json_encode([
+                'username' => $data['username'] ?? 'unknown',
+                'success' => $data['success'] ?? false
+            ]),
+            'ip_address' => $data['ip_address'] ?? null,
+            'user_agent' => $data['user_agent'] ?? null,
+            'created_at' => $data['created_at'] ?? date('Y-m-d H:i:s')
+        ];
+
+        $this->orm->insert('audit_log', $auditData);
     }
 
     /** Branch Management Helpers */
@@ -104,5 +120,87 @@ class InfrastructureRepository
     {
         $res = $this->orm->getWhere('branch', ['BranchID' => $id]);
         return $res[0] ?? null;
+    }
+
+    /** Audit Log Retrieval */
+
+    public function searchAuditLogs(array $filters, int $page, int $limit): array
+    {
+        $offset = ($page - 1) * $limit;
+        $conditions = [];
+        $params = [];
+
+        $where = "WHERE 1=1";
+
+        if (!empty($filters['user_id'])) {
+            $where .= " AND a.user_id = :user_id";
+            $params[':user_id'] = (int) $filters['user_id'];
+        }
+        if (!empty($filters['entity_type'])) {
+            $where .= " AND a.entity_type = :entity_type";
+            $params[':entity_type'] = $filters['entity_type'];
+        }
+        if (!empty($filters['entity_id'])) {
+            $where .= " AND a.entity_id = :entity_id";
+            $params[':entity_id'] = (int) $filters['entity_id'];
+        }
+        if (!empty($filters['action'])) {
+            $where .= " AND a.action = :action";
+            $params[':action'] = $filters['action'];
+        }
+        if (!empty($filters['date_from'])) {
+            $where .= " AND a.created_at >= :date_from";
+            $params[':date_from'] = $filters['date_from'];
+        }
+        if (!empty($filters['date_to'])) {
+            $where .= " AND a.created_at <= :date_to";
+            $params[':date_to'] = $filters['date_to'];
+        }
+
+        // Note: Joining with user_authentication as defined in AuthRepository, though table missing in provided SQL dump
+        $logs = $this->orm->runQuery(
+            "SELECT a.*, m.MbrFirstName, m.MbrFamilyName
+             FROM audit_log a
+             LEFT JOIN user_authentication u ON a.user_id = u.UserID
+             LEFT JOIN churchmember m ON u.MbrID = m.MbrID
+             $where
+             ORDER BY a.created_at DESC
+             LIMIT :limit OFFSET :offset",
+            array_merge($params, [':limit' => $limit, ':offset' => $offset])
+        );
+
+        $total = $this->orm->runQuery("SELECT COUNT(*) AS total FROM audit_log a $where", $params)[0]['total'];
+
+        return [
+            'data' => $logs,
+            'total' => (int) $total,
+            'page' => $page,
+            'limit' => $limit
+        ];
+    }
+
+    public function getEntityLogs(string $entityType, int $entityId, int $limit): array
+    {
+        return $this->orm->runQuery(
+            "SELECT a.*, m.MbrFirstName, m.MbrFamilyName
+             FROM audit_log a
+             LEFT JOIN user_authentication u ON a.user_id = u.UserID
+             LEFT JOIN churchmember m ON u.MbrID = m.MbrID
+             WHERE a.entity_type = :type AND a.entity_id = :id
+             ORDER BY a.created_at DESC
+             LIMIT :limit",
+            [':type' => $entityType, ':id' => $entityId, ':limit' => $limit]
+        );
+    }
+
+    public function getUserActivity(int $userId, int $limit): array
+    {
+        return $this->orm->runQuery(
+            "SELECT * FROM audit_log 
+             WHERE user_id = :uid 
+             ORDER BY created_at DESC 
+             LIMIT :limit",
+            [':uid' => $userId, ':limit' => $limit]
+        );
     }
 }

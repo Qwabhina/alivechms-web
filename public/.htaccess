@@ -19,3 +19,11 @@ AddType image/svg+xml .svg
 
 # Prevent directory listing
 Options -Indexes
+
+# Route virtual paths starting with /public/ back to root index.php
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ ../index.php?path=public/$1 [QSA,L]
+</IfModule>

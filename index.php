@@ -126,7 +126,8 @@ $routes = [
     'role'            => 'RoleRoutes.php',
     'lookups'         => 'LookupRoutes.php',
     'settings'        => 'SettingsRoutes.php',
-    'permission'      => 'PermissionRoutes.php',
+    // 'permission'      => 'PermissionRoutes.php',
+    'permission' => 'RoleRoutes.php',
     'volunteer'       => 'VolunteerRoutes.php',
     'public'          => 'PublicRoutes.php',
 ];
