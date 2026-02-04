@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import * as zod from 'zod'
 import { toTypedSchema } from '@vee-validate/zod'
@@ -31,14 +31,30 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
 import { Switch } from '@/components/ui/switch'
 import { useMembersStore } from '@/stores/members'
 import { Alerts } from '@/utils/alerts'
-import api from '@/services/api'
-import { UserPlus, Camera, Trash2, ArrowRight, ArrowLeft, CheckCircle2, RefreshCw } from 'lucide-vue-next'
+import api, { resolveUrl } from '@/services/api'
+import dayjs from 'dayjs'
+import { cn } from '@/lib/utils'
+import { UserPlus, Camera, Trash2, ArrowRight, ArrowLeft, CheckCircle2, RefreshCw, Star, Eye, EyeOff, ChevronsUpDown, Check } from 'lucide-vue-next'
 
 const props = defineProps<{
   open: boolean
+  memberData?: any | null
 }>()
 
 const emit = defineEmits(['close', 'success'])
@@ -48,6 +64,8 @@ const currentStep = ref(0)
 const isSubmitting = ref(false)
 const profilePreview = ref<string | null>(null)
 const selectedFile = ref<File | null>(null)
+const showPassword = ref(false)
+const familySearchOpen = ref(false)
 
 const steps = [
   { title: 'Personal', description: 'Basic information' },
@@ -55,19 +73,27 @@ const steps = [
   { title: 'Account', description: 'System Access' }
 ]
 
-const phoneNumbers = ref([{ number: '', type_id: '1' }])
+const phoneNumbers = ref([{ number: '', type_id: '1', is_primary: true }])
 
 const addPhone = () => {
-  phoneNumbers.value.push({ number: '', type_id: '1' })
+  phoneNumbers.value.push({ number: '', type_id: '1', is_primary: false })
 }
 
 const removePhone = (index: number) => {
   if (phoneNumbers.value.length > 1) {
+    const phone = phoneNumbers.value[index]
+    if (!phone) return
+    const wasPrimary = phone.is_primary
     phoneNumbers.value.splice(index, 1)
+    if (wasPrimary && phoneNumbers.value[0]) phoneNumbers.value[0].is_primary = true
   }
 }
 
-const { handleSubmit, values, setFieldValue, validate } = useForm({
+const setPrimaryPhone = (index: number) => {
+  phoneNumbers.value.forEach((p, i) => p.is_primary = i === index)
+}
+
+const { handleSubmit, values, setFieldValue, validate, resetForm } = useForm({
   initialValues: {
     first_name: '',
     family_name: '',
@@ -88,6 +114,67 @@ const { handleSubmit, values, setFieldValue, validate } = useForm({
   }
 })
 
+// Pre-fill form when editing
+watch(() => props.memberData, (newVal) => {
+  if (newVal) {
+    resetForm({
+      values: {
+        first_name: newVal.MbrFirstName || '',
+        family_name: newVal.MbrFamilyName || '',
+        other_names: newVal.MbrOtherNames || '',
+        gender: newVal.MbrGender || '',
+        date_of_birth: newVal.MbrDateOfBirth ? dayjs(newVal.MbrDateOfBirth).format('YYYY-MM-DD') : '',
+        marital_status_id: newVal.MbrMaritalStatusID ? newVal.MbrMaritalStatusID.toString() : '',
+        occupation: newVal.MbrOccupation || '',
+        education_level_id: newVal.MbrEducationLevelID ? newVal.MbrEducationLevelID.toString() : '',
+        email_address: newVal.MbrEmailAddress || '',
+        address: newVal.MbrResidentialAddress || '',
+        family_id: newVal.FamilyID ? newVal.FamilyID.toString() : '',
+        branch_id: newVal.MbrBranchID ? newVal.MbrBranchID.toString() : '',
+        enable_login: false, // Default false for security
+        username: '',
+        password: '',
+        role_id: '',
+      }
+    })
+
+    profilePreview.value = resolveUrl(newVal.MbrProfilePicture)
+
+    if (newVal.phones && Array.isArray(newVal.phones) && newVal.phones.length > 0) {
+      phoneNumbers.value = newVal.phones.map((p: any, i: number) => ({
+        number: p.PhoneNumber,
+        type_id: p.PhoneTypeID?.toString() || '1',
+        is_primary: i === 0 || p.IsPrimary === 1
+      }))
+    } else {
+      phoneNumbers.value = [{ number: '', type_id: '1', is_primary: true }]
+    }
+  } else {
+    resetForm({
+      values: {
+        first_name: '',
+        family_name: '',
+        other_names: '',
+        gender: '',
+        date_of_birth: '',
+        marital_status_id: '',
+        occupation: '',
+        education_level_id: '',
+        email_address: '',
+        address: '',
+        family_id: '',
+        branch_id: '',
+        enable_login: false,
+        username: '',
+        password: '',
+        role_id: '',
+      }
+    })
+    profilePreview.value = null
+    phoneNumbers.value = [{ number: '', type_id: '1', is_primary: true }]
+  }
+}, { immediate: true })
+
 const handleFileChange = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files[0]) {
@@ -99,6 +186,9 @@ const handleFileChange = (e: Event) => {
 const removePhoto = () => {
   selectedFile.value = null
   profilePreview.value = null
+  if (props.memberData) {
+    // Flag for removal in edit mode if needed by API
+  }
 }
 
 const nextStep = async () => {
@@ -109,6 +199,8 @@ const nextStep = async () => {
     } else {
       submitMember()
     }
+  } else {
+    Alerts.error('Please check required fields')
   }
 }
 
@@ -120,6 +212,8 @@ const prevStep = () => {
 
 const submitMember = handleSubmit(async (formValues) => {
   isSubmitting.value = true
+  const isEdit = !!props.memberData
+
   try {
     const formData = new FormData()
     
@@ -135,23 +229,26 @@ const submitMember = handleSubmit(async (formValues) => {
     validPhones.forEach((p, index) => {
       formData.append(`phone_numbers[${index}][number]`, p.number)
       formData.append(`phone_numbers[${index}][type_id]`, p.type_id)
+      formData.append(`phone_numbers[${index}][is_primary]`, p.is_primary ? '1' : '0')
     })
 
     if (selectedFile.value) {
       formData.append('profile_picture', selectedFile.value)
     }
 
-    await api.post('member/create', formData, {
+    const endpoint = isEdit ? `member/update/${props.memberData.MbrID}` : 'member/create'
+
+    await api.post(endpoint, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
-    Alerts.success('Member registration successful!')
+    Alerts.success(isEdit ? 'Member updated successfully!' : 'Member registration successful!')
     emit('success')
     emit('close')
-    membersStore.fetchMembers(1)
+    membersStore.fetchMembers(membersStore.pagination.page)
     membersStore.fetchStats()
   } catch (error) {
-    Alerts.handleApiError(error, 'Failed to register member')
+    Alerts.handleApiError(error, `Failed to ${isEdit ? 'update' : 'register'} member`)
   } finally {
     isSubmitting.value = false
   }
@@ -164,13 +261,13 @@ const triggerFileUpload = () => {
 
 <template>
   <Dialog :open="open" @update:open="(val) => !val && emit('close')">
-    <DialogContent class="max-w-2xl p-0 overflow-hidden border-none shadow-2xl">
+   <DialogContent class="max-w-[95vw] md:max-w-2xl p-0 overflow-hidden border-none shadow-2xl">
       <Card class="border-none shadow-none">
         <CardHeader class="bg-[#00028a]/5 border-b">
           <div>
             <DialogTitle class="text-xl text-[#00028a] flex items-center gap-2">
               <UserPlus class="w-5 h-5" />
-              Add New Member
+             {{ memberData ? 'Edit Member' : 'Add New Member' }}
             </DialogTitle>
             <DialogDescription class="mt-1">
               Step {{ currentStep + 1 }} of 3: {{ steps[currentStep]?.description }}
@@ -196,7 +293,7 @@ const triggerFileUpload = () => {
           </div>
         </CardHeader>
 
-        <div class="p-6 max-h-[60vh] overflow-y-auto">
+      <div class="p-4 md:p-6 max-h-[60vh] overflow-y-auto">
           <!-- Step 0: Personal -->
           <div v-show="currentStep === 0" class="space-y-6">
             <div class="flex flex-col items-center gap-4 py-4">
@@ -229,7 +326,7 @@ const triggerFileUpload = () => {
               </div>
             </div>
 
-            <div class="grid md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div class="space-y-2">
                   <Label>First Name <span class="text-red-500">*</span></Label>
                   <Input :model-value="values.first_name" @update:model-value="v => setFieldValue('first_name', v as string)" placeholder="John" />
@@ -307,9 +404,21 @@ const triggerFileUpload = () => {
                   </Button>
                 </div>
                 <div v-for="(phone, index) in phoneNumbers" :key="index"
-                  class="flex items-end gap-2 animate-in fade-in slide-in-from-left-2">
+                 class="flex items-end gap-2 animate-in fade-in slide-in-from-left-2 transition-all">
                   <div class="flex-1 space-y-1.5">
-                    <Input v-model="phone.number" placeholder="024 000 0000" />
+                   <div class="relative">
+                      <Input v-model="phone.number" placeholder="024 000 0000" class="pr-10" />
+                      <Button v-if="phone.is_primary" type="button" variant="ghost" size="icon"
+                        class="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-yellow-500 hover:text-yellow-600 shadow-none"
+                        title="Primary Number">
+                        <Star class="w-4 h-4 fill-yellow-500" />
+                      </Button>
+                      <Button v-else type="button" variant="ghost" size="icon"
+                        class="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-300 hover:text-yellow-500 shadow-none"
+                        title="Set as Primary" @click="setPrimaryPhone(index)">
+                        <Star class="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                   <div class="w-32 space-y-1.5">
                     <Select v-model="phone.type_id">
@@ -355,12 +464,47 @@ const triggerFileUpload = () => {
                 </div>
                 <div class="space-y-2">
                   <Label>Family (Optional)</Label>
-                  <Select :model-value="values.family_id" @update:model-value="v => setFieldValue('family_id', v as string)">
-                    <SelectTrigger><SelectValue placeholder="Select family" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Family Assignment</SelectItem>
-                    </SelectContent>
-                  </Select>
+               <Popover v-model:open="familySearchOpen">
+                  <PopoverTrigger as-child>
+                    <Button variant="outline" role="combobox" :aria-expanded="familySearchOpen"
+                      class="w-full justify-between font-normal bg-white h-10">
+                      {{values.family_id ? membersStore.lookupData?.families?.find((f: any) => f.FamilyID.toString()
+                        === values.family_id)?.FamilyName : "Select family..."}}
+                      <ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent class="w-[--reka-popper-anchor-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search families..." />
+                      <CommandList>
+                        <CommandEmpty>No family found.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem value="none" @select="() => {
+                            setFieldValue('family_id', '')
+                            familySearchOpen = false
+                          }">
+                            <Check :class="cn(
+                              'mr-2 h-4 w-4',
+                              !values.family_id ? 'opacity-100' : 'opacity-0'
+                            )" />
+                            No Family Assignment
+                          </CommandItem>
+                          <CommandItem v-for="family in membersStore.lookupData?.families" :key="family.FamilyID"
+                            :value="family.FamilyName" @select="() => {
+                              setFieldValue('family_id', family.FamilyID.toString())
+                              familySearchOpen = false
+                            }">
+                            <Check :class="cn(
+                              'mr-2 h-4 w-4',
+                              values.family_id === family.FamilyID.toString() ? 'opacity-100' : 'opacity-0'
+                            )" />
+                            {{ family.FamilyName }}
+                          </CommandItem>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 </div>
              </div>
           </div>
@@ -385,7 +529,16 @@ const triggerFileUpload = () => {
                 </div>
                 <div class="space-y-2">
                   <Label>Password <span class="text-red-500">*</span></Label>
-                  <Input :model-value="values.password" @update:model-value="v => setFieldValue('password', v as string)" type="password" autocomplete="new-password" />
+               <div class="relative">
+                  <Input :model-value="values.password"
+                    @update:model-value="v => setFieldValue('password', v as string)"
+                    :type="showPassword ? 'text' : 'password'" autocomplete="new-password" class="pr-10" />
+                  <Button type="button" variant="ghost" size="icon"
+                    class="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" @click="showPassword = !showPassword">
+                    <Eye v-if="!showPassword" class="w-4 h-4" />
+                    <EyeOff v-else class="w-4 h-4" />
+                  </Button>
+                </div>
                 </div>
                 <div class="space-y-2">
                   <Label>System Role <span class="text-red-500">*</span></Label>

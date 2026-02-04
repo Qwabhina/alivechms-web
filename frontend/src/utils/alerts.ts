@@ -1,4 +1,4 @@
-import { toast } from 'vue-sonner'
+import { toast } from '@/components/ui/sonner'
 import Swal from 'sweetalert2'
 
 export const APP_CONFIG = {
@@ -15,26 +15,35 @@ export const APP_CONFIG = {
 
 export const Alerts = {
   /**
-   * Show toast notification using vue-sonner
+   * Show toast notification using Sonner (Standardized through UI layer)
    */
-  toast(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') {
-    const options = {
-      duration: type === 'error' ? APP_CONFIG.TOAST_DURATION + 2000 : APP_CONFIG.TOAST_DURATION,
-    }
+  toast(message: string, optionsOrType: any = 'info') {
+    if (typeof optionsOrType === 'string') {
+      const type = optionsOrType as 'success' | 'error' | 'warning' | 'info'
+      const options = {
+        duration: type === 'error' ? APP_CONFIG.TOAST_DURATION + 2000 : APP_CONFIG.TOAST_DURATION,
+      }
 
-    switch (type) {
-      case 'success':
-        toast.success(message, options)
-        break
-      case 'error':
-        toast.error(message, options)
-        break
-      case 'warning':
-        toast.warning(message, options)
-        break
-      default:
-        toast.info(message, options)
+      switch (type) {
+        case 'success': toast.success(message, options); break
+        case 'error': toast.error(message, options); break
+        case 'warning': toast.warning(message, options); break
+        default: toast.info(message, options)
+      }
+    } else {
+      // Direct pass-through for rich Sonner options
+      toast(message, {
+        duration: APP_CONFIG.TOAST_DURATION,
+        ...optionsOrType
+      })
     }
+  },
+
+  /**
+   * Promise toast for async operations
+   */
+  promise(promise: Promise<any>, options: { loading: string; success: any; error: any }) {
+    return toast.promise(promise, options)
   },
 
   success(message: string) {

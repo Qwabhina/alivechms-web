@@ -51,7 +51,7 @@ const router = createRouter({
             {
                path: 'contributions',
                name: 'contributions',
-               component: () => import('../views/dashboard/PlaceholderView.vue'),
+               component: () => import('../views/dashboard/ContributionsView.vue'),
             },
             {
                path: 'pledges',

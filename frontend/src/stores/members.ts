@@ -6,6 +6,8 @@ interface MemberStats {
    gender_distribution: any[]
    age_distribution: any[]
    total_members: number
+   active_members: number
+   inactive_members: number
    new_this_month: number
 }
 

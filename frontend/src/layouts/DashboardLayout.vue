@@ -231,7 +231,7 @@ if (activeGroup) openGroup.value = activeGroup.name
             <!-- Single Item -->
             <SidebarMenuItem v-if="!item.children">
               <SidebarMenuButton as-child :active="isActive(item.route)"
-                class="hover:bg-[#e5a100]/10 hover:text-[#e5a100] data-[active=true]:bg-[#e5a100]/20 data-[active=true]:text-[#e5a100] transition-all duration-200 px-3 h-11 rounded-lg">
+               class="hover:bg-[#e5a100]/10 hover:text-white data-[active=true]:bg-[#e5a100]/20 data-[active=true]:text-[#e5a100] transition-all duration-200 px-3 h-11 rounded-lg">
                 <router-link :to="{ name: item.route }" class="flex items-center gap-3 w-full">
                   <component :is="item.icon" class="w-5 h-5" />
                   <span class="font-medium">{{ item.name }}</span>
@@ -247,7 +247,7 @@ if (activeGroup) openGroup.value = activeGroup.name
                 class="group/collapsible">
                 <CollapsibleTrigger as-child>
                   <SidebarMenuButton
-                    class="hover:bg-white/5 data-[active=true]:text-[#e5a100] transition-colors px-3 h-11 rounded-lg w-full"
+                   class="hover:bg-white/10 hover:text-white data-[active=true]:text-[#e5a100] transition-colors px-3 h-11 rounded-lg w-full"
                     :active="isGroupActive(item)">
                     <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
                     <span class="font-medium ml-3">{{ item.name }}</span>
@@ -255,12 +255,15 @@ if (activeGroup) openGroup.value = activeGroup.name
                       class="ml-auto w-4 h-4 transition-transform duration-300 group-data-[state=open]/collapsible:rotate-180" />
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
-                <transition name="menu-slide">
-                  <CollapsibleContent>
+               <transition name="sidebar-sub"
+                  @enter="(el) => { (el as HTMLElement).style.height = '0px'; (el as HTMLElement).offsetHeight; (el as HTMLElement).style.height = (el as HTMLElement).scrollHeight + 'px' }"
+                  @after-enter="(el) => (el as HTMLElement).style.height = 'auto'"
+                  @leave="(el) => { (el as HTMLElement).style.height = (el as HTMLElement).scrollHeight + 'px'; (el as HTMLElement).offsetHeight; (el as HTMLElement).style.height = '0px' }">
+                  <CollapsibleContent v-show="openGroup === item.name" class="overflow-hidden">
                     <SidebarMenuSub class="ml-3 mt-1 border-l border-white/10 pl-2">
                       <SidebarMenuSubItem v-for="child in item.children" :key="child.name">
                         <SidebarMenuSubButton as-child :active="isActive(child.route)"
-                          class="hover:text-[#e5a100] data-[active=true]:text-[#e5a100] transition-colors py-2 px-3 block rounded-md">
+                         class="hover:bg-white/10 hover:text-white data-[active=true]:text-[#e5a100] transition-colors py-2 px-3 block rounded-md">
                           <router-link :to="{ name: child.route }" class="flex items-center gap-2">
                             <component :is="child.icon" class="w-4 h-4" />
                             <span class="text-sm">{{ child.name }}</span>
@@ -353,20 +356,23 @@ if (activeGroup) openGroup.value = activeGroup.name
 
 <style scoped>
 .router-link-active {
-  @apply text-[#e5a100];
+  color: #e5a100;
 }
-/* Enhanced Menu Animations */
-.menu-slide-enter-active,
-.menu-slide-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+/* Enhanced Sidebar Sub-menu Animations */
+.sidebar-sub-enter-active,
+.sidebar-sub-leave-active {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
-  max-height: 500px;
 }
 
-.menu-slide-enter-from,
-.menu-slide-leave-to {
-  max-height: 0;
+.sidebar-sub-enter-from,
+.sidebar-sub-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
+  transform: translateY(-8px);
+  }
+  
+  /* Base Layout Transitions */
+  .sidebar-inset {
+    transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 </style>

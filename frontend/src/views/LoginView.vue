@@ -99,6 +99,7 @@ const onSubmit = form.handleSubmit(async (values) => {
                     class="pl-10" 
                     v-bind="componentField" 
                     autocomplete="username"
+autofocus
                   />
                 </div>
               </FormControl>

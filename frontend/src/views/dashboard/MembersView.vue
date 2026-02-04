@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, h } from 'vue'
 import { 
   Users, 
   Search, 
@@ -15,7 +15,9 @@ import {
   ChevronLeft,
   ChevronRight,
   PieChart,
-  BarChart3
+  BarChart3,
+  Printer,
+  FileText as FileTextIcon
 } from 'lucide-vue-next'
 import { 
   Card, 
@@ -24,6 +26,12 @@ import {
   CardTitle, 
   CardDescription 
 } from '@/components/ui/card'
+import {
+  useVueTable,
+  getCoreRowModel,
+  FlexRender,
+  type ColumnDef
+} from '@tanstack/vue-table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -61,6 +69,8 @@ import { Alerts } from '@/utils/alerts'
 import api, { resolveUrl } from '@/services/api'
 import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const membersStore = useMembersStore()
 const settingsStore = useSettingsStore()
@@ -71,6 +81,7 @@ const branchFilter = ref('all')
 const isAddModalOpen = ref(false)
 const isViewModalOpen = ref(false)
 const selectedMemberId = ref<number | null>(null)
+const selectedMemberData = ref<any | null>(null)
 
 // Debounced search
 let searchTimeout: any = null
@@ -124,6 +135,7 @@ const handleExportCSV = () => {
     'Name': `${m.MbrFirstName} ${m.MbrFamilyName}`,
     'Email': m.MbrEmailAddress,
     'Gender': m.MbrGender,
+    'Phone': m.PrimaryPhone || 'N/A',
     'Branch': m.BranchName,
     'Status': m.MembershipStatusName,
     'Joined': dayjs(m.MbrRegistrationDate).format('YYYY-MM-DD')
@@ -134,8 +146,154 @@ const handleExportCSV = () => {
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Members')
   XLSX.writeFile(workbook, `church_members_${dayjs().format('YYYY-MM-DD')}.xlsx`)
 
-  Alerts.success('Export started...')
+  Alerts.success('Excel export downloaded')
 }
+
+const handleExportPDF = () => {
+  if (!membersStore.members.length) return
+
+  const doc = new jsPDF()
+  const tableData = membersStore.members.map(m => [
+    m.MbrUniqueID,
+    `${m.MbrFirstName} ${m.MbrFamilyName}`,
+    m.MbrGender,
+    m.BranchName || 'N/A',
+    m.MembershipStatusName,
+    dayjs(m.MbrRegistrationDate).format('YYYY-MM-DD')
+  ])
+
+  doc.setFontSize(18)
+  doc.setTextColor(0, 2, 138) // #00028a
+  doc.text('Church Member Directory', 14, 22)
+
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  doc.text(`Generated on ${dayjs().format('MMMM DD, YYYY HH:mm')}`, 14, 30)
+
+  autoTable(doc, {
+    head: [['ID', 'Name', 'Gender', 'Branch', 'Status', 'Joined']],
+    body: tableData,
+    startY: 35,
+    styles: { fontSize: 8, cellPadding: 3 },
+    headStyles: { fillColor: [0, 2, 138], textColor: 255 },
+    alternateRowStyles: { fillColor: [245, 247, 250] }
+  })
+
+  doc.save(`church_members_${dayjs().format('YYYY-MM-DD')}.pdf`)
+  Alerts.success('PDF export downloaded')
+}
+
+const handlePrintTable = () => {
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) return
+
+  const tableHtml = `
+    <table style="width: 100%; border-collapse: collapse; font-family: sans-serif;">
+      <thead>
+        <tr style="background: #00028a; color: white;">
+          <th style="padding: 10px; text-align: left;">ID</th>
+          <th style="padding: 10px; text-align: left;">Name</th>
+          <th style="padding: 10px; text-align: left;">Branch</th>
+          <th style="padding: 10px; text-align: left;">Status</th>
+          <th style="padding: 10px; text-align: left;">Joined</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${membersStore.members.map(m => `
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 10px;">${m.MbrUniqueID}</td>
+            <td style="padding: 10px;">${m.MbrFirstName} ${m.MbrFamilyName}</td>
+            <td style="padding: 10px;">${m.BranchName || 'N/A'}</td>
+            <td style="padding: 10px;">${m.MembershipStatusName}</td>
+            <td style="padding: 10px;">${dayjs(m.MbrRegistrationDate).format('YYYY-MM-DD')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Member List Printout</title>
+        <style>
+          body { padding: 40px; }
+          h1 { color: #00028a; }
+          .footer { margin-top: 20px; font-size: 12px; color: #666; }
+          @media print {
+            body { padding: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Member Directory</h1>
+        <p>Total Members: ${membersStore.pagination.total}</p>
+        ${tableHtml}
+        <div class="footer">Printed on ${dayjs().format('MMMM DD, YYYY HH:mm')}</div>
+        <script>
+          window.onload = () => { window.print(); setTimeout(() => window.close(), 500); };
+        <\/script>
+      </body>
+    </html>
+  `)
+  printWindow.document.close()
+}
+
+const columns: ColumnDef<any>[] = [
+  {
+    accessorKey: 'MbrFirstName',
+    header: 'Member',
+    cell: ({ row }) => {
+      const m = row.original
+      return h('div', { class: 'flex items-center gap-3' }, [
+        h('div', { class: 'h-9 w-9 rounded-full overflow-hidden border bg-slate-50' }, [
+          h('img', {
+            src: resolveUrl(m.MbrProfilePicture) || `https://api.dicebear.com/7.x/initials/svg?seed=${m.MbrFirstName}`,
+            class: 'h-full w-full object-cover'
+          })
+        ]),
+        h('div', { class: 'flex flex-col' }, [
+          h('span', { class: 'font-semibold text-slate-900' }, `${m.MbrFirstName} ${m.MbrFamilyName}`),
+          h('span', { class: 'text-xs text-muted-foreground truncate max-w-[150px]' }, m.MbrEmailAddress)
+        ])
+      ])
+    }
+  },
+  {
+    accessorKey: 'MbrUniqueID',
+    header: 'Unique ID',
+    cell: ({ row }) => h('code', {
+      class: 'text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono'
+    }, row.original.MbrUniqueID)
+  },
+  {
+    accessorKey: 'BranchName',
+    header: 'Branch',
+    cell: ({ row }) => row.original.BranchName || 'N/A'
+  },
+  {
+    accessorKey: 'MbrRegistrationDate',
+    header: 'Joined',
+    cell: ({ row }) => dayjs(row.original.MbrRegistrationDate).format('YYYY-MM-DD')
+  },
+  {
+    accessorKey: 'MembershipStatusName',
+    header: 'Status',
+    cell: ({ row }) => {
+      const status = row.original.MembershipStatusName
+      const badgeClass = getStatusBadge(status)
+      return h('span', {
+        class: `inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${badgeClass}`
+      }, status)
+    }
+  }
+]
+
+const table = useVueTable({
+  get data() { return membersStore.members },
+  columns,
+  getCoreRowModel: getCoreRowModel(),
+})
 
 // Charts Data
 const genderChartOptions = computed(() => ({
@@ -207,9 +365,16 @@ const getStatusBadge = (status: string) => {
     </div>
 
     <!-- Modals -->
-    <AddMemberModal :open="isAddModalOpen" @close="isAddModalOpen = false" />
-   <ViewMemberModal :open="isViewModalOpen" :member-id="selectedMemberId" @close="isViewModalOpen = false"
-      @edit="(m) => { isViewModalOpen = false; /* Implement edit modal logic later */ }" />
+   <AddMemberModal :open="isAddModalOpen" :member-data="selectedMemberData" @close="() => {
+      isAddModalOpen = false
+      selectedMemberData = null
+    }" />
+    <ViewMemberModal :open="isViewModalOpen" :member-id="selectedMemberId" @close="isViewModalOpen = false"
+@edit="(m: any) => {
+      isViewModalOpen = false;
+      selectedMemberData = m;
+      isAddModalOpen = true;
+    }" />
 
     <!-- Stats Section -->
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-12">
@@ -267,10 +432,15 @@ const getStatusBadge = (status: string) => {
             </Badge>
           </div>
           <div class="flex items-center gap-2">
-           <Button variant="ghost" size="sm" class="text-xs" @click="handleExportCSV">
-                <Download class="w-3 h-3 mr-1" />
-                Export CSV
-             </Button>
+           <Button variant="outline" size="sm" @click="handlePrintTable" class="text-xs">
+              <Printer class="w-3 h-4 mr-1.5" /> Print
+            </Button>
+            <Button variant="outline" size="sm" @click="handleExportPDF" class="text-xs">
+              <FileTextIcon class="w-3 h-4 mr-1.5" /> PDF
+            </Button>
+            <Button variant="outline" size="sm" @click="handleExportCSV" class="text-xs">
+              <Download class="w-3 h-4 mr-1.5" /> CSV
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -327,59 +497,37 @@ const getStatusBadge = (status: string) => {
         <div class="relative overflow-x-auto">
           <Table>
             <TableHeader class="bg-gray-50/50">
-              <TableRow>
-                <TableHead class="w-12"></TableHead>
-                <TableHead class="font-bold text-[#00028a]">Member</TableHead>
-                <TableHead class="font-bold text-[#00028a]">Unique ID</TableHead>
-                <TableHead class="font-bold text-[#00028a]">Branch</TableHead>
-                <TableHead class="font-bold text-[#00028a]">Registration Date</TableHead>
-                <TableHead class="font-bold text-[#00028a]">Status</TableHead>
+             <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
+                <TableHead v-for="header in headerGroup.headers" :key="header.id" class="font-bold text-[#00028a]">
+                  <FlexRender v-if="!header.isPlaceholder" :render="header.column.columnDef.header"
+                    :props="header.getContext()" />
+                </TableHead>
                 <TableHead class="w-12"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <template v-if="membersStore.loading">
                 <TableRow v-for="i in 5" :key="i">
-                  <TableCell v-for="j in 7" :key="j">
+                 <TableCell v-for="j in 6" :key="j">
                     <Skeleton class="h-8 w-full" />
                   </TableCell>
                 </TableRow>
               </template>
-              <template v-else-if="!membersStore.members.length">
+             <template v-else-if="!table.getRowModel().rows.length">
                 <TableRow>
-                  <TableCell colspan="7" class="h-32 text-center text-muted-foreground">
+                 <TableCell colspan="6" class="h-32 text-center text-muted-foreground">
                     No members found matching your criteria.
                   </TableCell>
                 </TableRow>
               </template>
               <template v-else>
-                <TableRow v-for="member in membersStore.members" :key="member.MbrID" class="group hover:bg-[#00028a]/5 transition-colors">
-                  <TableCell>
-                    <Avatar class="h-9 w-9 border">
-                      <AvatarImage :src="resolveUrl(member.MbrProfilePicture) || `https://api.dicebear.com/7.x/initials/svg?seed=${member.MbrFirstName}`" />
-                      <AvatarFallback>{{ member.MbrFirstName.substring(0, 1) }}{{ member.MbrFamilyName.substring(0, 1) }}</AvatarFallback>
-                    </Avatar>
+               <TableRow v-for="row in table.getRowModel().rows" :key="row.id"
+                  class="group hover:bg-[#00028a]/5 transition-colors">
+
+                  <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
+                    <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                   </TableCell>
-                  <TableCell>
-                    <div class="flex flex-col">
-                      <span class="font-semibold text-slate-900">{{ member.MbrFirstName }} {{ member.MbrFamilyName }}</span>
-                      <span class="text-xs text-muted-foreground truncate max-w-[150px]">{{ member.MbrEmailAddress }}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">{{ member.MbrUniqueID }}</code>
-                  </TableCell>
-                  <TableCell>
-                    <span class="text-sm font-medium">{{ member.BranchName || 'N/A' }}</span>
-                  </TableCell>
-                  <TableCell>
-                    <span class="text-sm">{{ dayjs(member.MbrRegistrationDate).format('YYYY-MM-DD') }}</span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" :class="getStatusBadge(member.MembershipStatusName)">
-                      {{ member.MembershipStatusName }}
-                    </Badge>
-                  </TableCell>
+
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger as-child>
@@ -390,14 +538,18 @@ const getStatusBadge = (status: string) => {
                       <DropdownMenuContent align="end" class="w-40">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                       <DropdownMenuItem @click="handleViewMember(member.MbrID)">
+                       <DropdownMenuItem @click="handleViewMember(row.original.MbrID)">
                           <Eye class="w-4 h-4 mr-2" /> View Profile
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                       <DropdownMenuItem @click="() => {
+                          selectedMemberData = row.original
+                          isAddModalOpen = true
+                        }">
                           <Pencil class="w-4 h-4 mr-2" /> Edit Member
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem @click="membersStore.deleteMember(member.MbrID)" class="text-red-600 focus:text-red-600">
+                       <DropdownMenuItem @click="membersStore.deleteMember(row.original.MbrID)"
+                          class="text-red-600 focus:text-red-600">
                           <Trash2 class="w-4 h-4 mr-2" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
