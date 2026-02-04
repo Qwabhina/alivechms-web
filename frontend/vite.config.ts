@@ -14,5 +14,15 @@ export default defineConfig({
   build: {
     outDir: '../public/ui',
     emptyOutDir: true,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-charts': ['apexcharts', 'vue3-apexcharts'],
+          'vendor-utils': ['xlsx', 'dayjs', 'zod'],
+          'vendor-ui': ['lucide-vue-next', 'radix-vue', 'clsx', 'tailwind-merge'],
+        }
+      }
+    }
   },
 })
