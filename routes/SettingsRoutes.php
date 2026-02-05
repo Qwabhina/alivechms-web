@@ -131,7 +131,7 @@ class SettingsRoutes extends BaseRoute
             }
 
             // Create upload directory if not exists
-            $uploadDir = __DIR__ . '/../public/uploads/logos/';
+               $uploadDir = __DIR__ . '/../uploads/logos/';
             if (!is_dir($uploadDir)) {
                mkdir($uploadDir, 0755, true);
             }
@@ -151,8 +151,8 @@ class SettingsRoutes extends BaseRoute
 
             // Delete old logo if exists
             $oldLogo = Settings::get('church_logo');
-            if ($oldLogo && file_exists(__DIR__ . '/../public/' . $oldLogo)) {
-               unlink(__DIR__ . '/../public/' . $oldLogo);
+               if ($oldLogo && file_exists(__DIR__ . '/../' . $oldLogo)) {
+                  unlink(__DIR__ . '/../' . $oldLogo);
             }
 
             // Move uploaded file
@@ -172,7 +172,7 @@ class SettingsRoutes extends BaseRoute
 
             ResponseHelper::success([
                'path' => $relativePath,
-               'url' => '/public/' . $relativePath
+               'url' => '/' . $relativePath
             ], 'Logo uploaded successfully');
          })(),
 

@@ -211,7 +211,7 @@ const handlePrint = () => {
                 <div
                   class="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 text-xs font-medium border border-white/10">
                   <Calendar class="w-3.5 h-3.5 opacity-70" /> {{
-                    dayjs(member.MbrRegistrationDate).format('MMM DD, YYYY')
+  dayjs(member.MbrDateOfBirth).format('MMM DD, YYYY')
                   }}
                 </div>
               </div>
@@ -278,8 +278,8 @@ const handlePrint = () => {
                     </div>
                     <div class="space-y-1 col-span-2">
                       <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Date of Birth</p>
-                      <p class="font-semibold text-slate-700">{{ member.MbrDateOfBirth ?
-                        dayjs(member.MbrDateOfBirth).format('MMMM DD, YYYY') : 'Not Provided' }}</p>
+                     <p class="font-semibold text-slate-700">{{ member.MbrRegistrationDate ?
+                        dayjs(member.MbrRegistrationDate).format('MMMM DD, YYYY') : 'Not Provided' }}</p>
                     </div>
                   </div>
                 </div>

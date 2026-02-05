@@ -107,10 +107,12 @@ const { handleSubmit, values, setFieldValue, validate, resetForm } = useForm({
     address: '',
     family_id: '',
     branch_id: '',
+    membership_status_id: '',
     enable_login: false,
     username: '',
     password: '',
-    role_id: '',
+    member_role: '',
+    remove_profile_picture: 'false',
   }
 })
 
@@ -131,10 +133,12 @@ watch(() => props.memberData, (newVal) => {
         address: newVal.MbrResidentialAddress || '',
         family_id: newVal.FamilyID ? newVal.FamilyID.toString() : '',
         branch_id: newVal.MbrBranchID ? newVal.MbrBranchID.toString() : '',
-        enable_login: false, // Default false for security
-        username: '',
+        membership_status_id: newVal.MbrMembershipStatusID ? newVal.MbrMembershipStatusID.toString() : '',
+        enable_login: !!newVal.Username,
+        username: newVal.Username || '',
         password: '',
-        role_id: '',
+        member_role: newVal.RoleID ? newVal.RoleID.toString() : '',
+        remove_profile_picture: 'false',
       }
     })
 
@@ -164,10 +168,12 @@ watch(() => props.memberData, (newVal) => {
         address: '',
         family_id: '',
         branch_id: '',
+        membership_status_id: '',
         enable_login: false,
         username: '',
         password: '',
-        role_id: '',
+        member_role: '',
+        remove_profile_picture: 'false',
       }
     })
     profilePreview.value = null
@@ -187,7 +193,7 @@ const removePhoto = () => {
   selectedFile.value = null
   profilePreview.value = null
   if (props.memberData) {
-    // Flag for removal in edit mode if needed by API
+    setFieldValue('remove_profile_picture', 'true')
   }
 }
 
@@ -234,6 +240,8 @@ const submitMember = handleSubmit(async (formValues) => {
 
     if (selectedFile.value) {
       formData.append('profile_picture', selectedFile.value)
+    } else if (formValues.remove_profile_picture === 'true') {
+      formData.append('remove_profile_picture', 'true')
     }
 
     const endpoint = isEdit ? `member/update/${props.memberData.MbrID}` : 'member/create'
@@ -390,6 +398,21 @@ const triggerFileUpload = () => {
                   </SelectContent>
                 </Select>
               </div>
+             <div class="space-y-2">
+                <Label>Membership Status</Label>
+                <Select :model-value="values.membership_status_id"
+                  @update:model-value="v => setFieldValue('membership_status_id', v as string)">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="s in membersStore.lookupData?.membership_statuses" :key="s.id"
+                      :value="s.id.toString()">
+                      {{ s.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -542,7 +565,8 @@ const triggerFileUpload = () => {
                 </div>
                 <div class="space-y-2">
                   <Label>System Role <span class="text-red-500">*</span></Label>
-                  <Select :model-value="values.role_id" @update:model-value="v => setFieldValue('role_id', v as string)">
+               <Select :model-value="values.member_role"
+                  @update:model-value="v => setFieldValue('member_role', v as string)">
                     <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem 

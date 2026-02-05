@@ -152,7 +152,7 @@ class FileUploadService
     */
    private static function moveUploadedFile(array $file, string $subfolder): string
    {
-      $uploadDir = dirname(__DIR__, 2) . '/public/uploads/' . $subfolder . '/';
+      $uploadDir = dirname(__DIR__, 2) . '/uploads/' . $subfolder . '/';
 
       if (!is_dir($uploadDir)) {
          if (!mkdir($uploadDir, 0755, true)) {
@@ -183,7 +183,7 @@ class FileUploadService
          return false;
       }
 
-      $fullPath = dirname(__DIR__, 2) . '/public/' . $relativePath;
+      $fullPath = dirname(__DIR__, 2) . '/' . $relativePath;
 
       if (file_exists($fullPath) && is_file($fullPath)) {
          return unlink($fullPath);

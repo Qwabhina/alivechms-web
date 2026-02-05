@@ -73,14 +73,21 @@ class MemberRepository
             ['table' => 'family f', 'on' => 'c.FamilyID = f.FamilyID', 'type' => 'LEFT'],
             ['table' => 'marital_status ms', 'on' => 'c.MbrMaritalStatusID = ms.StatusID', 'type' => 'LEFT'],
             ['table' => 'education_level el', 'on' => 'c.MbrEducationLevelID = el.LevelID', 'type' => 'LEFT'],
-            ['table' => 'membership_status mst', 'on' => 'c.MbrMembershipStatusID = mst.StatusID', 'type' => 'LEFT']
+            ['table' => 'membership_status mst', 'on' => 'c.MbrMembershipStatusID = mst.StatusID', 'type' => 'LEFT'],
+            ['table' => 'member_role mr', 'on' => 'c.MbrID = mr.MbrID AND mr.IsActive = 1', 'type' => 'LEFT'],
+            ['table' => 'church_role r', 'on' => 'mr.RoleID = r.RoleID', 'type' => 'LEFT'],
+            ['table' => 'user_authentication ua', 'on' => 'c.MbrID = ua.MbrID', 'type' => 'LEFT']
          ],
          fields: [
             'c.*',
             'f.FamilyName',
             'ms.StatusName as MaritalStatusName',
             'el.LevelName as EducationLevelName',
-            'mst.StatusName as MembershipStatusName'
+            'mst.StatusName as MembershipStatusName',
+            'r.RoleName',
+            'r.RoleID',
+            'ua.Username',
+            'ua.IsActive as AuthActive'
          ],
          conditions: ['c.MbrID' => ':id', 'c.Deleted' => 0],
          params: [':id' => $id]

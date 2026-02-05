@@ -160,7 +160,7 @@ class SettingsHelper
    public static function hasChurchLogo(): bool
    {
       $logo = self::getChurchLogo();
-      return !empty($logo) && file_exists(__DIR__ . '/../../public/' . $logo);
+      return !empty($logo) && file_exists(__DIR__ . '/../../' . $logo);
    }
 
    /**
@@ -172,7 +172,7 @@ class SettingsHelper
       if (empty($logo)) {
          return null;
       }
-      return '/public/' . $logo;
+      return '/' . $logo;
    }
 
    /**

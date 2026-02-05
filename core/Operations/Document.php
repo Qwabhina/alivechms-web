@@ -23,7 +23,7 @@ use finfo;
 
 class Document
 {
-   private const UPLOAD_DIR = __DIR__ . '/../public/uploads/documents/';
+   private const UPLOAD_DIR = __DIR__ . '/../../uploads/documents/';
    private const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
    private const ALLOWED_TYPES = [
       'application/pdf',
@@ -114,7 +114,7 @@ class Document
       if (!$doc)
          ResponseHelper::error('Document not found', 404);
 
-      $filePath = __DIR__ . '/../public/' . $doc['FileURL'];
+      $filePath = __DIR__ . '/../../' . $doc['FileURL'];
       if (file_exists($filePath))
          unlink($filePath);
 
@@ -154,7 +154,7 @@ class Document
       if (!$doc)
          ResponseHelper::error('Document not found', 404);
 
-      $filePath = __DIR__ . '/../public/' . $doc['FileURL'];
+      $filePath = __DIR__ . '/../../' . $doc['FileURL'];
       if (!file_exists($filePath))
          ResponseHelper::error('File not found', 404);
 

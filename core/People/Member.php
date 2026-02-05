@@ -29,7 +29,7 @@ use finfo;
 
 class Member
 {
-    private const UPLOAD_DIR = __DIR__ . '/../uploads/members/';
+    private const UPLOAD_DIR = __DIR__ . '/../../uploads/members/';
     private const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     private const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -101,8 +101,8 @@ class Member
 
         // Delete old profile picture if exists
         $oldPicture = $member['MbrProfilePicture'] ?? null;
-        if ($oldPicture && file_exists(__DIR__ . '/../' . $oldPicture)) {
-            unlink(__DIR__ . '/../' . $oldPicture);
+        if ($oldPicture && file_exists(__DIR__ . '/../../' . $oldPicture)) {
+            unlink(__DIR__ . '/../../' . $oldPicture);
         }
 
         // Move uploaded file
@@ -272,6 +272,7 @@ class Member
             'marital_status_id' => 'numeric|nullable',
             'education_level_id' => 'numeric|nullable',
             'membership_status_id' => 'numeric|nullable',
+            'member_role' => 'numeric|nullable',
         ]);
 
         if ($repo->emailExists($data['email_address'], $mbrId)) {
@@ -312,6 +313,7 @@ class Member
             'MbrOccupation'        => $data['occupation'] ?? 'Not Specified',
             'MbrMaritalStatusID'   => !empty($data['marital_status_id']) ? (int)$data['marital_status_id'] : null,
             'MbrEducationLevelID'  => !empty($data['education_level_id']) ? (int)$data['education_level_id'] : null,
+            'MbrMembershipStatusID' => !empty($data['membership_status_id']) ? (int) $data['membership_status_id'] : null,
             'BranchID'             => !empty($data['branch_id']) ? (int)$data['branch_id'] : null,
             'FamilyID'             => !empty($data['family_id']) ? (int)$data['family_id'] : null,
         ];
@@ -324,14 +326,14 @@ class Member
             if ($data['profile_picture'] === null) {
                 // Remove profile picture
                 $updateData['MbrProfilePicture'] = null;
-                if ($oldPicture && file_exists(__DIR__ . '/../public/' . $oldPicture)) {
-                    unlink(__DIR__ . '/../public/' . $oldPicture);
+                if ($oldPicture && file_exists(__DIR__ . '/../../' . $oldPicture)) {
+                    unlink(__DIR__ . '/../../' . $oldPicture);
                 }
             } elseif ($data['profile_picture'] !== $oldPicture) {
                 // New picture uploaded
                 $updateData['MbrProfilePicture'] = $data['profile_picture'];
-                if ($oldPicture && file_exists(__DIR__ . '/../public/' . $oldPicture)) {
-                    unlink(__DIR__ . '/../public/' . $oldPicture);
+                if ($oldPicture && file_exists(__DIR__ . '/../../' . $oldPicture)) {
+                    unlink(__DIR__ . '/../../' . $oldPicture);
                 }
             }
         }
@@ -366,6 +368,57 @@ class Member
                         continue;
                     $isPrimary = $index === 0 ? 1 : 0;
                     $repo->addPhone($mbrId, $phone, $phoneTypeId, $isPrimary);
+                }
+            }
+
+            // Handle role update
+            if (!empty($data['member_role'])) {
+                // Deactivate old roles
+                $orm->update('member_role', ['IsActive' => 0], ['MbrID' => $mbrId]);
+
+                // Assign new role
+                $orm->insert('member_role', [
+                    'MbrID' => $mbrId,
+                    'RoleID' => (int) $data['member_role'],
+                    'IsActive' => 1,
+                    'AssignedBy' => Auth::getCurrentUserId(),
+                    'AssignedAt' => date('Y-m-d H:i:s')
+                ]);
+            }
+
+            // Handle Authentication Update
+            if (!empty($data['username']) || !empty($data['password'])) {
+                $authData = [];
+                if (!empty($data['username'])) {
+                    // Check username uniqueness
+                    $existingAuth = $orm->getWhere('user_authentication', ['Username' => $data['username']]);
+                    if (!empty($existingAuth) && $existingAuth[0]['MbrID'] != $mbrId) {
+                        throw new Exception('Username already exists');
+                    }
+                    $authData['Username'] = $data['username'];
+                }
+
+                if (!empty($data['password'])) {
+                    $passwordCheck = Helpers::validatePasswordStrength($data['password']);
+                    if (!$passwordCheck['valid']) {
+                        throw new Exception('Password does not meet requirements: ' . implode(', ', $passwordCheck['errors']));
+                    }
+                    $authData['PasswordHash'] = password_hash($data['password'], PASSWORD_DEFAULT);
+                }
+
+                if (!empty($authData)) {
+                    $existing = $orm->getWhere('user_authentication', ['MbrID' => $mbrId]);
+                    if (!empty($existing)) {
+                        $orm->update('user_authentication', $authData, ['MbrID' => $mbrId]);
+                    } else {
+                        // If no auth record exists, create one (e.g. enabling login for existing member)
+                        $authData['MbrID'] = $mbrId;
+                        $authData['Email'] = $data['email_address'];
+                        $authData['EmailVerified'] = 0;
+                        $authData['IsActive'] = 1;
+                        $authData['CreatedAt'] = date('Y-m-d H:i:s');
+                        $orm->insert('user_authentication', $authData);
+                    }
                 }
             }
 
