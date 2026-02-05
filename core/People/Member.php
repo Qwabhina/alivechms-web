@@ -498,14 +498,6 @@ class Member
         $statsRepo = new MemberStats();
         $stats = $statsRepo->getStats();
 
-        // Transform logic if needed, but currently repository returns strict format.
-        // Member::getStats() in previous version had some logic to sum totals.
-        // Repository::getStats returns 'status_counts', 'new_this_month', etc.
-        // The original method returned:
-        // ['total' => ..., 'active' => ..., 'inactive' => ..., 'new_this_month' => ..., 'gender_distribution' => ..., 'age_distribution' => ...]
-
-        // I need to map Repository output to this format to avoid breaking frontend.
-
         $total = 0;
         $active = 0;
         $inactive = 0;
@@ -518,21 +510,27 @@ class Member
                 $inactive += $count;
             }
         }
-        
+
         $genderDistribution = [];
         foreach ($stats['gender_counts'] as $row) {
-            $genderDistribution[$row['MbrGender'] ?? 'Unknown'] = (int)$row['count'];
+            $genderDistribution[] = [
+                'gender' => $row['MbrGender'] ?? 'Unknown',
+                'count' => (int) $row['count']
+            ];
         }
-        
+
         $ageDistribution = [];
         foreach ($stats['age_groups'] as $row) {
-            $ageDistribution[$row['age_group']] = (int)$row['count'];
+            $ageDistribution[] = [
+                'group' => $row['age_group'],
+                'count' => (int) $row['count']
+            ];
         }
-        
+
         return [
-            'total' => $total,
-            'active' => $active,
-            'inactive' => $inactive,
+            'total_members' => $total,
+            'active_members' => $active,
+            'inactive_members' => $inactive,
             'new_this_month' => (int) $stats['new_this_month'],
             'gender_distribution' => $genderDistribution,
             'age_distribution' => $ageDistribution

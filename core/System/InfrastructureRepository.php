@@ -80,10 +80,52 @@ class InfrastructureRepository
         return $res[0]['FiscalYearID'] ?? null;
     }
 
-    public function getAllFiscalYears(): array
+    public function getAllFiscalYears(array $filters, int $page, int $limit): array
     {
-        $res = $this->orm->runQuery("SELECT * FROM fiscal_year");
-        return $res;
+        $offset = ($page - 1) * $limit;
+        $conditions = [];
+        $params = [];
+        $where = "WHERE 1=1";
+
+        if (!empty($filters['branch_id'])) {
+            $where .= " AND BranchID = :branch_id";
+            $params[':branch_id'] = $filters['branch_id'];
+        }
+        if (!empty($filters['status'])) {
+            $where .= " AND Status = :status";
+            $params[':status'] = $filters['status'];
+        }
+        if (!empty($filters['date_from'])) {
+            $where .= " AND StartDate >= :date_from";
+            $params[':date_from'] = $filters['date_from'];
+        }
+        if (!empty($filters['date_to'])) {
+            $where .= " AND EndDate <= :date_to";
+            $params[':date_to'] = $filters['date_to'];
+        }
+
+        // 1. Get total count
+        $countSql = "SELECT COUNT(*) as total FROM fiscal_year $where";
+        $totalRes = $this->orm->runQuery($countSql, $params);
+        $total = $totalRes[0]['total'] ?? 0;
+
+        // 2. Get data
+        $sql = "SELECT fy.*, b.BranchName 
+                FROM fiscal_year fy
+                LEFT JOIN branch b ON fy.BranchID = b.BranchID
+                $where
+                ORDER BY fy.StartDate DESC
+                LIMIT :limit OFFSET :offset";
+
+        // Add pagination params
+        $queryParams = array_merge($params, [':limit' => $limit, ':offset' => $offset]);
+
+        $data = $this->orm->runQuery($sql, $queryParams);
+
+        return [
+            'data' => $data,
+            'total' => (int) $total
+        ];
     }
 
     /** Audit Logging */

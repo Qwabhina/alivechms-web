@@ -30,13 +30,38 @@ class SettingsRoutes extends BaseRoute
       self::rateLimit(maxAttempts: 60, windowSeconds: 60);
 
       match (true) {
+         // PUBLIC SETTINGS (No Auth Required)
+         $method === 'GET' && $path === 'public/settings' => (function () {
+               // No auth check needed for public settings (logo, name, etc.)
+   
+               $keys = [
+               'church_name',
+               'church_motto',
+               'church_logo',
+               'church_website',
+               'currency_symbol',
+               'currency_code',
+               'date_format',
+               'time_format',
+               'timezone',
+               'language'
+               ];
+
+               $settings = [];
+               foreach ($keys as $key) {
+                  $settings[$key] = Settings::get($key);
+               }
+
+               ResponseHelper::success($settings);
+            })(),
+
          // GET ALL SETTINGS
          $method === 'GET' && $path === 'settings/all' => (function () {
             self::authenticate();
             self::authorize('settings.view');
 
             $settings = Settings::getAll();
-            ResponseHelper::success(['data' => $settings]);
+               ResponseHelper::success($settings);
          })(),
 
          // GET SETTINGS BY CATEGORY

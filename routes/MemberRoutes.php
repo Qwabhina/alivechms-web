@@ -19,9 +19,6 @@ declare(strict_types=1);
 
 require_once __DIR__ . "/../vendor/autoload.php";
 
-use AliveChMS\Core\Identity\Auth;
-use AliveChMS\Core\Infrastructure\RateLimiter;
-use AliveChMS\Core\People\Family;
 use AliveChMS\Core\People\Member;
 use AliveChMS\Core\Services\FileUploadService;
 use AliveChMS\Core\System\BaseRoute;

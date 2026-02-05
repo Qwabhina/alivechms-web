@@ -318,7 +318,7 @@ const columns: ColumnDef<Contribution, any>[] = [
       header: 'Type',
       cell: (info) => info.getValue() || '-'
    }),
-   columnHelper.accessor('PaymentOptionName', {
+   columnHelper.accessor('PaymentMethodName', {
       header: 'Payment',
       cell: (info) => info.getValue() || '-'
    }),
@@ -687,7 +687,7 @@ function goToPage(page: number) {
                         <TableCell>
                            <Badge variant="secondary">{{ row.ContributionTypeName || '-' }}</Badge>
                         </TableCell>
-                        <TableCell>{{ row.PaymentOptionName || '-' }}</TableCell>
+                       <TableCell>{{ row.PaymentMethodName || '-' }}</TableCell>
                         <TableCell>
                            <template v-if="row.Deleted === 1">
                               <div class="flex items-center gap-2">

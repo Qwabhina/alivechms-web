@@ -58,7 +58,7 @@ const form = ref({
   amount: '',
   date: new Date().toISOString().split('T')[0],
   contribution_type_id: '',
-  payment_option_id: '',
+  payment_method_id: '',
   fiscal_year_id: '',
   description: ''
 })
@@ -89,7 +89,7 @@ watch(() => props.open, async (open) => {
         amount: String(props.contribution.ContributionAmount),
         date: props.contribution.ContributionDate,
         contribution_type_id: String(props.contribution.ContributionTypeID),
-        payment_option_id: String(props.contribution.PaymentOptionID),
+        payment_method_id: String(props.contribution.PaymentMethodID),
         fiscal_year_id: String(props.contribution.FiscalYearID),
         description: props.contribution.Notes || ''
       }
@@ -101,7 +101,7 @@ watch(() => props.open, async (open) => {
         amount: '',
         date: new Date().toISOString().split('T')[0],
         contribution_type_id: '',
-        payment_option_id: '',
+        payment_method_id: '',
         fiscal_year_id: activeFY ? String(activeFY.FiscalYearID) : '',
         description: ''
       }
@@ -113,7 +113,7 @@ watch(() => props.open, async (open) => {
 async function handleSubmit() {
   // Validation
   if (!form.value.member_id || !form.value.amount || !form.value.date ||
-    !form.value.contribution_type_id || !form.value.payment_option_id ||
+    !form.value.contribution_type_id || !form.value.payment_method_id ||
     !form.value.fiscal_year_id) {
     toast({ description: 'Please fill all required fields', variant: 'default' })
     return
@@ -126,7 +126,7 @@ async function handleSubmit() {
       amount: parseFloat(form.value.amount),
       date: form.value.date,
       contribution_type_id: parseInt(form.value.contribution_type_id),
-      payment_option_id: parseInt(form.value.payment_option_id),
+      payment_method_id: parseInt(form.value.payment_method_id),
       fiscal_year_id: parseInt(form.value.fiscal_year_id),
       description: form.value.description.trim() || undefined
     }
@@ -230,14 +230,14 @@ async function handleSubmit() {
 
           <div class="space-y-2">
             <Label>Payment Method <span class="text-red-500">*</span></Label>
-            <Select v-model="form.payment_option_id">
+           <Select v-model="form.payment_method_id">
               <SelectTrigger>
                 <SelectValue placeholder="Select Method" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="opt in store.paymentOptions" :key="opt.PaymentOptionID"
-                  :value="String(opt.PaymentOptionID)">
-                  {{ opt.PaymentOptionName }}
+               <SelectItem v-for="opt in store.paymentMethods" :key="opt.PaymentMethodID"
+                  :value="String(opt.PaymentMethodID)">
+                  {{ opt.PaymentMethodName }}
                 </SelectItem>
               </SelectContent>
             </Select>

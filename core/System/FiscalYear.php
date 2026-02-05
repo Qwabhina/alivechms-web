@@ -64,10 +64,10 @@ class FiscalYear
       return $fy;
    }
 
-   public static function getAll(): array
+   public static function getAll(array $filters, int $page = 1, int $limit = 50): array
    {
       $repo = new InfrastructureRepository();
-      return $repo->getAllFiscalYears();
+      return $repo->getAllFiscalYears($filters, $page, $limit);
    }
 
    public static function getCurrent(): ?int

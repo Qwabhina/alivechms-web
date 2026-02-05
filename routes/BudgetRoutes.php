@@ -135,11 +135,12 @@ class BudgetRoutes extends BaseRoute
             self::authenticate();
             self::authorize('finances.view');
 
-            $itemId = self::getIdFromPath($pathParts, 3, 'Item ID');
+               $budgetId = self::getIdFromPath($pathParts, 3, 'Budget ID');
+               $itemId = self::getIdFromPath($pathParts, 4, 'Item ID');
 
             $payload = self::getPayload();
 
-            $result = Budget::updateItem($itemId, $payload);
+               $result = Budget::updateItem($budgetId, $itemId, $payload);
             ResponseHelper::success($result, 'Budget item updated');
          })(),
 
@@ -148,9 +149,10 @@ class BudgetRoutes extends BaseRoute
             self::authenticate();
             self::authorize('finances.view');
 
-            $itemId = self::getIdFromPath($pathParts, 3, 'Item ID');
+               $budgetId = self::getIdFromPath($pathParts, 3, 'Budget ID');
+               $itemId = self::getIdFromPath($pathParts, 4, 'Item ID');
 
-            $result = Budget::deleteItem($itemId);
+               $result = Budget::deleteItem($budgetId, $itemId);
             ResponseHelper::success($result, 'Budget item deleted');
          })(),
 

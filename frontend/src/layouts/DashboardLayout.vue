@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, type Component } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { 
   Users, 
@@ -95,8 +95,15 @@ const handleLogout = async () => {
     router.push({ name: 'login' })
   }
 }
+interface NavItem {
+  name: string
+  icon: Component
+  route?: string
+  children?: NavItem[]
+  params?: Record<string, string>
+}
 
-const navItems = [
+const navItems: NavItem[] = [
   {
     name: 'Dashboard',
     icon: LayoutDashboard,
@@ -152,7 +159,7 @@ const navItems = [
     name: 'Settings',
     icon: Settings,
     children: [
-      { name: 'General', icon: Sliders, route: 'settings-general' },
+      { name: 'General', icon: Sliders, route: 'settings' },
       { name: 'Users', icon: Users, route: 'users' },
       { name: 'Roles & Permissions', icon: ShieldCheck, route: 'roles' },
       { name: 'Branches', icon: Building, route: 'branches' },
@@ -162,25 +169,23 @@ const navItems = [
   },
 ]
 
-const isActive = (routeName: string) => route.name === routeName
+const isActive = (item: any) => {
+  if (item.route !== route.name) return false
+  if (item.params) {
+    return JSON.stringify(item.params) === JSON.stringify(route.params)
+  }
+  return true
+}
 const openGroup = ref<string | null>(null)
 
 const isGroupActive = (item: any) => {
-  if (!item.children) return isActive(item.route)
-  return item.children.some((child: any) => isActive(child.route))
+  if (!item.children) return isActive(item)
+  return item.children.some((child: any) => isActive(child))
 }
 
-const toggleGroup = (name: string) => {
-  if (openGroup.value === name) {
-    openGroup.value = null
-  } else {
-    openGroup.value = name
-  }
+const toggleGroup = (groupName: string) => {
+  openGroup.value = openGroup.value === groupName ? null : groupName
 }
-
-// Initial state: open active group
-const activeGroup = navItems.find(item => isGroupActive(item))
-if (activeGroup) openGroup.value = activeGroup.name
 </script>
 
 <template>
@@ -230,12 +235,12 @@ if (activeGroup) openGroup.value = activeGroup.name
           <template v-for="item in navItems" :key="item.name">
             <!-- Single Item -->
             <SidebarMenuItem v-if="!item.children">
-              <SidebarMenuButton as-child :active="isActive(item.route)"
+             <SidebarMenuButton as-child :active="isActive(item)"
                class="hover:bg-[#e5a100]/10 hover:text-white data-[active=true]:bg-[#e5a100]/20 data-[active=true]:text-[#e5a100] transition-all duration-200 px-3 h-11 rounded-lg">
-                <router-link :to="{ name: item.route }" class="flex items-center gap-3 w-full">
+               <router-link :to="{ name: item.route }" class="flex items-center gap-3 w-full">
                   <component :is="item.icon" class="w-5 h-5" />
                   <span class="font-medium">{{ item.name }}</span>
-                 <ChevronRight v-if="isActive(item.route)" class="ml-auto w-4 h-4" />
+                 <ChevronRight v-if="isActive(item)" class="ml-auto w-4 h-4" />
                 </router-link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -262,9 +267,10 @@ if (activeGroup) openGroup.value = activeGroup.name
                   <CollapsibleContent v-show="openGroup === item.name" class="overflow-hidden">
                     <SidebarMenuSub class="ml-3 mt-1 border-l border-white/10 pl-2">
                       <SidebarMenuSubItem v-for="child in item.children" :key="child.name">
-                        <SidebarMenuSubButton as-child :active="isActive(child.route)"
+                       <SidebarMenuSubButton as-child :active="isActive(child)"
                          class="hover:bg-white/10 hover:text-white data-[active=true]:text-[#e5a100] transition-colors py-2 px-3 block rounded-md">
-                          <router-link :to="{ name: child.route }" class="flex items-center gap-2">
+                         <router-link :to="{ name: child.route, params: child.params }"
+                            class="flex items-center gap-2">
                             <component :is="child.icon" class="w-4 h-4" />
                             <span class="text-sm">{{ child.name }}</span>
                           </router-link>
@@ -361,7 +367,7 @@ if (activeGroup) openGroup.value = activeGroup.name
 /* Enhanced Sidebar Sub-menu Animations */
 .sidebar-sub-enter-active,
 .sidebar-sub-leave-active {
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 

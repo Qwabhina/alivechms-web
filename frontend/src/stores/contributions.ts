@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
+import { useLookupsStore } from './lookups'
 
 export interface Contribution {
    ContributionID: number
@@ -11,8 +12,8 @@ export interface Contribution {
    ContributionDate: string
    ContributionTypeID: number
    ContributionTypeName: string
-   PaymentOptionID: number
-   PaymentOptionName: string
+   PaymentMethodID: number
+   PaymentMethodName: string
    FiscalYearID: number
    FiscalYearName: string
    Notes?: string
@@ -25,9 +26,9 @@ export interface ContributionType {
    ContributionTypeDescription?: string
 }
 
-export interface PaymentOption {
-   PaymentOptionID: number
-   PaymentOptionName: string
+export interface PaymentMethod {
+   PaymentMethodID: number
+   PaymentMethodName: string
 }
 
 export interface FiscalYear {
@@ -90,9 +91,6 @@ export const useContributionsStore = defineStore('contributions', () => {
 
    // Lookup data
    const members = ref<any[]>([])
-   const contributionTypes = ref<ContributionType[]>([])
-   const paymentOptions = ref<PaymentOption[]>([])
-   const fiscalYears = ref<FiscalYear[]>([])
    const selectedFiscalYearId = ref<number | null>(null)
 
    // Filters
@@ -172,19 +170,41 @@ export const useContributionsStore = defineStore('contributions', () => {
       }
    }
 
-   async function fetchDropdowns() {
-      try {
-         const [membersRes, typesRes, paymentRes, fiscalRes] = await Promise.all([
-            api.get('member/all?limit=1000'),
-            api.get('contribution/types'),
-            api.get('contribution/payment-options'),
-            api.get('fiscalyear/all?limit=50')
-         ])
+   // Use lookups store for dropdown data
+   const lookupsStore = useLookupsStore()
 
+   // Computed properties with mapping to legacy interfaces
+   const contributionTypes = computed<ContributionType[]>(() =>
+      lookupsStore.contributionTypes.map(t => ({
+         ContributionTypeID: t.id,
+         ContributionTypeName: t.name,
+         ContributionTypeDescription: t.description
+      }))
+   )
+
+   const paymentMethods = computed<PaymentMethod[]>(() =>
+      lookupsStore.paymentMethods.map(p => ({
+         PaymentMethodID: p.id,
+         PaymentMethodName: p.name
+      }))
+   )
+
+   const fiscalYears = computed<FiscalYear[]>(() =>
+      lookupsStore.fiscalYears.map(f => ({
+         FiscalYearID: f.id,
+         FiscalYearName: f.name,
+         Status: f.Status // FiscalYears in LookupRoutes select 'Status' as is
+      }))
+   )
+
+   async function fetchDropdowns() {
+      // Fetch members (maybe we should use members store for this? or just keep it here if specific)
+      // The original code fetched members/all.
+      try {
+         const membersRes = await api.get('member/all')
          members.value = membersRes.data.data || []
-         contributionTypes.value = typesRes.data.data || []
-         paymentOptions.value = paymentRes.data.data || []
-         fiscalYears.value = fiscalRes.data.data || []
+
+         await lookupsStore.fetchLookups()
 
          // Set selected fiscal year to active one
          const active = fiscalYears.value.find(fy => fy.Status === 'Active')
@@ -206,7 +226,7 @@ export const useContributionsStore = defineStore('contributions', () => {
       amount: number
       date: string
       contribution_type_id: number
-      payment_option_id: number
+      payment_method_id: number
       fiscal_year_id: number
       description?: string
    }) {
@@ -220,7 +240,7 @@ export const useContributionsStore = defineStore('contributions', () => {
       amount: number
       date: string
       contribution_type_id: number
-      payment_option_id: number
+      payment_method_id: number
       fiscal_year_id: number
       description?: string
    }) {
@@ -257,23 +277,22 @@ export const useContributionsStore = defineStore('contributions', () => {
 
    // Contribution Types CRUD
    async function fetchContributionTypes() {
-      const res = await api.get('contribution/types')
-      contributionTypes.value = res.data.data || []
+      await lookupsStore.fetchLookups(true)
    }
 
    async function createContributionType(name: string, description?: string) {
       await api.post('contribution/type/create', { name, description })
-      await fetchContributionTypes()
+      await lookupsStore.fetchLookups(true)
    }
 
    async function updateContributionType(id: number, name: string, description?: string) {
       await api.put(`contribution/type/update/${id}`, { name, description })
-      await fetchContributionTypes()
+      await lookupsStore.fetchLookups(true)
    }
 
    async function deleteContributionType(id: number) {
       await api.delete(`contribution/type/delete/${id}`)
-      await fetchContributionTypes()
+      await lookupsStore.fetchLookups(true)
    }
 
    function applyFilters() {
@@ -309,7 +328,7 @@ export const useContributionsStore = defineStore('contributions', () => {
       statsLoading,
       members,
       contributionTypes,
-      paymentOptions,
+      paymentMethods,
       fiscalYears,
       selectedFiscalYearId,
       filters,

@@ -199,7 +199,7 @@ class ContributionRoutes extends BaseRoute
                 self::authorize('finances.view');
 
                 $result = Contribution::getTypes();
-                ResponseHelper::success(['data' => $result]);
+                    ResponseHelper::success($result);
             })(),
 
             // CREATE CONTRIBUTION TYPE
@@ -239,7 +239,7 @@ class ContributionRoutes extends BaseRoute
                 self::authorize('finances.view');
 
                 $result = Contribution::getPaymentMethods();
-                ResponseHelper::success(['data' => $result]);
+                    ResponseHelper::success($result);
             })(),
 
             // GET CONTRIBUTION RECEIPT

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AliveChMS\Core\Stats;
+namespace AliveChMS\Core\Financial;
 
 use AliveChMS\Core\System\ORM;
 

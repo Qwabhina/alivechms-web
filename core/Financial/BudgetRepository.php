@@ -76,7 +76,7 @@ class BudgetRepository
                 'a.MbrFirstName AS ApproverFirstName',
                 'a.MbrFamilyName AS ApproverFamilyName'
             ],
-            conditions: ['b.BudgetID' => ':id', 'b.Deleted' => 0],
+            conditions: ['b.BudgetID' => ':id'],
             params: [':id' => $id]
         );
 
@@ -88,7 +88,7 @@ class BudgetRepository
      */
     public function findAll(int $limit, int $offset, array $filters = []): array
     {
-        $conditions = ['b.Deleted' => 0];
+        $conditions = [];
         $params = [];
 
         if (!empty($filters['fiscal_year_id'])) {
@@ -127,16 +127,16 @@ class BudgetRepository
         );
 
         // Calculate total count
-        $whereSql = ["Deleted = 0"];
-        foreach ($conditions as $k => $v) {
-            if ($k === 'b.Deleted') continue;
-            $col = str_replace('b.', '', $k);
-            $whereSql[] = "$col = $v";
-        }
-        $whereClause = "WHERE " . implode(' AND ', $whereSql);
+        // $whereSql = ["Deleted = 0"];
+        // foreach ($conditions as $k => $v) {
+        // if ($k === 'b.Deleted') continue;
+        //     $col = str_replace('b.', '', $k);
+        //     $whereSql[] = "$col = $v";
+        // }
+        // $whereClause = "WHERE " . implode(' AND ', $whereSql);
 
         $total = $this->orm->runQuery(
-            "SELECT COUNT(*) AS total FROM church_budget $whereClause",
+            "SELECT COUNT(*) AS total FROM church_budget",
             $params
         )[0]['total'];
 

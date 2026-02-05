@@ -22,6 +22,7 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => !!state.token,
+    currencySymbol: () => 'GH₵', // This could eventually come from settingsStore
   },
 
   actions: {

@@ -99,8 +99,8 @@ class FiscalYearRoutes extends BaseRoute
                $filters['date_to'] = $_GET['date_to'];
             }
 
-               $result = FiscalYear::getAll();
-               ResponseHelper::paginated($result, $result['total'], $page, $limit);
+               $result = FiscalYear::getAll($filters, $page, $limit);
+               ResponseHelper::paginated($result['data'], $result['total'], $page, $limit);
          })(),
 
          // CLOSE FISCAL YEAR (Irreversible)

@@ -197,7 +197,7 @@ function printStatement() {
             <TableRow v-for="c in statement.contributions" :key="c.ContributionID">
               <TableCell>{{ formatDate(c.ContributionDate) }}</TableCell>
               <TableCell>{{ c.ContributionTypeName }}</TableCell>
-              <TableCell>{{ c.PaymentOptionName }}</TableCell>
+             <TableCell>{{ c.PaymentMethodName }}</TableCell>
               <TableCell class="text-right">{{ formatCurrency(c.ContributionAmount) }}</TableCell>
             </TableRow>
           </TableBody>

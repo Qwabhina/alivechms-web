@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import api from '@/services/api'
 import { Alerts } from '@/utils/alerts'
+import { useLookupsStore } from './lookups'
 
 interface MemberStats {
    gender_distribution: any[]
@@ -81,16 +82,26 @@ export const useMembersStore = defineStore('members', {
       },
 
       async fetchLookupData() {
-         if (this.lookupData) return
-         try {
-            const [lookupRes, rolesRes] = await Promise.all([
-               api.get('lookups/all'),
-               api.get('role/names')
-            ])
-            this.lookupData = lookupRes.data.data
-            this.roles = rolesRes.data.data
-         } catch (error) {
-            console.error('Failed to fetch lookup data', error)
+         const lookupsStore = useLookupsStore()
+         await lookupsStore.fetchLookups()
+
+         // Helper for backward compatibility if needed, or components should use lookupsStore directly
+         this.lookupData = {
+            marital_statuses: lookupsStore.maritalStatuses,
+            education_levels: lookupsStore.educationLevels,
+            membership_statuses: lookupsStore.membershipStatuses,
+            phone_types: lookupsStore.phoneTypes,
+            // ... map others as needed or just rely on store in components
+         }
+
+         // Fetch roles separately if not in lookups
+         if (this.roles.length === 0) {
+            try {
+               const rolesRes = await api.get('role/names')
+               this.roles = rolesRes.data.data
+            } catch (e) {
+               console.error('Failed to fetch roles', e)
+            }
          }
       },
 

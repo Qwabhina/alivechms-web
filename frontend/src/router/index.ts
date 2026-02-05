@@ -111,36 +111,47 @@ const router = createRouter({
                path: 'settings',
                name: 'settings',
                component: () => import('../views/dashboard/SettingsView.vue'),
+               props: true
             },
             {
-               path: 'settings/general',
-               name: 'settings-general',
-               component: () => import('../views/dashboard/SettingsView.vue'),
-            },
-            {
-               path: 'settings/users',
+               path: 'users',
                name: 'users',
                component: () => import('../views/dashboard/PlaceholderView.vue'),
             },
             {
-               path: 'settings/roles',
+               path: 'roles-permission',
                name: 'roles',
                component: () => import('../views/dashboard/PlaceholderView.vue'),
             },
             {
-               path: 'settings/branches',
+               path: 'branches',
                name: 'branches',
                component: () => import('../views/dashboard/PlaceholderView.vue'),
             },
             {
-               path: 'settings/fiscal-years',
+               path: 'fiscal-years',
                name: 'fiscal-years',
                component: () => import('../views/dashboard/PlaceholderView.vue'),
             },
             {
-               path: 'settings/audit-log',
+               path: 'audit-log',
                name: 'audit-log',
                component: () => import('../views/dashboard/PlaceholderView.vue'),
+            },
+            {
+               path: 'expenses',
+               name: 'expenses',
+               component: () => import('../views/dashboard/ExpensesView.vue'),
+            },
+            {
+               path: 'pledges',
+               name: 'pledges',
+               component: () => import('../views/dashboard/PledgesView.vue'),
+            },
+            {
+               path: 'budgets',
+               name: 'budgets',
+               component: () => import('../views/dashboard/BudgetsView.vue'),
             },
          ],
       },

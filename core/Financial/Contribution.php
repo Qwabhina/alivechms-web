@@ -19,7 +19,7 @@ use AliveChMS\Core\Services\MoneyValidator;
 use AliveChMS\Core\System\Helpers;
 use AliveChMS\Core\System\ResponseHelper;
 use AliveChMS\Core\Identity\Auth;
-use AliveChMS\Core\Stats\ContributionStats;
+use AliveChMS\Core\Financial\ContributionStats;
 use Exception;
 
 class Contribution
@@ -315,10 +315,7 @@ class Contribution
    public static function getMemberStatement(int $memberId, ?int $fiscalYearId = null): array
    {
       $repo = new ContributionRepository();
-      $orm = new \AliveChMS\Core\ORM(); // Using ORM directly for member lookup or should use MemberRepo?
-      // Ideally MemberRepo. But to keep scope limited, we can use simple query here or logic in Repo.
-      // Let's use MemberRepository for member details!
-      $memberRepo = new \AliveChMS\Core\Repositories\MemberRepository();
+      $memberRepo = new \AliveChMS\Core\People\MemberRepository();
       $member = $memberRepo->findById($memberId);
 
       if (!$member) {

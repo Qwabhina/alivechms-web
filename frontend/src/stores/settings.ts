@@ -40,7 +40,8 @@ export const useSettingsStore = defineStore('settings', {
 
    getters: {
       churchLogoUrl: (state) => {
-         if (!state.settings.church_logo) return '/assets/img/logo.png'
+         // Using a reliable placeholder if no logo is uploaded
+         if (!state.settings.church_logo) return 'https://placehold.co/200x200?text=Church+Logo&font=roboto'
          return resolveUrl(state.settings.church_logo)
       },
    },
@@ -54,11 +55,8 @@ export const useSettingsStore = defineStore('settings', {
             const response = await api.get('public/settings')
             const data = response.data.data
 
-            // Map backend response to our settings object
-            // The backend returns an array or object depending on current state
             if (data) {
                this.settings = { ...this.settings, ...data }
-               console.log(this.settings);
             }
 
             this.loaded = true
@@ -68,5 +66,74 @@ export const useSettingsStore = defineStore('settings', {
             this.loading = false
          }
       },
+
+      async fetchAllSettings() {
+         try {
+            const response = await api.get('settings/all')
+            const data = response.data.data
+            return Array.isArray(data) ? data : []
+         } catch (error) {
+            console.error('Failed to fetch all settings:', error)
+            return []
+         }
+      },
+
+      async updateSettings(settings: { key: string; value: any; type?: string; category?: string }[]) {
+         try {
+            const response = await api.post('settings/update', { settings })
+            // Refresh local public settings if any changed
+            this.loaded = false
+            await this.fetchSettings()
+            return response.data
+         } catch (error) {
+            console.error('Failed to update settings:', error)
+            throw error
+         }
+      },
+
+      async uploadLogo(file: File) {
+         try {
+            const formData = new FormData()
+            formData.append('logo', file)
+
+            const response = await api.post('settings/upload-logo', formData, {
+               headers: {
+                  'Content-Type': 'multipart/form-data'
+               }
+            })
+
+            // Update local state
+            if (response.data.data?.path) {
+               this.settings.church_logo = response.data.data.path
+            }
+
+            return response.data
+         } catch (error) {
+            console.error('Failed to upload logo:', error)
+            throw error
+         }
+      },
+
+      async initializeDefaults() {
+         try {
+            await api.post('settings/initialize')
+            // Refresh
+            this.loaded = false
+            await this.fetchSettings()
+         } catch (error) {
+            console.error('Failed to initialize settings:', error)
+            throw error
+         }
+      },
+
+      async getSetting(setting_key: string) {
+         try {
+            const response = await this.fetchAllSettings()
+            return response.find((setting: any) => setting.key === setting_key)?.value
+         } catch (error) {
+            console.error('Failed to get setting:', error)
+            throw error
+         }
+      }
    },
 })

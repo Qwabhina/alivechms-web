@@ -136,7 +136,8 @@ class ContributionRepository
                 ['table' => 'churchmember m',       'on' => 'c.MbrID = m.MbrID'],
                 ['table' => 'contribution_type ct', 'on' => 'c.ContributionTypeID = ct.ContributionTypeID'],
                 ['table' => 'payment_method pm',    'on' => 'c.PaymentMethodID = pm.PaymentMethodID'],
-                ['table' => 'fiscal_year fy',       'on' => 'c.FiscalYearID = fy.FiscalYearID', 'type' => 'LEFT']
+                ['table' => 'fiscal_year fy', 'on' => 'c.FiscalYearID = fy.FiscalYearID', 'type' => 'LEFT'],
+                ['table' => 'branch b', 'on' => 'c.BranchID = b.BranchID', 'type' => 'LEFT']
             ],
             fields: [
                 'c.ContributionID',
@@ -161,7 +162,7 @@ class ContributionRepository
             offset: $offset
         );
 
-        // Calculate total count (simplified for performance)
+        // Calculate total count
         $whereSql = [];
         foreach ($conditions as $key => $val) {
             // Handle operator syntax in keys like "Date >="
@@ -171,8 +172,13 @@ class ContributionRepository
         }
         $whereClause = !empty($whereSql) ? 'WHERE ' . implode(' AND ', $whereSql) : '';
 
+        // Ensure count uses same joins to match filtered data
+        $joins = "JOIN churchmember m ON c.MbrID = m.MbrID
+                  JOIN contribution_type ct ON c.ContributionTypeID = ct.ContributionTypeID
+                  JOIN payment_method pm ON c.PaymentMethodID = pm.PaymentMethodID";
+
         $total = $this->orm->runQuery(
-            "SELECT COUNT(*) AS total FROM contribution c $whereClause",
+            "SELECT COUNT(*) AS total FROM contribution c $joins $whereClause",
             $params
         )[0]['total'];
 
@@ -256,7 +262,7 @@ class ContributionRepository
     public function getPaymentMethods(): array
     {
         return $this->orm->runQuery(
-            "SELECT PaymentMethodID, PaymentMethodName, DisplayOrder, IsActive 
+            "SELECT PaymentMethodID, PaymentMethodName, PaymentMethodDescription, RequiresReference 
              FROM payment_method 
              WHERE IsActive = 1 
              ORDER BY DisplayOrder"

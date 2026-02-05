@@ -232,4 +232,35 @@ class Budget
          ResponseHelper::error('Only draft budgets can be modified', 400);
       }
    }
+
+   public static function deleteItem(int $budgetId, int $itemId): array
+   {
+      $repo = new BudgetRepository();
+      self::ensureDraft($budgetId, $repo);
+
+      $repo->deleteItem($itemId);
+      return ['status' => 'success', 'message' => 'Item deleted'];
+   }
+
+   public static function updateItem(int $budgetId, int $itemId, array $item): array
+   {
+      $repo = new BudgetRepository();
+      self::ensureDraft($budgetId, $repo);
+
+      Helpers::validateInput($item, [
+         'category' => 'required|max:100',
+         'amount' => 'required|numeric',
+         'type' => 'in:Income,Expense',
+         'subcategory_id' => 'required|numeric'
+      ]);
+
+      $repo->updateItem($itemId, [
+         'ItemName' => $item['category'],
+         'Amount' => (float) $item['amount'],
+         'CategoryType' => $item['type'] ?? 'Expense',
+         'SubcategoryID' => (int) $item['subcategory_id']
+      ]);
+      return ['status' => 'success', 'message' => 'Item updated'];
+   }
+
 }

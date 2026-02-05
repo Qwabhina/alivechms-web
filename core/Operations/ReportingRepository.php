@@ -28,9 +28,9 @@ class ReportingRepository
 
         return $this->orm->runQuery("
             SELECT
-                (SELECT COUNT(*) FROM churchmember WHERE BranchID = :b1 AND Deleted = 0) AS total_members,
+                (SELECT COUNT(*) FROM churchmember WHERE BranchID = :b1 AND Deleted = 0) AS total,
                 (SELECT COUNT(*) FROM churchmember WHERE BranchID = :b2 AND MbrRegistrationDate >= :today AND Deleted = 0) AS new_today,
-                (SELECT COUNT(*) FROM churchmember WHERE BranchID = :b3 AND MbrRegistrationDate >= :month AND Deleted = 0) AS new_month
+                (SELECT COUNT(*) FROM churchmember WHERE BranchID = :b3 AND MbrRegistrationDate >= :month AND Deleted = 0) AS new_this_month
             ", [':b1' => $branchId, ':b2' => $branchId, ':b3' => $branchId, ':today' => $today, ':month' => $month]
         )[0];
     }

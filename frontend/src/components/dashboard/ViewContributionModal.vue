@@ -105,7 +105,7 @@ function formatDate(dateStr: string): string {
                <div class="grid grid-cols-2 gap-4">
                   <div>
                      <p class="text-xs text-muted-foreground uppercase">Payment Method</p>
-                     <p>{{ contribution.PaymentOptionName || '-' }}</p>
+                    <p>{{ contribution.PaymentMethodName || '-' }}</p>
                   </div>
                   <div>
                      <p class="text-xs text-muted-foreground uppercase">Fiscal Year</p>

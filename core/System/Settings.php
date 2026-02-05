@@ -153,6 +153,7 @@ class Settings
             'type' => $setting['SettingType'],
             'category' => $setting['Category'],
             'description' => $setting['Description'],
+            'is_editable' => isset($setting['IsEditable']) ? (bool) $setting['IsEditable'] : true,
             'updated_at' => $setting['UpdatedAt']
          ];
       }, $settings);
