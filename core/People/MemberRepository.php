@@ -76,7 +76,8 @@ class MemberRepository
             ['table' => 'membership_status mst', 'on' => 'c.MbrMembershipStatusID = mst.StatusID', 'type' => 'LEFT'],
             ['table' => 'member_role mr', 'on' => 'c.MbrID = mr.MbrID AND mr.IsActive = 1', 'type' => 'LEFT'],
             ['table' => 'church_role r', 'on' => 'mr.RoleID = r.RoleID', 'type' => 'LEFT'],
-            ['table' => 'user_authentication ua', 'on' => 'c.MbrID = ua.MbrID', 'type' => 'LEFT']
+            ['table' => 'user_authentication ua', 'on' => 'c.MbrID = ua.MbrID', 'type' => 'LEFT'],
+            ['table' => 'branch b', 'on' => 'c.BranchID = b.BranchID', 'type' => 'LEFT']
          ],
          fields: [
             'c.*',
@@ -84,6 +85,7 @@ class MemberRepository
             'ms.StatusName as MaritalStatusName',
             'el.LevelName as EducationLevelName',
             'mst.StatusName as MembershipStatusName',
+            'b.BranchName',
             'r.RoleName',
             'r.RoleID',
             'ua.Username',

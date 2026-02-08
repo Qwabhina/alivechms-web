@@ -24,8 +24,13 @@ import {
   Trash2, 
   Pencil,
   FileText,
-  Printer
+  Printer,
+  ShieldCheck,
+  Award,
+  Clock,
+  ShieldAlert
 } from 'lucide-vue-next'
+import { Switch } from '@/components/ui/switch'
 import api, { resolveUrl } from '@/services/api'
 import { Alerts } from '@/utils/alerts'
 import dayjs from 'dayjs'
@@ -39,6 +44,7 @@ const emit = defineEmits(['close', 'edit'])
 
 const member = ref<any>(null)
 const loading = ref(false)
+const isTogglingAuth = ref(false)
 
 const fetchMemberDetails = async () => {
   if (!props.memberId) return
@@ -61,6 +67,22 @@ watch(() => props.open, (newVal) => {
     member.value = null
   }
 })
+
+const handleToggleAuth = async (active: boolean) => {
+  if (!member.value || !props.memberId) return
+
+  isTogglingAuth.value = true
+  try {
+    await api.post(`member/toggle-auth/${props.memberId}`, { is_active: active })
+    member.value.AuthActive = active ? 1 : 0
+    Alerts.success(`System access ${active ? 'enabled' : 'disabled'} successfully`)
+  } catch (error) {
+    Alerts.handleApiError(error, 'Failed to update access status')
+    // Reset switch state on failure
+  } finally {
+    isTogglingAuth.value = false
+  }
+}
 
 const getStatusBadge = (status: string) => {
   switch (status?.toLowerCase()) {
@@ -253,9 +275,9 @@ const handlePrint = () => {
               class="bg-transparent border-b-2 border-transparent data-[state=active]:border-[#00028a] data-[state=active]:text-[#00028a] rounded-none px-0 h-12 shadow-none transition-none text-xs md:text-sm whitespace-nowrap">
               Contact & Family
             </TabsTrigger>
-           <TabsTrigger value="history"
+           <TabsTrigger value="milestones"
               class="bg-transparent border-b-2 border-transparent data-[state=active]:border-[#00028a] data-[state=active]:text-[#00028a] rounded-none px-0 h-12 shadow-none transition-none text-xs md:text-sm whitespace-nowrap">
-              History
+             Milestones
             </TabsTrigger>
           </TabsList>
           
@@ -277,7 +299,7 @@ const handlePrint = () => {
                       <p class="font-semibold text-slate-700">{{ member.MaritalStatusName || 'Not Specified' }}</p>
                     </div>
                     <div class="space-y-1 col-span-2">
-                      <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Date of Birth</p>
+                     <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Date of Registration</p>
                      <p class="font-semibold text-slate-700">{{ member.MbrRegistrationDate ?
                         dayjs(member.MbrRegistrationDate).format('MMMM DD, YYYY') : 'Not Provided' }}</p>
                     </div>
@@ -286,21 +308,29 @@ const handlePrint = () => {
                 
 <div class="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-6">
                   <div class="flex items-center gap-2 pb-2 border-b border-slate-200/50">
-                    <Briefcase class="w-5 h-5 text-[#e5a100]" />
-                    <h3 class="text-sm font-bold tracking-tight text-slate-800">Professional Profile</h3>
+                   <ShieldCheck class="w-5 h-5 text-[#e5a100]" />
+                    <h3 class="text-sm font-bold tracking-tight text-slate-800">System Access</h3>
                   </div>
                  <div class="space-y-6">
                     <div class="space-y-1">
-                      <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Occupation</p>
-                      <p class="font-semibold text-slate-700">{{ member.MbrOccupation || 'Not Specified' }}</p>
+                     <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Role</p>
+                      <p class="font-semibold text-slate-700">{{ member.RoleName || 'Member (No Access)' }}</p>
                     </div>
                    <div class="space-y-1">
-                      <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Education Level</p>
-                      <p class="font-semibold text-slate-700">{{ member.EducationLevelName || 'Not Specified' }}</p>
+                     <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Username</p>
+                      <p class="font-semibold text-slate-700">{{ member.Username || 'N/A' }}</p>
                     </div>
                     <div class="space-y-1">
-                      <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned Branch</p>
-                      <p class="font-semibold text-[#00028a]">{{ member.BranchName || 'N/A' }}</p>
+                     <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Access Status</p>
+                      <div v-if="member.Username" class="flex items-center gap-2">
+                        <Switch :checked="!!member.AuthActive" :disabled="isTogglingAuth"
+                          @update:checked="handleToggleAuth" />
+                        <span class="text-xs font-medium"
+                          :class="member.AuthActive ? 'text-emerald-600' : 'text-slate-400'">
+                          {{ member.AuthActive ? 'Enabled' : 'Disabled' }}
+                        </span>
+                      </div>
+                      <p v-else class="text-xs text-slate-400 font-medium">No login credentials enabled</p>
                     </div>
                   </div>
                 </div>
@@ -337,6 +367,37 @@ const handlePrint = () => {
                   </div>
                 </div>
 
+              <div class="space-y-4">
+                  <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                    <Users class="w-4 h-4" /> Family & Branch
+                  </h3>
+                  <div class="grid md:grid-cols-2 gap-4">
+                    <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-4">
+                      <div
+                        class="h-10 w-10 rounded-xl bg-[#00028a]/5 text-[#00028a] flex items-center justify-center shrink-0">
+                        <Users class="w-5 h-5" />
+                      </div>
+                      <div class="pt-1">
+                        <p class="text-slate-700 font-bold tracking-tight">
+                          {{ member.FamilyName || 'No Family Assigned' }}
+                        </p>
+                        <p class="text-[10px] uppercase font-bold text-slate-400">Primary Family Union</p>
+                      </div>
+                    </div>
+                    <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-4">
+                      <div
+                        class="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                        <Briefcase class="w-5 h-5" />
+                      </div>
+                      <div class="pt-1">
+                        <p class="text-slate-700 font-bold tracking-tight">
+                          {{ member.BranchName || 'General Assembly' }}
+                        </p>
+                        <p class="text-[10px] uppercase font-bold text-slate-400">Assigned Parish / Branch</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <div class="space-y-4">
                  <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
                     <MapPin class="w-4 h-4" /> Residential Location
@@ -358,9 +419,68 @@ const handlePrint = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="history" class="mt-0 py-8 text-center text-muted-foreground">
-              <FileText class="w-12 h-12 mx-auto mb-2 text-slate-200" />
-              <p>Activity history for this member will appear here.</p>
+          <TabsContent value="milestones" class="mt-0 outline-none">
+              <div class="p-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div
+                  class="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
+
+                  <!-- Registration Milestone -->
+                  <div
+                    class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
+                    <div
+                      class="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-slate-100 group-hover:bg-[#00028a] group-hover:text-white transition-colors duration-300 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
+                      <Clock class="w-5 h-5" />
+                    </div>
+                    <div
+                      class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-2xl bg-slate-50 border border-slate-100 shadow-sm">
+                      <div class="flex items-center justify-between space-x-2 mb-1">
+                        <div class="font-bold text-slate-800">Member Registration</div>
+                        <time class="text-xs font-bold text-[#00028a] uppercase">{{
+                          dayjs(member.MbrRegistrationDate).format('MMM D, YYYY') }}</time>
+                      </div>
+                      <div class="text-xs text-slate-500 italic">Offically welcomed to the church family.</div>
+                    </div>
+                  </div>
+
+                  <!-- Dynamic Milestones from DB -->
+                  <div v-for="ms in member.milestones" :key="ms.MilestoneID"
+                    class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
+                    <div
+                      class="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-slate-100 group-hover:bg-[#e5a100] group-hover:text-white transition-colors duration-300 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
+                      <Award class="w-5 h-5" />
+                    </div>
+                    <div
+                      class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                      <div class="flex items-center justify-between space-x-2 mb-1">
+                        <div class="font-bold text-slate-800">{{ ms.MilestoneTypeName }}</div>
+                        <time class="text-xs font-bold text-[#e5a100] uppercase">{{
+                          dayjs(ms.MilestoneDate).format('MMM D, YYYY') }}</time>
+                      </div>
+                      <div class="text-xs text-slate-500">{{ ms.MilestoneNotes || 'Spiritual milestone recorded.' }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Birthday Milestone (if available) -->
+                  <div v-if="member.MbrDateOfBirth"
+                    class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
+                    <div
+                      class="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-slate-100 group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-300 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
+                      <Calendar class="w-5 h-5" />
+                    </div>
+                    <div
+                      class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-2xl bg-slate-50 border border-slate-100 shadow-sm">
+                      <div class="flex items-center justify-between space-x-2 mb-1">
+                        <div class="font-bold text-slate-800">Date of Birth</div>
+                        <time class="text-xs font-bold text-emerald-600 uppercase">{{
+                          dayjs(member.MbrDateOfBirth).format('MMM D, YYYY') }}</time>
+                      </div>
+                      <div class="text-xs text-slate-500 italic">Day of birth provided during registration.</div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
             </TabsContent>
           </div>
         </Tabs>

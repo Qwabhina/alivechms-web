@@ -97,6 +97,7 @@ class MilestoneRepository
         }
 
         $whereClause = implode(' AND ', $whereConditions);
+        $countParams = $params; // Copy parameters for count query before adding pagination params
 
         $params[':limit'] = $limit;
         $params[':offset'] = $offset;
@@ -118,7 +119,7 @@ class MilestoneRepository
              LEFT JOIN milestone_type mt ON mm.MilestoneTypeID = mt.MilestoneTypeID
              LEFT JOIN churchmember m ON mm.MbrID = m.MbrID
              WHERE $whereClause",
-            $params
+            $countParams
         )[0]['count'];
 
         return [

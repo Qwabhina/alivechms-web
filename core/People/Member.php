@@ -204,19 +204,29 @@ class Member
 
             // Handle phone numbers
             if (!empty($data['phone_numbers']) && is_array($data['phone_numbers'])) {
+                // Determine if there's an explicit primary phone set
+                $hasExplicitPrimary = false;
+                foreach ($data['phone_numbers'] as $p) {
+                    if (is_array($p) && (!empty($p['is_primary']) || !empty($p['IsPrimary']))) {
+                        $hasExplicitPrimary = true;
+                        break;
+                    }
+                }
+
                 foreach ($data['phone_numbers'] as $index => $phoneData) {
                     if (is_string($phoneData)) {
                         $phone = trim($phoneData);
                         $phoneTypeId = 1;
+                        $isPrimary = (!$hasExplicitPrimary && $index === 0) ? 1 : 0;
                     } else {
                         $phone = trim($phoneData['number'] ?? $phoneData['PhoneNumber'] ?? '');
                         $phoneTypeId = (int)($phoneData['type_id'] ?? $phoneData['PhoneTypeID'] ?? 1);
+                        $isPrimary = !empty($phoneData['is_primary']) || !empty($phoneData['IsPrimary']) ? 1 : (!$hasExplicitPrimary && $index === 0 ? 1 : 0);
                     }
 
                     if ($phone === '')
                         continue;
 
-                    $isPrimary = $index === 0 ? 1 : 0;
                     $repo->addPhone($mbrId, $phone, $phoneTypeId, $isPrimary);
                 }
             }
@@ -355,18 +365,28 @@ class Member
 
                 $repo->deletePhones($mbrId);
 
+                // Determine if there's an explicit primary phone set
+                $hasExplicitPrimary = false;
+                foreach ($phoneNumbers as $p) {
+                    if (is_array($p) && (!empty($p['is_primary']) || !empty($p['IsPrimary']))) {
+                        $hasExplicitPrimary = true;
+                        break;
+                    }
+                }
+
                 foreach ($phoneNumbers as $index => $phoneData) {
                     if (is_string($phoneData)) {
                         $phone = trim($phoneData);
                         $phoneTypeId = 1;
+                        $isPrimary = (!$hasExplicitPrimary && $index === 0) ? 1 : 0;
                     } else {
                         $phone = trim($phoneData['number'] ?? $phoneData['PhoneNumber'] ?? '');
                         $phoneTypeId = (int)($phoneData['type_id'] ?? $phoneData['PhoneTypeID'] ?? 1);
+                        $isPrimary = !empty($phoneData['is_primary']) || !empty($phoneData['IsPrimary']) ? 1 : (!$hasExplicitPrimary && $index === 0 ? 1 : 0);
                     }
 
                     if ($phone === '')
                         continue;
-                    $isPrimary = $index === 0 ? 1 : 0;
                     $repo->addPhone($mbrId, $phone, $phoneTypeId, $isPrimary);
                 }
             }
@@ -387,7 +407,7 @@ class Member
             }
 
             // Handle Authentication Update
-            if (!empty($data['username']) || !empty($data['password'])) {
+            if (!empty($data['username']) || !empty($data['password']) || isset($data['enable_login'])) {
                 $authData = [];
                 if (!empty($data['username'])) {
                     // Check username uniqueness
@@ -406,16 +426,21 @@ class Member
                     $authData['PasswordHash'] = password_hash($data['password'], PASSWORD_DEFAULT);
                 }
 
+                if (isset($data['enable_login'])) {
+                    $authData['IsActive'] = $data['enable_login'] ? 1 : 0;
+                }
+
                 if (!empty($authData)) {
                     $existing = $orm->getWhere('user_authentication', ['MbrID' => $mbrId]);
                     if (!empty($existing)) {
                         $orm->update('user_authentication', $authData, ['MbrID' => $mbrId]);
-                    } else {
+                    } else if (!empty($data['username']) || !empty($data['password'])) {
                         // If no auth record exists, create one (e.g. enabling login for existing member)
                         $authData['MbrID'] = $mbrId;
                         $authData['Email'] = $data['email_address'];
                         $authData['EmailVerified'] = 0;
-                        $authData['IsActive'] = 1;
+                        if (!isset($authData['IsActive']))
+                            $authData['IsActive'] = 1;
                         $authData['CreatedAt'] = date('Y-m-d H:i:s');
                         $orm->insert('user_authentication', $authData);
                     }
@@ -463,6 +488,11 @@ class Member
         $member['phones'] = $phones;
         $member['PhoneNumbers'] = array_column($phones, 'PhoneNumber');
         $member['PrimaryPhone'] = !empty($member['PhoneNumbers']) ? $member['PhoneNumbers'][0] : null;
+
+        // Fetch Milestones
+        $milestoneRepo = new MilestoneRepository();
+        $milestones = $milestoneRepo->getAll(1, 100, ['member_id' => $mbrId]);
+        $member['milestones'] = $milestones['data'] ?? [];
 
         return $member;
     }
@@ -588,5 +618,24 @@ class Member
             'gender_distribution' => $genderDistribution,
             'age_distribution' => $ageDistribution
         ];
+    }
+
+    /**
+     * Quick toggle system access for a member
+     */
+    public static function toggleAuth(int $mbrId, bool $active): array
+    {
+        $orm = new ORM();
+        $existing = $orm->getWhere('user_authentication', ['MbrID' => $mbrId]);
+
+        if (empty($existing)) {
+            throw new Exception('No authentication record found for this member');
+        }
+
+        $orm->update('user_authentication', ['IsActive' => $active ? 1 : 0], ['MbrID' => $mbrId]);
+
+        Helpers::logError("Member Auth Toggled: MbrID $mbrId, Active: " . ($active ? 'Yes' : 'No') . " by " . Auth::getCurrentUserId());
+
+        return ['status' => 'success', 'is_active' => $active];
     }
 }

@@ -391,6 +391,22 @@ class MemberRoutes extends BaseRoute
                 }
             })(),
 
+            // QUICK TOGGLE AUTH STATUS (NEW)
+            $method === 'POST' && $pathParts[0] === 'member' && ($pathParts[1] ?? '') === 'toggle-auth' && isset($pathParts[2]) => (function () use ($pathParts) {
+                    self::authenticate();
+                    self::authorize('members.edit');
+
+                    $memberId = (int) $pathParts[2];
+                    $payload = self::getPayload(['is_active' => 'required|boolean']);
+
+                    try {
+                        $result = Member::toggleAuth($memberId, (bool) $payload['is_active']);
+                        ResponseHelper::success($result, 'Access status updated');
+                    } catch (Exception $e) {
+                        ResponseHelper::error($e->getMessage(), 400);
+                    }
+                })(),
+
             // FALLBACK
             default => ResponseHelper::notFound('Member endpoint not found'),
         };

@@ -66,6 +66,7 @@ const profilePreview = ref<string | null>(null)
 const selectedFile = ref<File | null>(null)
 const showPassword = ref(false)
 const familySearchOpen = ref(false)
+const branchSearchOpen = ref(false)
 
 const steps = [
   { title: 'Personal', description: 'Basic information' },
@@ -93,7 +94,39 @@ const setPrimaryPhone = (index: number) => {
   phoneNumbers.value.forEach((p, i) => p.is_primary = i === index)
 }
 
-const { handleSubmit, values, setFieldValue, validate, resetForm } = useForm({
+const personalSchema = zod.object({
+  first_name: zod.string().min(2, 'First name is required'),
+  family_name: zod.string().min(2, 'Family name is required'),
+  other_names: zod.string().optional(),
+  gender: zod.enum(['Male', 'Female', 'Other'], { required_error: 'Gender is required' }),
+  date_of_birth: zod.string().optional(),
+  marital_status_id: zod.string().optional(),
+  occupation: zod.string().optional(),
+  education_level_id: zod.string().optional(),
+  membership_status_id: zod.string().optional(),
+})
+
+const contactSchema = zod.object({
+  email_address: zod.string().email('Invalid email address'),
+  address: zod.string().optional(),
+  family_id: zod.string().optional(),
+  branch_id: zod.string().min(1, 'Branch is required'),
+})
+
+const accountSchema = zod.object({
+  enable_login: zod.boolean(),
+  username: zod.string().optional().refine((val) => {
+    return !values.enable_login || (val && val.length >= 3)
+  }, { message: 'Username must be at least 3 characters' }),
+  password: zod.string().optional().refine((val) => {
+    return !values.enable_login || props.memberData || (val && val.length >= 8)
+  }, { message: 'Password must be at least 8 characters' }),
+  member_role: zod.string().optional().refine((val) => {
+    return !values.enable_login || (val && val.length > 0)
+  }, { message: 'Role is required for system access' }),
+})
+
+const { handleSubmit, values, setFieldValue, validate, resetForm, errors } = useForm({
   initialValues: {
     first_name: '',
     family_name: '',
@@ -197,16 +230,40 @@ const removePhoto = () => {
   }
 }
 
+const validateStep = async () => {
+  let schemaToUse;
+  if (currentStep.value === 0) schemaToUse = personalSchema;
+  else if (currentStep.value === 1) {
+    // Validate phone numbers manually since they are not in the form state
+    const validPhones = phoneNumbers.value.filter(p => p.number.trim() !== '')
+    if (validPhones.length === 0) {
+      Alerts.error('At least one phone number is required')
+      return false
+    }
+    schemaToUse = contactSchema;
+  }
+  else schemaToUse = accountSchema;
+
+  try {
+    schemaToUse.parse(values);
+    return true;
+  } catch (err: any) {
+    if (err instanceof zod.ZodError) {
+      const firstError = err.errors[0]?.message || 'Please check required fields';
+      Alerts.error(firstError);
+    }
+    return false;
+  }
+}
+
 const nextStep = async () => {
-  const result = await validate()
-  if (result.valid) {
+  const isValid = await validateStep()
+  if (isValid) {
     if (currentStep.value < 2) {
       currentStep.value++
     } else {
       submitMember()
     }
-  } else {
-    Alerts.error('Please check required fields')
   }
 }
 
@@ -337,27 +394,36 @@ const triggerFileUpload = () => {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div class="space-y-2">
                   <Label>First Name <span class="text-red-500">*</span></Label>
-                  <Input :model-value="values.first_name" @update:model-value="v => setFieldValue('first_name', v as string)" placeholder="John" />
+               <Input :model-value="values.first_name"
+                  @update:model-value="v => setFieldValue('first_name', v as string)" placeholder="John"
+                  :class="{ 'border-red-500': errors.first_name }" />
+                <p v-if="errors.first_name" class="text-[0.8rem] font-medium text-red-500">{{ errors.first_name }}</p>
                </div>
                <div class="space-y-2">
                   <Label>Family Name <span class="text-red-500">*</span></Label>
-                  <Input :model-value="values.family_name" @update:model-value="v => setFieldValue('family_name', v as string)" placeholder="Doe" />
+               <Input :model-value="values.family_name"
+                  @update:model-value="v => setFieldValue('family_name', v as string)" placeholder="Doe"
+                  :class="{ 'border-red-500': errors.family_name }" />
+                <p v-if="errors.family_name" class="text-[0.8rem] font-medium text-red-500">{{ errors.family_name }}</p>
                </div>
                <div class="space-y-2">
                   <Label>Other Names</Label>
                   <Input :model-value="values.other_names" @update:model-value="v => setFieldValue('other_names', v as string)" />
                </div>
-               <div class="space-y-2">
-                  <Label>Gender <span class="text-red-500">*</span></Label>
-                  <Select :model-value="values.gender" @update:model-value="v => setFieldValue('gender', v as string)">
-                    <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Male">Male</SelectItem>
-                      <SelectItem value="Female">Female</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-               </div>
+             <div class="space-y-2">
+                <Label>Gender <span class="text-red-500">*</span></Label>
+                <Select :model-value="values.gender" @update:model-value="v => setFieldValue('gender', v as string)">
+                 <SelectTrigger :class="{ 'border-red-500': errors.gender }">
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+               <p v-if="errors.gender" class="text-[0.8rem] font-medium text-red-500">{{ errors.gender }}</p>
+             </div>
                <div class="space-y-2">
                   <Label>Date of Birth</Label>
                   <Input type="date" :model-value="values.date_of_birth" @update:model-value="v => setFieldValue('date_of_birth', v as string)" />
@@ -398,7 +464,7 @@ const triggerFileUpload = () => {
                   </SelectContent>
                 </Select>
               </div>
-             <div class="space-y-2">
+             <div v-if="props.memberData" class="space-y-2">
                 <Label>Membership Status</Label>
                 <Select :model-value="values.membership_status_id"
                   @update:model-value="v => setFieldValue('membership_status_id', v as string)">
@@ -464,7 +530,11 @@ const triggerFileUpload = () => {
               </div>
                 <div class="space-y-2">
                   <Label>Email Address <span class="text-red-500">*</span></Label>
-                  <Input :model-value="values.email_address" @update:model-value="v => setFieldValue('email_address', v as string)" type="email" placeholder="john.doe@example.com" />
+               <Input :model-value="values.email_address"
+                  @update:model-value="v => setFieldValue('email_address', v as string)" type="email"
+                  placeholder="john.doe@example.com" :class="{ 'border-red-500': errors.email_address }" />
+                <p v-if="errors.email_address" class="text-[0.8rem] font-medium text-red-500">{{ errors.email_address }}
+                </p>
                 </div>
                 <div class="space-y-2">
                   <Label>Residential Address</Label>
@@ -472,18 +542,39 @@ const triggerFileUpload = () => {
                 </div>
                 <div class="space-y-2">
                   <Label>Branch <span class="text-red-500">*</span></Label>
-                  <Select :model-value="values.branch_id" @update:model-value="v => setFieldValue('branch_id', v as string)">
-                    <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem 
-                        v-for="b in membersStore.lookupData?.branches" 
-                        :key="b.id" 
-                        :value="b.id.toString()"
-                      >
-                        {{ b.name }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+               <Popover v-model:open="branchSearchOpen">
+                  <PopoverTrigger as-child>
+                    <Button variant="outline" role="combobox" :aria-expanded="branchSearchOpen"
+                      class="w-full justify-between font-normal bg-white h-10"
+                      :class="{ 'border-red-500': errors.branch_id }">
+                      {{values.branch_id ? membersStore.lookupData?.branches?.find((b: any) => b.id.toString()
+                        === values.branch_id)?.name : "Select branch..."}}
+                      <ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent class="w-[--reka-popper-anchor-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search branches..." />
+                      <CommandList>
+                        <CommandEmpty>No branch found.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem v-for="branch in membersStore.lookupData?.branches" :key="branch.id"
+                            :value="branch.name" @select="() => {
+                              setFieldValue('branch_id', branch.id.toString())
+                              branchSearchOpen = false
+                            }">
+                            <Check :class="cn(
+                              'mr-2 h-4 w-4',
+                              values.branch_id === branch.id.toString() ? 'opacity-100' : 'opacity-0'
+                            )" />
+                            {{ branch.name }}
+                          </CommandItem>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <p v-if="errors.branch_id" class="text-[0.8rem] font-medium text-red-500">{{ errors.branch_id }}</p>
                 </div>
                 <div class="space-y-2">
                   <Label>Family (Optional)</Label>
