@@ -5,13 +5,14 @@ import path from 'path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  base: './', // Use relative paths for assets - enables subdirectory deployment
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
   build: {
-    outDir: '../public/ui',
+    outDir: '../public',
     emptyOutDir: true,
     rollupOptions: {
       output: {
@@ -29,7 +30,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': {
+      '/': {
         target: 'http://localhost',
         changeOrigin: true,
       },

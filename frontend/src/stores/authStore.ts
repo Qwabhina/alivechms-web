@@ -9,12 +9,13 @@ interface User {
   Email: string;
   MbrFirstName?: string;
   MbrFamilyName?: string;
+  Role?: string[];
 }
 
 interface LoginCredentials {
-  username: string;
-  password: string;
-  rememberMe?: boolean;
+  userid: string;
+  passkey: string;
+  remember?: boolean;
 }
 
 interface LoginResponse {
@@ -27,12 +28,13 @@ interface LoginResponse {
 export const useAuthStore = defineStore('auth', () => {
   // State
   const user = ref<User | null>(null);
-  const accessToken = ref<string | null>(null);
+  const accessToken = ref<string | null>(localStorage.getItem('access_token'));
   const permissions = ref<string[]>([]);
   const isLoading = ref(false);
 
   // Getters
-  const isAuthenticated = computed(() => !!accessToken.value && !!user.value);
+  // Authentication is determined by having a token. User data may be fetched later.
+  const isAuthenticated = computed(() => !!accessToken.value);
   const userFullName = computed(() => {
     if (!user.value) return '';
     return `${user.value.MbrFirstName || ''} ${user.value.MbrFamilyName || ''}`.trim() || user.value.Username;
@@ -42,16 +44,24 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(credentials: LoginCredentials): Promise<void> {
     isLoading.value = true;
     try {
-      const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
-      const { access_token, user: userData, permissions: userPermissions } = response.data;
+      // Backend wraps response in { status, message, data: { access_token, user } }
+      const response = await apiClient.post<{ status: string; message: string; data: LoginResponse }>('auth/login', credentials);
+      const { access_token, user: userData } = response.data.data;
+
+      // Extract permissions from user object if present
+      const userPermissions = (userData as any).permissions || (response.data.data as any).permissions || [];
 
       accessToken.value = access_token;
       user.value = userData;
       permissions.value = userPermissions;
 
-      // Store in localStorage if "Remember Me" is checked
-      if (credentials.rememberMe) {
-        localStorage.setItem('remember_user', JSON.stringify(userData));
+      // Store auth data in localStorage for persistence
+      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('permissions', JSON.stringify(userPermissions || []));
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      if (credentials.remember) {
+        localStorage.setItem('remember_user', 'true');
       }
     } catch (error) {
       throw error;
@@ -62,27 +72,23 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout(): Promise<void> {
     try {
-      await apiClient.post('/auth/logout');
+      await apiClient.post('auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Clear state regardless of API response
-      user.value = null;
-      accessToken.value = null;
-      permissions.value = [];
-      localStorage.removeItem('remember_user');
+      clearAuth();
     }
   }
 
   async function refreshToken(): Promise<void> {
     try {
-      const response = await apiClient.post<{ access_token: string }>('/auth/refresh');
-      accessToken.value = response.data.access_token;
+      const response = await apiClient.post<{ data: { access_token: string } }>('auth/refresh');
+      const newToken = response.data.data.access_token;
+      accessToken.value = newToken;
+      localStorage.setItem('access_token', newToken);
     } catch (error) {
       // Refresh failed - clear auth state
-      user.value = null;
-      accessToken.value = null;
-      permissions.value = [];
+      clearAuth();
       throw error;
     }
   }
@@ -99,15 +105,64 @@ export const useAuthStore = defineStore('auth', () => {
     return permissionNames.every(perm => permissions.value.includes(perm));
   }
 
+  // Helper to clear all auth state and storage
+  function clearAuth(): void {
+    user.value = null;
+    accessToken.value = null;
+    permissions.value = [];
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('permissions');
+    localStorage.removeItem('user');
+    localStorage.removeItem('remember_user');
+  }
+
+  // Validate current session with backend and populate user info
+  async function validateSession(): Promise<boolean> {
+    if (!accessToken.value) {
+      return false;
+    }
+
+    try {
+      // Use the auth/status endpoint to verify token is still valid
+      const response = await apiClient.get<{ status: string; data: { authenticated: boolean; user?: any } }>('auth/status');
+      if (response.data.data.authenticated) {
+        if (response.data.data.user) {
+          user.value = response.data.data.user;
+          localStorage.setItem('user', JSON.stringify(response.data.data.user));
+        }
+        return true;
+      } else {
+        clearAuth();
+        return false;
+      }
+    } catch (error) {
+      // Token invalid or expired - clear auth state
+      clearAuth();
+      return false;
+    }
+  }
+
   // Initialize from localStorage on app load
   function initialize(): void {
-    const rememberedUser = localStorage.getItem('remember_user');
-    if (rememberedUser) {
+    // Restore permissions
+    const storedPermissions = localStorage.getItem('permissions');
+    if (storedPermissions) {
       try {
-        user.value = JSON.parse(rememberedUser);
+        permissions.value = JSON.parse(storedPermissions);
       } catch (error) {
-        console.error('Failed to parse remembered user:', error);
-        localStorage.removeItem('remember_user');
+        console.error('Failed to parse permissions:', error);
+        localStorage.removeItem('permissions');
+      }
+    }
+
+    // Restore user data
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        user.value = JSON.parse(storedUser);
+      } catch (error) {
+        console.error('Failed to parse user:', error);
+        localStorage.removeItem('user');
       }
     }
   }
@@ -128,6 +183,8 @@ export const useAuthStore = defineStore('auth', () => {
     can,
     hasAnyPermission,
     hasAllPermissions,
+    clearAuth,
+    validateSession,
     initialize,
   };
 });

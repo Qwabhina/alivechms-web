@@ -83,11 +83,20 @@ class Auth
 
         if (!$user || !password_verify($password, $user['PasswordHash'])) {
             if ($user) {
+                $maxAttempts = 5;
                 $failed = ($user['FailedLoginAttempts'] ?? 0) + 1;
+                $remaining = $maxAttempts - $failed;
+
                 $repo->updateLoginMetadata((int) $user['UserID'], [
                     'FailedLoginAttempts' => $failed,
-                    'IsLocked' => $failed >= 5 ? 1 : 0
+                    'IsLocked' => $failed >= $maxAttempts ? 1 : 0
                 ]);
+
+                if ($failed >= $maxAttempts) {
+                    throw new Exception('Account locked due to too many failed attempts.');
+                }
+
+                throw new Exception("Invalid credentials. You have $remaining attempts left.");
             }
             throw new Exception('Invalid credentials');
         }

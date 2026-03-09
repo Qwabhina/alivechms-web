@@ -1,0 +1,1 @@
+import{D as e,P as t}from"./vue-vendor-C4OB4LAT.js";import{t as n}from"./index-LWBVFWlT.js";var r={};function i(n,r){return t(),e(`div`,null,`Member Detail View`)}var a=n(r,[[`render`,i]]);export{a as default};

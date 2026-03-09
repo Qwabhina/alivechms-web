@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHashHistory } from 'vue-router';
 import type { RouteRecordRaw, NavigationGuardNext, RouteLocationNormalized } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -31,7 +31,7 @@ const routes: RouteRecordRaw[] = [
       path: '/',
       name: 'Dashboard',
       component: () => import('@/modules/dashboard/views/DashboardView.vue'),
-      meta: { requiresAuth: true, requiredPermission: 'dashboard.view' },
+      meta: { requiresAuth: true }, // Dashboard accessible to all authenticated users
    },
    // Member routes
    {
@@ -55,8 +55,9 @@ const routes: RouteRecordRaw[] = [
    },
 ];
 
+// Use hash mode for SPA - backend handles URL routing
 const router = createRouter({
-   history: createWebHistory(),
+   history: createWebHashHistory(),
    routes,
 });
 

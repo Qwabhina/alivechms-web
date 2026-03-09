@@ -61,7 +61,7 @@ class AuthRoutes extends BaseRoute
                     ResponseHelper::success($result, 'Login successful');
                 } catch (Exception $e) {
                     Helpers::logError("Login failed for user {$payload['userid']}: " . $e->getMessage());
-                    ResponseHelper::unauthorized('Invalid credentials');
+                        ResponseHelper::unauthorized($e->getMessage());
                 }
             })(),
 

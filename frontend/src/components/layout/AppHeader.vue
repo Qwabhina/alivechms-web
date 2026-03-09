@@ -7,6 +7,13 @@
          <h1 class="app-title">AliveChMS</h1>
       </div>
 
+    <div class="header-center">
+         <div class="search-container">
+            <i class="pi pi-search search-icon"></i>
+            <input type="text" v-model="searchQuery" placeholder="Search..." class="search-input"
+               @keyup.enter="handleSearch" />
+         </div>
+      </div>
       <div class="header-right">
          <button class="icon-btn" title="Notifications">
             <i class="pi pi-bell"></i>
@@ -39,11 +46,14 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
+import { useLayoutStore } from '@/stores/layoutStore';
 import { useRouter } from 'vue-router';
 
 const authStore = useAuthStore();
+const layoutStore = useLayoutStore();
 const router = useRouter();
 const showUserMenu = ref(false);
+const searchQuery = ref('');
 
 const userInitials = computed(() => {
    const name = authStore.userFullName || authStore.user?.Username || '';
@@ -56,8 +66,14 @@ const userInitials = computed(() => {
 });
 
 function toggleSidebar() {
-   // Emit event or use a global state for sidebar toggle
-   document.dispatchEvent(new Event('toggle-sidebar'));
+   layoutStore.toggleSidebar();
+}
+
+function handleSearch() {
+   if (searchQuery.value.trim()) {
+      console.log('Searching for:', searchQuery.value);
+      // Implement global search navigation here
+   }
 }
 
 async function handleLogout() {
@@ -75,7 +91,10 @@ async function handleLogout() {
    align-items: center;
    justify-content: space-between;
    padding: 0 var(--space-lg);
-   box-shadow: var(--shadow-sm);
+   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      position: sticky;
+      top: 0;
+      z-index: 40;
 }
 
 .header-left {
@@ -83,27 +102,72 @@ async function handleLogout() {
    align-items: center;
    gap: var(--space-md);
 }
-
+   
+      .header-center {
+         flex: 1;
+         display: flex;
+         justify-content: center;
+         max-width: 600px;
+         padding: 0 var(--space-md);
+      }
+   
+      .search-container {
+         position: relative;
+         width: 100%;
+         max-width: 400px;
+      }
+   
+      .search-icon {
+         position: absolute;
+         left: 12px;
+         top: 50%;
+         transform: translateY(-50%);
+         color: var(--color-text-muted);
+      }
+   
+      .search-input {
+         width: 100%;
+         padding: 10px 16px 10px 36px;
+         background: var(--color-bg);
+         border: 1px solid transparent;
+         border-radius: var(--radius-full);
+         font-size: var(--font-size-sm);
+         color: var(--color-text);
+         transition: all var(--transition-fast);
+      }
+   
+      .search-input:focus {
+         background: var(--color-surface);
+         border-color: var(--color-primary);
+         box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.1);
+         outline: none;
+      }
 .sidebar-toggle {
    background: none;
    border: none;
-   font-size: 1.5rem;
+   font-size: 1.25rem;
    cursor: pointer;
-   color: var(--color-text);
-   padding: var(--space-sm);
-   border-radius: var(--radius-sm);
-   transition: background var(--transition-fast);
+   color: var(--color-text-muted);
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-md);
+      transition: all var(--transition-fast);
 }
 
 .sidebar-toggle:hover {
    background: var(--color-bg);
+   color: var(--color-primary);
 }
 
 .app-title {
-   font-size: var(--font-size-xl);
+   font-size: 1.25rem;
    font-weight: 700;
    color: var(--color-primary);
    margin: 0;
+   letter-spacing: -0.025em;
 }
 
 .header-right {

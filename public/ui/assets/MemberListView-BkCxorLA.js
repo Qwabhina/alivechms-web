@@ -1,1 +1,0 @@
-import{_ as e,w as t}from"./vue-vendor-DohYUji7.js";import{t as n}from"./index-CH7G691L.js";var r={};function i(n,r){return t(),e(`div`,null,`Member List View`)}var a=n(r,[[`render`,i]]);export{a as default};

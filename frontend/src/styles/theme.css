@@ -189,3 +189,37 @@ a:hover {
 .slide-in-up {
   animation: slideInUp var(--transition-normal);
 }
+
+/* PrimeVue Toast Overrides */
+.p-toast {
+  opacity: 1 !important;
+}
+
+.p-toast .p-toast-message {
+  background: var(--color-surface) !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+  border: 1px solid var(--color-border) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.p-toast .p-toast-message.p-toast-message-success {
+  border-left: 6px solid var(--color-success) !important;
+}
+
+.p-toast .p-toast-message.p-toast-message-info {
+  border-left: 6px solid var(--color-info) !important;
+}
+
+.p-toast .p-toast-message.p-toast-message-warn {
+  border-left: 6px solid var(--color-warning) !important;
+}
+
+.p-toast .p-toast-message.p-toast-message-error {
+  border-left: 6px solid var(--color-error) !important;
+}
+
+.p-toast .p-toast-message .p-toast-message-content {
+  background: transparent !important;
+  color: var(--color-text) !important;
+}

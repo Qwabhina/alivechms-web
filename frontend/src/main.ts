@@ -1,6 +1,7 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import PrimeVue from 'primevue/config';
+import Aura from '@primevue/themes/aura';
 import router from './router';
 import App from './App.vue';
 
@@ -13,7 +14,19 @@ const pinia = createPinia();
 
 app.use(pinia);
 app.use(router);
-app.use(PrimeVue);
+app.use(PrimeVue, {
+   theme: {
+      preset: Aura
+   }
+});
+
+import ToastService from 'primevue/toastservice';
+import Ripple from 'primevue/ripple';
+import StyleClass from 'primevue/styleclass';
+
+app.use(ToastService);
+app.directive('ripple', Ripple);
+app.directive('styleclass', StyleClass);
 
 // Initialize auth store
 import { useAuthStore } from './stores/authStore';
