@@ -1,36 +1,14 @@
-import { createApp } from 'vue';
-import { createPinia } from 'pinia';
-import PrimeVue from 'primevue/config';
-import Aura from '@primevue/themes/aura';
-import router from './router';
-import App from './App.vue';
+import './assets/main.css'
 
-// Styles
-import 'primeicons/primeicons.css';
-import './styles/theme.css';
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 
-const app = createApp(App);
-const pinia = createPinia();
+import App from './App.vue'
+import router from './router'
 
-app.use(pinia);
-app.use(router);
-app.use(PrimeVue, {
-   theme: {
-      preset: Aura
-   }
-});
+const app = createApp(App)
 
-import ToastService from 'primevue/toastservice';
-import Ripple from 'primevue/ripple';
-import StyleClass from 'primevue/styleclass';
+app.use(createPinia())
+app.use(router)
 
-app.use(ToastService);
-app.directive('ripple', Ripple);
-app.directive('styleclass', StyleClass);
-
-// Initialize auth store
-import { useAuthStore } from './stores/authStore';
-const authStore = useAuthStore();
-authStore.initialize();
-
-app.mount('#app');
+app.mount('#app')

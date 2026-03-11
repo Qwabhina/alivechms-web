@@ -1,91 +1,23 @@
-import { createRouter, createWebHashHistory } from 'vue-router';
-import type { RouteRecordRaw, NavigationGuardNext, RouteLocationNormalized } from 'vue-router';
-import { useAuthStore } from '@/stores/authStore';
+import { createRouter, createWebHashHistory } from 'vue-router'
+import HomeView from '../views/HomeView.vue'
 
-const routes: RouteRecordRaw[] = [
-   {
-      path: '/login',
-      name: 'Login',
-      component: () => import('@/modules/auth/views/LoginView.vue'),
-      meta: { requiresAuth: false, layout: 'auth' },
-   },
-   {
-      path: '/forgot-password',
-      name: 'ForgotPassword',
-      component: () => import('@/modules/auth/views/ForgotPasswordView.vue'),
-      meta: { requiresAuth: false, layout: 'auth' },
-   },
-   {
-      path: '/reset-password/:token',
-      name: 'ResetPassword',
-      component: () => import('@/modules/auth/views/ResetPasswordView.vue'),
-      meta: { requiresAuth: false, layout: 'auth' },
-   },
-   {
-      path: '/unauthorized',
-      name: 'Unauthorized',
-      component: () => import('@/modules/auth/views/UnauthorizedView.vue'),
-      meta: { requiresAuth: false, layout: 'default' },
-   },
-   {
-      path: '/',
-      name: 'Dashboard',
-      component: () => import('@/modules/dashboard/views/DashboardView.vue'),
-      meta: { requiresAuth: true }, // Dashboard accessible to all authenticated users
-   },
-   // Member routes
-   {
-      path: '/members',
-      name: 'MemberList',
-      component: () => import('@/modules/members/views/MemberListView.vue'),
-      meta: { requiresAuth: true, requiredPermission: 'members.view' },
-   },
-   {
-      path: '/members/:id',
-      name: 'MemberDetail',
-      component: () => import('@/modules/members/views/MemberDetailView.vue'),
-      meta: { requiresAuth: true, requiredPermission: 'members.view' },
-   },
-   // Catch-all 404
-   {
-      path: '/:pathMatch(.*)*',
-      name: 'NotFound',
-      component: () => import('@/modules/shared/views/NotFoundView.vue'),
-      meta: { requiresAuth: false },
-   },
-];
-
-// Use hash mode for SPA - backend handles URL routing
 const router = createRouter({
-   history: createWebHashHistory(),
-   routes,
-});
+  history: createWebHashHistory(import.meta.env.BASE_URL),
+  routes: [
+    {
+      path: '/',
+      name: 'home',
+      component: HomeView,
+    },
+    {
+      path: '/about',
+      name: 'about',
+      // route level code-splitting
+      // this generates a separate chunk (About.[hash].js) for this route
+      // which is lazy-loaded when the route is visited.
+      component: () => import('../views/AboutView.vue'),
+    },
+  ],
+})
 
-// Navigation guards
-router.beforeEach((to: RouteLocationNormalized, _from: RouteLocationNormalized, next: NavigationGuardNext) => {
-   const authStore = useAuthStore();
-   const requiresAuth = to.meta.requiresAuth !== false;
-   const requiredPermission = to.meta.requiredPermission as string | undefined;
-
-   // Check authentication
-   if (requiresAuth && !authStore.isAuthenticated) {
-      next({ name: 'Login', query: { redirect: to.fullPath } });
-      return;
-   }
-
-   // Check permission
-   if (requiredPermission && !authStore.can(requiredPermission)) {
-      next({ name: 'Unauthorized' });
-      return;
-   }
-
-   // Redirect to dashboard if already authenticated and trying to access login
-   if (to.name === 'Login' && authStore.isAuthenticated) {
-      next({ name: 'Dashboard' });
-      return;
-   }
-
-   next();
-});
-
-export default router;
+export default router

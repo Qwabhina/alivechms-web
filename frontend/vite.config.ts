@@ -1,39 +1,23 @@
+import { fileURLToPath, URL } from 'node:url'
+
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import path from 'path'
+import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue()],
-  base: './', // Use relative paths for assets - enables subdirectory deployment
+  base: './', // Use relative paths for built assets
+  plugins: [
+    vue(),
+    vueDevTools(),
+  ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
   build: {
     outDir: '../public',
-    emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) {
-              return 'vue-vendor';
-            }
-            return 'vendor';
-          }
-        },
-      },
-    },
-  },
-  server: {
-    port: 5173,
-    proxy: {
-      '/': {
-        target: 'http://localhost',
-        changeOrigin: true,
-      },
-    },
-  },
+    emptyOutDir: true
+  }
 })
