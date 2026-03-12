@@ -1,0 +1,292 @@
+/**
+ * base.css
+ * @path /frontend/src/design-system/styles/base.css
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Global reset and base element styles for the design system.
+ *
+ * Import this ONCE in main.ts (after calling injectCSSVars):
+ *   import '@/design-system/styles/base.css'
+ *
+ * What this file does:
+ *   1. Resets browser default styles (margins, padding, box-sizing)
+ *   2. Sets global typographic defaults using design tokens
+ *   3. Styles base HTML elements (h1-h6, p, a, button, input, etc.)
+ *   4. Defines focus-visible ring behavior for accessibility
+ *   5. Customizes the scrollbar appearance
+ *
+ * Important: All values reference CSS custom properties (--ch-*) defined
+ * by the token injection system. If injectCSSVars() hasn't been called,
+ * these properties will be undefined and styles will fall back to browser
+ * defaults — so always call injectCSSVars() first.
+ */
+
+/* ─── Box Model Reset ─────────────────────────────────────────────────────────
+ *
+ * `box-sizing: border-box` changes how width/height are calculated:
+ *   - Default (content-box): width = content only; padding and border add to it
+ *   - border-box: width = content + padding + border (much more intuitive)
+ *
+ * The `*` universal selector plus `::before` and `::after` pseudo-elements
+ * ensures ALL elements and their generated content use border-box.
+ *
+ * `margin: 0` and `padding: 0` strip browser defaults (e.g. Chrome adds
+ * 8px margin to <body> and varying margins to headings by default).
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ─── HTML Root ───────────────────────────────────────────────────────────────
+ *
+ * `font-size: 16px` — sets the rem base. All our token sizes (0.875rem, etc.)
+ * are relative to this. Do NOT change this unless you intend to shift the
+ * entire type scale, as it affects accessibility (user browser preferences).
+ *
+ * `-webkit-text-size-adjust: 100%` — prevents iOS Safari from automatically
+ * inflating font sizes when the device is rotated to landscape.
+ *
+ * `tab-size: 4` — makes <pre> and <code> blocks use 4-space tabs by default.
+ */
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
+}
+
+/* ─── Body ────────────────────────────────────────────────────────────────────
+ *
+ * Sets the default typography and color for all body text.
+ * Every property here references a design token — swap the token values
+ * and the entire app's base appearance changes.
+ *
+ * `-webkit-font-smoothing: antialiased` — renders fonts with thinner strokes
+ * on macOS/iOS (the "antialiased" mode looks crisper on retina displays).
+ *
+ * `-moz-osx-font-smoothing: grayscale` — equivalent for Firefox on macOS.
+ */
+body {
+  font-family:    var(--ch-font-sans);       /* Plus Jakarta Sans → Inter → system */
+  font-size:      var(--ch-text-base);       /* 16px default */
+  font-weight:    var(--ch-font-normal);     /* 400 */
+  line-height:    var(--ch-leading-normal);  /* 1.5 */
+  color:          var(--ch-color-text);      /* neutral-900 — near black */
+  background-color: var(--ch-color-bg);     /* white */
+  -webkit-font-smoothing:  antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Headings ────────────────────────────────────────────────────────────────
+ *
+ * Headings use `font-display` (Lora — a warm serif) to differentiate them
+ * from body text, which uses the sans-serif stack.
+ *
+ * `line-height: leading-tight` (1.25) is correct for headings: at large sizes,
+ * the normal line height (1.5) creates too much space between lines.
+ *
+ * Individual heading sizes map down the type scale:
+ *   h1 = 36px (page hero), h2 = 30px, h3 = 24px, h4 = 20px, h5 = 18px, h6 = 16px
+ */
+h1, h2, h3, h4, h5, h6 {
+  font-family:  var(--ch-font-display);   /* Lora serif for warmth */
+  font-weight:  var(--ch-font-semibold);  /* 600 — prominent but not heavy */
+  line-height:  var(--ch-leading-tight);  /* 1.25 — tight for large text */
+  color:        var(--ch-color-text);
+}
+
+h1 { font-size: var(--ch-text-4xl); }  /* 36px */
+h2 { font-size: var(--ch-text-3xl); }  /* 30px */
+h3 { font-size: var(--ch-text-2xl); }  /* 24px */
+h4 { font-size: var(--ch-text-xl); }   /* 20px */
+h5 { font-size: var(--ch-text-lg); }   /* 18px */
+h6 { font-size: var(--ch-text-base); } /* 16px — same as body, differentiated by weight */
+
+/* ─── Paragraphs ──────────────────────────────────────────────────────────────
+ * `leading-relaxed` (1.625) is slightly more open than `leading-normal` (1.5),
+ * which improves readability for longer blocks of body text.
+ */
+p {
+  line-height: var(--ch-leading-relaxed);
+  color:       var(--ch-color-text);
+}
+
+/* ─── Links ───────────────────────────────────────────────────────────────────
+ * Default text-decoration is none — individual contexts add underlines
+ * where appropriate (e.g. body copy links vs navigation links).
+ *
+ * The transition creates a smooth color change on hover.
+ * `ease-out` is used here: it decelerates into the new color, which
+ * feels natural as if the color "lands" into place.
+ */
+a {
+  color:           var(--ch-color-primary);
+  text-decoration: none;
+  transition: color var(--ch-duration-fast) var(--ch-ease-out);
+}
+
+a:hover {
+  color:           var(--ch-color-primary-hover);
+  text-decoration: underline; /* reinstate underline on hover for clarity */
+}
+
+/* ─── Inline Text ─────────────────────────────────────────────────────────────
+ * `strong`/`b` use semibold (600) not bold (700) — it's prominent without
+ * being heavy and works better with the Plus Jakarta Sans type stack.
+ *
+ * `small` gets `color-text-muted` to visually de-emphasize secondary info.
+ */
+strong, b { font-weight: var(--ch-font-semibold); }
+em, i     { font-style: italic; }
+
+small {
+  font-size: var(--ch-text-sm);
+  color:     var(--ch-color-text-muted);
+}
+
+/* ─── Monospace Elements ──────────────────────────────────────────────────────
+ * `font-size: 0.9em` — monospace fonts appear slightly larger than sans-serif
+ * at the same point size due to wider letterforms. 0.9em compensates.
+ */
+code, kbd, samp, pre {
+  font-family: var(--ch-font-mono);
+  font-size:   0.9em;
+}
+
+/* ─── Form Element Inheritance ────────────────────────────────────────────────
+ * Browsers do NOT inherit font properties for form elements by default.
+ * This is a longstanding quirk: `<input>`, `<button>`, etc. use the
+ * browser's default UI font, not the page font. These rules fix that.
+ *
+ * `font-size: 100%` means "same as the parent element" (not 100% of browser default).
+ * `line-height: inherit` ensures form fields align correctly with surrounding text.
+ * `color: inherit` ensures text color matches the surrounding context.
+ */
+button, input, optgroup, select, textarea {
+  font-family: inherit;
+  font-size:   100%;
+  line-height: inherit;
+  color:       inherit;
+}
+
+/* ─── Interactive State Cursors ───────────────────────────────────────────────
+ * Browsers show a text cursor on buttons inside some contexts.
+ * `cursor: pointer` enforces the hand/pointer for all button-like elements.
+ * `[role="button"]` catches non-button elements used as buttons (like our
+ * ChCard with `clickable` prop).
+ *
+ * Disabled elements get `not-allowed` cursor and reduced opacity to
+ * communicate non-interactivity both visually and via cursor affordance.
+ */
+button, [role="button"] { cursor: pointer; }
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor:  not-allowed;
+  opacity: 0.6;
+}
+
+/* ─── Bare Input Reset ────────────────────────────────────────────────────────
+ * Our ChInput component provides its own styled wrapper and input.
+ * These rules strip the browser's default input styling (border, background,
+ * outline) so ChInput can apply its own design cleanly.
+ *
+ * Note: We do NOT strip all styling here — only the three that conflict most.
+ * We leave `color: inherit` (set above) and `font: inherit` (set above) intact.
+ */
+input, textarea, select {
+  background-color: transparent;
+  border:           none;
+  outline:          none;
+}
+
+/* ─── Media Elements ──────────────────────────────────────────────────────────
+ * `display: block` removes the extra space below inline images.
+ * (Images are inline by default, which adds a descender gap below them
+ * since they sit on the text baseline.)
+ *
+ * `max-width: 100%` prevents media from overflowing their containers.
+ * `vertical-align: middle` on img gives better alignment when used inline.
+ */
+img, video, svg {
+  display:   block;
+  max-width: 100%;
+}
+img { vertical-align: middle; }
+
+/* ─── Lists ───────────────────────────────────────────────────────────────────
+ * Strip browser default bullets/numbers. Components that need list styling
+ * (like ChDataList) will add it back explicitly.
+ */
+ul, ol { list-style: none; }
+
+/* ─── Horizontal Rule ─────────────────────────────────────────────────────────
+ * Replaces the default 3D-style browser HR with a clean single-pixel
+ * border using the design system's border color token.
+ * `border: none` first removes ALL default borders, then `border-top`
+ * adds back just the top edge.
+ */
+hr {
+  border:     none;
+  border-top: 1px solid var(--ch-color-border);
+  margin:     var(--ch-space-4) 0;
+}
+
+/* ─── Focus Ring (Accessibility) ──────────────────────────────────────────────
+ * `:focus-visible` is a smarter `:focus`. It only shows the focus ring when
+ * the user is navigating with a keyboard or assistive technology — NOT when
+ * clicking with a mouse (where the ring is distracting and unnecessary).
+ *
+ * `outline-offset: 2px` creates a small gap between the element and the ring,
+ * making it more visible against complex backgrounds.
+ *
+ * This uses `--ch-color-border-focus` (mapped to primary-500) so the focus
+ * ring always matches the brand color.
+ */
+:focus-visible {
+  outline:        2px solid var(--ch-color-border-focus);
+  outline-offset: 2px;
+  border-radius:  var(--ch-radius-sm); /* slightly rounds the focus rectangle */
+}
+
+/* ─── Text Selection ──────────────────────────────────────────────────────────
+ * When the user highlights text, show the selection in brand colors
+ * instead of the default OS blue. Uses `primary-muted` background (light tint)
+ * with `primary-fg` (white) text for readability.
+ */
+::selection {
+  background-color: var(--ch-color-primary-muted);
+  color:            var(--ch-color-primary-fg);
+}
+
+/* ─── Custom Scrollbar ────────────────────────────────────────────────────────
+ * These `::-webkit-scrollbar` rules work in Chrome, Edge, and Safari.
+ * Firefox uses `scrollbar-width` and `scrollbar-color` (not included here
+ * since Firefox shows a minimal scrollbar by default which looks clean).
+ *
+ * `::-webkit-scrollbar`        → sets the scrollbar track + thumb container size
+ * `::-webkit-scrollbar-track`  → the groove the thumb slides in
+ * `::-webkit-scrollbar-thumb`  → the draggable handle
+ */
+::-webkit-scrollbar {
+  width:  6px; /* vertical scrollbar width */
+  height: 6px; /* horizontal scrollbar height */
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ch-color-bg-subtle); /* near-white background track */
+}
+
+::-webkit-scrollbar-thumb {
+  background:    var(--ch-color-border-strong); /* medium gray handle */
+  border-radius: var(--ch-radius-full);         /* fully rounded pill shape */
+}
+
+/* Slightly darken the scrollbar thumb on hover for feedback */
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ch-color-text-subtle);
+}
