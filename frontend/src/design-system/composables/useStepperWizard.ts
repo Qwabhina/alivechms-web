@@ -14,7 +14,7 @@
  *   { id: 'confirm',  label: 'Confirm' },
  * ])
  *
- * // In template — pass wizard to ChStepperWizard
+ * In template — pass wizard to ChStepperWizard
  * <ChStepperWizard :wizard="wizard">
  *   <ChStepperStep step-id="personal" :wizard="wizard">
  *     <PersonalInfoForm v-model="form.personal" />
@@ -90,6 +90,8 @@ export function useStepperWizard(steps: WizardStep[]) {
    */
   async function next(): Promise<boolean> {
     const step = steps[currentIdx.value]
+    if (!step) return false // Should never happen due to validation checks
+
     errors.value.delete(currentIdx.value)
 
     if (step.validate) {

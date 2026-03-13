@@ -7,7 +7,7 @@
  * | Format  | Dependency        | Notes                                        |
  * |---------|-------------------|----------------------------------------------|
  * | CSV     | none              | Pure JS, always available                    |
- * | Excel   | xlsx (SheetJS)    | npm install xlsx                             |
+ * | Excel   | exceljs           | npm install exceljs                          |
  * | PDF     | jspdf             | npm install jspdf jspdf-autotable            |
  * |         | jspdf-autotable   |                                              |
  * | Print   | none              | Opens browser print dialog via window.print()|
@@ -196,56 +196,111 @@ function exportCSV(config: ExportConfig): ExportResult {
 }
 
 /**
- * Exports data as an Excel (.xlsx) file using SheetJS.
+ * Exports data as an Excel (.xlsx) file using ExcelJS.
  *
- * ─── SheetJS notes ──────────────────────────────────────────────────────────
- * `XLSX.utils.aoa_to_sheet` (array-of-arrays) is used instead of
- * `json_to_sheet` because it gives us full control over the header row
- * and column order without SheetJS inferring them from object keys.
+ * ─── Why ExcelJS over SheetJS ───────────────────────────────────────────────
+ * ExcelJS is actively maintained and has a clean, promise-based API.
+ * Unlike SheetJS (xlsx), it supports cell styling natively — no separate
+ * style fork required. This lets us produce a properly branded output:
+ * bold header row with the primary color background, alternating row shading,
+ * and auto-sized columns, all in one library.
  *
- * Column widths are auto-calculated based on the longest value in each column
- * (capped at 60 characters to prevent overly wide columns).
+ * ─── ExcelJS API notes ──────────────────────────────────────────────────────
+ * - `workbook.addWorksheet()` creates the sheet
+ * - `worksheet.columns` defines keys + widths in one step
+ * - `worksheet.addRow()` adds data rows
+ * - `worksheet.getRow(1)` targets the header for styling
+ * - `workbook.xlsx.writeBuffer()` returns a Promise<ArrayBuffer>
+ *
+ * Column widths are auto-calculated from the longest value per column,
+ * capped at 60 characters to prevent absurdly wide columns.
  */
 async function exportExcel(config: ExportConfig): Promise<ExportResult> {
   try {
-    const { rows, columns, filename = 'export' } = config
+    const { rows, columns, filename = 'export', title } = config
 
     // Dynamic import — only loaded when Excel export is actually triggered
-    const XLSX = await import('xlsx').catch(() => null)
-    if (!XLSX) {
+    const ExcelJS = await import('exceljs').catch(() => null)
+    if (!ExcelJS) {
       return {
         success: false,
-        error:   'Excel export requires the "xlsx" package. Run: npm install xlsx',
+        error: 'Excel export requires the "exceljs" package. Run: npm install exceljs',
       }
     }
 
-    // Build data as array-of-arrays: first row = headers, rest = values
-    const header   = columns.map(col => col.label)
-    const dataRows = rows.map(row => columns.map(col => getCellString(row, col.key)))
-    const aoa      = [header, ...dataRows]
+    const workbook = new ExcelJS.Workbook()
+    workbook.creator = 'Church Management System'
+    workbook.created = new Date()
 
-    // Create worksheet from the array-of-arrays
-    const worksheet = XLSX.utils.aoa_to_sheet(aoa)
+    const worksheet = workbook.addWorksheet('Data')
 
-    // Calculate and apply column widths
-    // For each column, find the max character length across header + all values
-    worksheet['!cols'] = columns.map((col, colIndex) => {
+    // ── Column definitions ────────────────────────────────────────────────────
+    // Auto-calculate width: max char length across header + all cell values,
+    // capped at 60 to avoid absurdly wide columns. +4 for cell padding.
+    worksheet.columns = columns.map(col => {
       const maxLen = Math.min(
-        60, // cap at 60 chars to prevent absurdly wide columns
+        60,
         Math.max(
           col.label.length,
           ...rows.map(row => getCellString(row, col.key).length)
         )
       )
-      return { wch: maxLen + 2 } // +2 for padding
+      return {
+        header: col.label,
+        key: col.key,
+        width: maxLen + 4,
+      }
     })
 
-    // Create workbook and append the sheet
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data')
+    // ── Data rows ─────────────────────────────────────────────────────────────
+    rows.forEach(row => {
+      worksheet.addRow(
+        Object.fromEntries(columns.map(col => [col.key, getCellString(row, col.key)]))
+      )
+    })
 
-    // Write to a binary array buffer and trigger download
-    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+    // ── Style the header row (row 1) ──────────────────────────────────────────
+    // Brand-colored background (#4f46e5 = --ch-color-primary default),
+    // white bold text, border bottom to separate from data rows.
+    const headerRow = worksheet.getRow(1)
+    headerRow.eachCell(cell => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF4F46E5' }, // #4f46e5 with full opacity prefix
+      }
+      cell.font = {
+        bold: true,
+        color: { argb: 'FFFFFFFF' },
+        size: 10,
+      }
+      cell.alignment = { vertical: 'middle' }
+      cell.border = {
+        bottom: { style: 'thin', color: { argb: 'FF3730A3' } },
+      }
+    })
+    headerRow.height = 22
+
+    // ── Style data rows — alternating row shading ─────────────────────────────
+    // Light grey fill on even rows for readability in large datasets.
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return // skip header, already styled
+      row.eachCell(cell => {
+        if (rowNumber % 2 === 0) {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF8FAFC' }, // --ch-color-bg-subtle equivalent
+          }
+        }
+        cell.alignment = { vertical: 'middle', wrapText: false }
+        cell.font = { size: 10 }
+      })
+      row.height = 18
+    })
+
+    // ── Write to buffer and trigger download ──────────────────────────────────
+    const buffer = await workbook.xlsx.writeBuffer()
     const blob   = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     })
@@ -344,8 +399,13 @@ async function exportPDF(config: ExportConfig): Promise<ExportResult> {
 
     // ── Table ────────────────────────────────────────────────────────────────
     // Check if autoTable plugin was successfully loaded
-    if (typeof (doc as unknown as { autoTable: Function }).autoTable === 'function') {
-      (doc as unknown as { autoTable: Function }).autoTable({
+    type DocWithAutoTable = typeof doc & {
+      autoTable: (options: Record<string, unknown>) => void
+    }
+    const docWithTable = doc as DocWithAutoTable
+
+    if (typeof docWithTable.autoTable === 'function') {
+      docWithTable.autoTable({
         startY:      yOffset,
         head:        [columns.map(col => col.label)],
         body:        rows.map(row => columns.map(col => getCellString(row, col.key))),
