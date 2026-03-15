@@ -45,13 +45,7 @@ export interface WizardStep {
   optional?: boolean
 }
 
-export interface WizardState {
-  steps:       WizardStep[]
-  currentIdx:  ReturnType<typeof ref<number>>
-  completed:   ReturnType<typeof ref<Set<number>>>
-  errors:      ReturnType<typeof ref<Map<number, string>>>
-  isValidating:ReturnType<typeof ref<boolean>>
-}
+
 
 // ─── Composable ───────────────────────────────────────────────────────────────
 
@@ -72,7 +66,11 @@ export function useStepperWizard(steps: WizardStep[]) {
 
   // ── Computed ────────────────────────────────────────────────────────────────
 
-  const currentStep  = computed(() => steps[currentIdx.value])
+  const currentStep = computed((): WizardStep => {
+    const step = steps[currentIdx.value]
+    if (!step) throw new Error(`Step index ${currentIdx.value} out of bounds`)
+    return step
+  })
   const isFirstStep  = computed(() => currentIdx.value === 0)
   const isLastStep   = computed(() => currentIdx.value === steps.length - 1)
   const isComplete   = computed(() => completed.value.size === steps.length)
@@ -103,7 +101,7 @@ export function useStepperWizard(steps: WizardStep[]) {
           errors.value.set(currentIdx.value, msg)
           return false
         }
-      } catch (e) {
+      } catch (_e) {
         errors.value.set(currentIdx.value, 'Validation failed. Please try again.')
         return false
       } finally {

@@ -217,7 +217,7 @@ function exportCSV(config: ExportConfig): ExportResult {
  */
 async function exportExcel(config: ExportConfig): Promise<ExportResult> {
   try {
-    const { rows, columns, filename = 'export', title } = config
+    const { rows, columns, filename = 'export' } = config
 
     // Dynamic import — only loaded when Excel export is actually triggered
     const ExcelJS = await import('exceljs').catch(() => null)
