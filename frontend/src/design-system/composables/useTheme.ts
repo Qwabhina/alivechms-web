@@ -62,8 +62,18 @@
  * }
  */
 
-import { ref, readonly } from 'vue'
+import { ref, readonly, watch } from 'vue'
 import { generateCSSVars, type ThemeOverrides } from '../tokens'
+import { darkSemanticColors } from '../tokens/colors'
+
+// Convert dark semantic colors to CSS custom properties with --ch- prefix
+const darkThemeOverrides: ThemeOverrides = Object.entries(darkSemanticColors).reduce(
+  (acc, [key, value]) => {
+    acc[`--ch-${key}`] = value
+    return acc
+  },
+  {} as ThemeOverrides
+)
 
 // ─── Module-level singleton ───────────────────────────────────────────────────
 /**
@@ -84,6 +94,56 @@ const _overrides = ref<ThemeOverrides>({})
  * Can be called from any Vue component or other composable.
  */
 export function useTheme() {
+  // ─── Dark Mode Detection ────────────────────────────────────────────────────
+  const isDarkMode = ref(false)
+
+  // Check initial dark mode preference (system setting or saved preference)
+  function checkDarkMode() {
+    // Check if user has a saved preference
+    const savedTheme = localStorage.getItem('ch-theme')
+    if (savedTheme === 'dark') {
+      isDarkMode.value = true
+    } else if (savedTheme === 'light') {
+      isDarkMode.value = false
+    } else {
+      // Fallback to system preference
+      isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
+    }
+  }
+
+  // Toggle dark mode
+  function toggleDarkMode() {
+    isDarkMode.value = !isDarkMode.value
+    localStorage.setItem('ch-theme', isDarkMode.value ? 'dark' : 'light')
+    applyDarkMode(isDarkMode.value)
+  }
+
+  // Apply dark mode styles
+  function applyDarkMode(enabled: boolean) {
+    if (enabled) {
+      applyOverrides(darkThemeOverrides)
+      document.documentElement.classList.add('dark')
+    } else {
+      // Remove dark mode overrides by resetting to defaults
+      resetTheme()
+      document.documentElement.classList.remove('dark')
+    }
+  }
+
+  // Initialize dark mode
+  checkDarkMode()
+  applyDarkMode(isDarkMode.value)
+
+  // Listen for system preference changes
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+    // Only apply system preference if user hasn't explicitly set a theme
+    if (!localStorage.getItem('ch-theme')) {
+      isDarkMode.value = e.matches
+      applyDarkMode(e.matches)
+    }
+  }
+  mediaQuery.addEventListener('change', handleSystemThemeChange)
 
   // ─── applyOverrides ────────────────────────────────────────────────────────
   /**
@@ -253,5 +313,12 @@ export function useTheme() {
      * but cannot directly mutate `_overrides.value` from outside this composable.
      */
     currentOverrides: readonly(_overrides),
+
+    /**
+     * Dark mode properties and methods
+     */
+    isDarkMode: readonly(isDarkMode),
+    toggleDarkMode,
+    applyDarkMode,
   }
 }

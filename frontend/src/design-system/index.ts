@@ -93,6 +93,10 @@ export { default as ChDivider }  from './components/core/ChDivider.vue'
  */
 export { useTheme }       from './composables/useTheme'
 export { useTableExport } from './composables/useTableExport'
+export { darkSemanticColors } from './tokens/colors'
+
+// ─── Utility Functions ─────────────────────────────────────────────────────────
+export * from './utils'
 
 // ─── Upcoming Exports ─────────────────────────────────────────────────────────
 // Uncomment each group as its components are implemented.
@@ -121,6 +125,9 @@ export { default as ChFormField }     from './components/forms/ChFormField.vue'
 export { default as ChSelect }        from './components/forms/ChSelect.vue'
 export { default as ChCheckbox }      from './components/forms/ChCheckbox.vue'
 export { default as ChRadio }         from './components/forms/ChRadio.vue'
+export { default as ChSwitch } from './components/forms/ChSwitch.vue'
+export { default as ChSlider } from './components/forms/ChSlider.vue'
+export { default as ChFileUpload } from './components/forms/ChFileUpload.vue'
 export { default as ChDatePicker }    from './components/forms/ChDatePicker.vue'
 export { default as ChModal }         from './components/forms/ChModal.vue'
 export { default as ChStepperWizard } from './components/forms/ChStepperWizard.vue'

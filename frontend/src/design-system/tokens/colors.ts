@@ -160,6 +160,58 @@ export const semanticColors = {
   'color-info-fg':        palette.info700,
 } as const
 
+// ─── Dark Mode Semantic Colors ────────────────────────────────────────────────
+export const darkSemanticColors = {
+  // ── Brand / Primary ──
+  'color-primary': palette.primary500, // Default state
+  'color-primary-hover': palette.primary400, // Mouse hover state
+  'color-primary-active': palette.primary600, // Click / pressed state
+  'color-primary-subtle': palette.primary950, // Very dark tint for backgrounds
+  'color-primary-muted': palette.primary900, // Dark tint — focus rings, tag backgrounds
+  'color-primary-fg': palette.neutral0,   // Text/icon drawn ON TOP of primary color
+
+  // ── Page & Surface Backgrounds ──
+  'color-bg': palette.neutral950,   // Page background
+  'color-bg-subtle': palette.neutral900,  // Slightly lighter sections
+  'color-bg-muted': palette.neutral800,  // Muted areas: sidebars, table rows
+  'color-surface': palette.neutral900,  // Cards, panels
+  'color-surface-raised': palette.neutral800,  // Modals, dropdowns — slightly elevated
+  'color-surface-overlay': palette.neutral700,  // Tooltip/popover backgrounds
+
+  // ── Borders ──
+  'color-border': palette.neutral800, // Default border — inputs, cards, dividers
+  'color-border-strong': palette.neutral700, // Emphasized borders — hover, separators
+  'color-border-focus': palette.primary500, // Focus ring color (keyboard navigation)
+
+  // ── Typography ──
+  'color-text': palette.neutral50, // Primary body text
+  'color-text-muted': palette.neutral400, // Secondary text, metadata, labels
+  'color-text-subtle': palette.neutral500, // Placeholder, disabled labels, hints
+  'color-text-disabled': palette.neutral600, // Disabled input text
+  'color-text-inverse': palette.neutral900, // Dark text (on light backgrounds)
+  'color-text-on-primary': palette.neutral0,   // Text drawn on primary-colored backgrounds
+
+  // ── Status: Success ──
+  'color-success': palette.success500, // Icon/border color for success states
+  'color-success-bg': palette.success700, // Background of success alerts
+  'color-success-fg': palette.success100, // Text color inside success alerts
+
+  // ── Status: Warning ──
+  'color-warning': palette.warning500,
+  'color-warning-bg': palette.warning700,
+  'color-warning-fg': palette.warning100,
+
+  // ── Status: Danger ──
+  'color-danger': palette.danger500,
+  'color-danger-bg': palette.danger700,
+  'color-danger-fg': palette.danger100,
+
+  // ── Status: Info ──
+  'color-info': palette.info500,
+  'color-info-bg': palette.info700,
+  'color-info-fg': palette.info100,
+} as const
+
 /**
  * Union type of all valid semantic color token names.
  * Useful for strongly-typing any function that accepts a color token key.

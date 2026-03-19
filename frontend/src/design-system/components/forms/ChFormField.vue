@@ -87,7 +87,7 @@ const props = withDefaults(defineProps<Props>(), {
   hideLabel: false,
 })
 
-const hasError = props.error && props.error !== false
+const hasError = !!props.error
 </script>
 
 <template>
