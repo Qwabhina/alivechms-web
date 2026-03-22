@@ -15,9 +15,13 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../Middleware.php';
-require_once __DIR__ . '/../../RateLimiter.php';
-require_once __DIR__ . '/../../Auth.php';
+namespace AliveChMS\Core\Http\Middleware;
+
+use AliveChMS\Core\Http\Middleware;
+use AliveChMS\Core\Http\Request;
+use AliveChMS\Core\Http\Response;
+use AliveChMS\Core\Identity\Auth;
+use AliveChMS\Core\Infrastructure\RateLimiter;
 
 class RateLimitMiddleware extends Middleware
 {
@@ -34,8 +38,8 @@ class RateLimitMiddleware extends Middleware
       int $decayMinutes = 1,
       string $keyPrefix = 'api',
       bool $userBased = false,
-      int $authenticatedLimit = null,
-      int $anonymousLimit = null
+      ?int $authenticatedLimit = null,
+      ?int $anonymousLimit = null
    ) {
       $this->maxAttempts = $maxAttempts;
       $this->windowSeconds = $decayMinutes * 60;
@@ -45,7 +49,7 @@ class RateLimitMiddleware extends Middleware
       $this->anonymousLimit = $anonymousLimit ?? $maxAttempts;
    }
 
-   public function handle(Request $request, callable $next): Response
+   public function execute(Request $request, callable $next): Response
    {
       $key = $this->resolveRequestSignature($request);
       $limit = $this->getApplicableLimit($request);
@@ -91,7 +95,7 @@ class RateLimitMiddleware extends Middleware
    private function getUserId(Request $request): ?int
    {
       // Try to get from Authorization header
-      $authHeader = $request->getHeader('Authorization');
+      $authHeader = $request->header('Authorization');
 
       if ($authHeader && str_starts_with($authHeader, 'Bearer ')) {
          $token = substr($authHeader, 7);
@@ -131,9 +135,9 @@ class RateLimitMiddleware extends Middleware
    {
       $retryAfter = RateLimiter::getResetTime($key, $this->windowSeconds);
 
-      return Response::rateLimited(
+      return Response::error(
          'Too many requests. Please try again later.',
-         $retryAfter
+         429
       );
    }
 

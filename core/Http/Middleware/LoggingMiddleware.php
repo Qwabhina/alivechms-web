@@ -14,7 +14,11 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../Middleware.php';
+namespace AliveChMS\Core\Http\Middleware;
+
+use AliveChMS\Core\Http\Middleware;
+use AliveChMS\Core\Http\Request;
+use AliveChMS\Core\Http\Response;
 
 class LoggingMiddleware extends Middleware
 {
@@ -38,7 +42,7 @@ class LoggingMiddleware extends Middleware
       $this->ensureLogDirectory();
    }
 
-   public function handle(Request $request, callable $next): Response
+   public function execute(Request $request, callable $next): Response
    {
       $startTime = microtime(true);
       $requestId = $this->generateRequestId();

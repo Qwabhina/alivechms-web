@@ -14,6 +14,11 @@
 
 declare(strict_types=1);
 
+
+namespace AliveChMS\Core\Security;
+
+use AliveChMS\Core\Http\Request;
+
 class CsrfProtection
 {
     private const TOKEN_LENGTH = 32;
@@ -65,7 +70,7 @@ class CsrfProtection
     public static function getTokenFromRequest(Request $request): ?string
     {
         // Check header first
-        $token = $request->getHeader(self::HEADER_NAME);
+        $token = $request->header(self::HEADER_NAME);
         
         if ($token) {
             return $token;

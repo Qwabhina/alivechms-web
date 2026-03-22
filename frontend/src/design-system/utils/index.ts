@@ -7,6 +7,57 @@
  * the DOM helpers, which are clearly marked.
  */
 
+// ─── File Type Constants ───────────────────────────────────────────────────────
+/**
+ * MIME type constants for use with ChFileUpload's `accept` prop.
+ * Import individual types or combine them using ACCEPT_PRESETS below.
+ *
+ * @example Single type
+ * <ChFileUpload :accept="MIME.PDF" />
+ *
+ * @example Combined via preset
+ * <ChFileUpload :accept="ACCEPT_PRESETS.documents" />
+ *
+ * @example Custom combination
+ * <ChFileUpload :accept="[MIME.PDF, MIME.JPEG, MIME.PNG].join(',')" />
+ */
+export const MIME = {
+   // Documents
+   PDF: 'application/pdf',
+   DOC: 'application/msword',
+   DOCX: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+   XLS: 'application/vnd.ms-excel',
+   XLSX: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+   TXT: 'text/plain',
+
+   // Images
+   JPEG: 'image/jpeg',
+   PNG: 'image/png',
+   GIF: 'image/gif',
+} as const
+
+/**
+ * Pre-built `accept` strings for common upload scenarios.
+ * Pass directly to ChFileUpload's `accept` prop.
+ *
+ * @example
+ * <ChFileUpload :accept="ACCEPT_PRESETS.images" label="Member photo" />
+ * <ChFileUpload :accept="ACCEPT_PRESETS.documents" label="Supporting document" />
+ */
+export const ACCEPT_PRESETS = {
+   /** PDF, Word (.doc / .docx), plain text */
+   documents: [MIME.PDF, MIME.DOC, MIME.DOCX, MIME.TXT].join(','),
+
+   /** Excel (.xls / .xlsx) */
+   spreadsheets: [MIME.XLS, MIME.XLSX].join(','),
+
+   /** JPEG, PNG, GIF */
+   images: [MIME.JPEG, MIME.PNG, MIME.GIF].join(','),
+
+   /** All of the above — useful for general-purpose attachment fields */
+   all: Object.values(MIME).join(','),
+} as const
+
 // ─── String Utilities ──────────────────────────────────────────────────────────
 
 /**
@@ -101,9 +152,9 @@ export function formatCompactNumber(
    locale: string = 'en-GH',
 ): string {
    return new Intl.NumberFormat(locale, {
-      notation: 'compact',
-      maximumFractionDigits: decimalPlaces,
-   }).format(number)
+     notation: 'compact',
+     maximumFractionDigits: decimalPlaces,
+  }).format(number)
 }
 
 // ─── Date Utilities ────────────────────────────────────────────────────────────
@@ -122,12 +173,12 @@ export function formatDate(date: Date | string | number, format: string): string
 
    const tokens: Record<string, string> = {
       YYYY: d.getFullYear().toString(),
-      MM: String(d.getMonth() + 1).padStart(2, '0'),
-      DD: String(d.getDate()).padStart(2, '0'),
-      HH: String(d.getHours()).padStart(2, '0'),
-      mm: String(d.getMinutes()).padStart(2, '0'),
-      ss: String(d.getSeconds()).padStart(2, '0'),
-   }
+     MM: String(d.getMonth() + 1).padStart(2, '0'),
+     DD: String(d.getDate()).padStart(2, '0'),
+     HH: String(d.getHours()).padStart(2, '0'),
+     mm: String(d.getMinutes()).padStart(2, '0'),
+     ss: String(d.getSeconds()).padStart(2, '0'),
+  }
 
    return format.replace(/YYYY|MM|DD|HH|mm|ss/g, match => tokens[match] ?? match)
 }
@@ -182,9 +233,9 @@ export function groupBy<T extends Record<string, unknown>>(
 ): Record<string, T[]> {
    return array.reduce<Record<string, T[]>>((acc, item) => {
       const group = String(item[key])
-         ; (acc[group] ??= []).push(item)
-      return acc
-   }, {})
+        ; (acc[group] ??= []).push(item)
+     return acc
+  }, {})
 }
 
 /**
@@ -209,11 +260,11 @@ export function shuffle<T>(array: T[]): T[] {
 export function isInViewport(element: HTMLElement): boolean {
    const { top, left, bottom, right } = element.getBoundingClientRect()
    return (
-      top >= 0 &&
-      left >= 0 &&
-      bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-      right <= (window.innerWidth || document.documentElement.clientWidth)
-   )
+     top >= 0 &&
+     left >= 0 &&
+     bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+     right <= (window.innerWidth || document.documentElement.clientWidth)
+  )
 }
 
 /**

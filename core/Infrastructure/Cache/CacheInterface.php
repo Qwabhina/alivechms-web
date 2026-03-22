@@ -118,6 +118,24 @@ interface CacheInterface
     public function cleanup(): int;
 
     /**
+     * Increment cached value
+     *
+     * @param string $key Cache key
+     * @param int $value Value to increment by
+     * @return int|false New value or false on failure
+     */
+    public function increment(string $key, int $value = 1);
+
+    /**
+     * Decrement cached value
+     *
+     * @param string $key Cache key
+     * @param int $value Value to decrement by
+     * @return int|false New value or false on failure
+     */
+    public function decrement(string $key, int $value = 1);
+
+    /**
      * Get cache driver name
      *
      * @return string Driver name

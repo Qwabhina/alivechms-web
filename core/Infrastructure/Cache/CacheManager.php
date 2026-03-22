@@ -362,6 +362,32 @@ class CacheManager implements CacheInterface
     }
 
     /**
+     * Increment cached value
+     */
+    public function increment(string $key, int $value = 1)
+    {
+        try {
+            return $this->driver()->increment($key, $value);
+        } catch (Exception $e) {
+            error_log("Cache increment error: " . $e->getMessage());
+            return $this->handleFallback('increment', [$key, $value], false);
+        }
+    }
+
+    /**
+     * Decrement cached value
+     */
+    public function decrement(string $key, int $value = 1)
+    {
+        try {
+            return $this->driver()->decrement($key, $value);
+        } catch (Exception $e) {
+            error_log("Cache decrement error: " . $e->getMessage());
+            return $this->handleFallback('decrement', [$key, $value], false);
+        }
+    }
+
+    /**
      * Remember: Get from cache or execute callback and cache result
      */
     public function remember(string $key, callable $callback, int $ttl = 3600, array $tags = []): mixed
