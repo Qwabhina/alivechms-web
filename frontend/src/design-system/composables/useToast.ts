@@ -119,7 +119,7 @@ function dismiss(id: string) {
   const index = toasts.value.findIndex(t => t.id === id)
   if (index === -1) return
 
-  const toast = toasts.value[index]
+  const toast = toasts.value[index]!
   if (toast.timerId) clearTimeout(toast.timerId)
 
   toasts.value.splice(index, 1)
@@ -175,18 +175,18 @@ export function useToast() {
 
     /** Green success toast. e.g. "Member saved." */
     success: (message: string, opts?: Partial<ToastOptions>) =>
-      push({ variant: 'success', message, ...opts }),
+      push({ variant: 'success', message, duration: opts?.duration ?? 4500, ...opts }),
 
     /** Red danger/error toast. e.g. "Failed to save. Please try again." */
     error: (message: string, opts?: Partial<ToastOptions>) =>
-      push({ variant: 'danger', message, duration: 6000, ...opts }),
+      push({ variant: 'danger', message, duration: opts?.duration ?? 6000, ...opts }),
 
     /** Amber warning toast. e.g. "No internet connection detected." */
     warning: (message: string, opts?: Partial<ToastOptions>) =>
-      push({ variant: 'warning', message, duration: 5500, ...opts }),
+      push({ variant: 'warning', message, duration: opts?.duration ?? 5500, ...opts }),
 
     /** Blue info toast. e.g. "Sync completed. 14 records updated." */
     info: (message: string, opts?: Partial<ToastOptions>) =>
-      push({ variant: 'info', message, ...opts }),
+      push({ variant: 'info', message, duration: opts?.duration ?? 4500, ...opts }),
   }
 }

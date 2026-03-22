@@ -28,7 +28,7 @@
  * ]" />
  */
 
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -249,7 +249,7 @@ function onKeydown(e: KeyboardEvent) {
       break
     case 'Enter':
       e.preventDefault()
-      if (highlightIdx.value >= 0) select(flatFiltered.value[highlightIdx.value])
+      if (highlightIdx.value >= 0) select(flatFiltered.value[highlightIdx.value]!)
       break
     case 'Tab':
       close(); break
@@ -309,7 +309,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
             type="button"
             class="ch-select__tag-remove"
             :aria-label="`Remove ${label}`"
-            @click.stop="removeTag((modelValue as MultiValue)[i])"
+            @click.stop="removeTag((modelValue as MultiValue)[i]!)"
           >
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
               <path d="M7.5 2.5l-5 5M2.5 2.5l5 5"
@@ -393,7 +393,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
             </div>
 
             <!-- Options (from group or flat) -->
-            <template :key="opt.value" v-for="(opt, optIdx) in (isGroup(item) ? item.options : [item as SelectOption])">
+            <template :key="opt.value" v-for="opt in (isGroup(item) ? item.options : [item as SelectOption])">
               <div
                 class="ch-select__option"
                 :class="{

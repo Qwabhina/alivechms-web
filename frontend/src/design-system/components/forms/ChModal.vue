@@ -31,7 +31,6 @@
  */
 
 import { ref, watch, nextTick, onUnmounted } from 'vue'
-import ChButton from '../core/ChButton.vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ModalSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full'
@@ -94,8 +93,8 @@ function trapFocus(e: KeyboardEvent) {
   const focusable = getFocusable()
   if (focusable.length === 0) return
 
-  const first = focusable[0]
-  const last  = focusable[focusable.length - 1]
+  const first = focusable[0]!
+  const last = focusable[focusable.length - 1]!
 
   if (e.shiftKey) {
     if (document.activeElement === first) { e.preventDefault(); last.focus() }
@@ -135,7 +134,7 @@ watch(() => props.open, async (isOpen) => {
     // Move focus into the modal after it renders
     await nextTick()
     const focusable = getFocusable()
-    if (focusable.length > 0) focusable[0].focus()
+    if (focusable.length > 0) focusable[0]!.focus()
   } else {
     unlockScroll()
     document.removeEventListener('keydown', trapFocus)

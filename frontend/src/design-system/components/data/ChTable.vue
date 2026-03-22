@@ -65,7 +65,7 @@ type CellType = 'text' | 'badge' | 'avatar' | 'slot'
 type Align    = 'left' | 'center' | 'right'
 type SortDir  = 'asc' | 'desc' | null
 
-export interface ColumnDef<T> {
+interface ColumnDef<T> {
   /** Field key — supports dot-notation: 'family.name' */
   key:          keyof T | string
   /** Column header text */

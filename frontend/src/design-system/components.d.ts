@@ -25,6 +25,7 @@ declare module 'vue' {
     ChInput: typeof import('./components/core/ChInput.vue')['default']
     ChModal: typeof import('./components/forms/ChModal.vue')['default']
     ChProgress: typeof import('./components/cues/ChProgress.vue')['default']
+    ChPullToRefresh: typeof import('./components/cues/ChPullToRefresh.vue')['default']
     ChRadio: typeof import('./components/forms/ChRadio.vue')['default']
     ChSelect: typeof import('./components/forms/ChSelect.vue')['default']
     ChSidebar: typeof import('./components/navigation/ChSidebar.vue')['default']
