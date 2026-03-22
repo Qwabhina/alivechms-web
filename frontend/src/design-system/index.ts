@@ -92,7 +92,7 @@ export { default as ChDivider }  from './components/core/ChDivider.vue'
  * Each is a function you call inside a `<script setup>` or `setup()`.
  */
 export { useTheme }       from './composables/useTheme'
-export { useTableExport } from './composables/useTableExport'
+export { useTableExport, type ExportFormat } from './composables/useTableExport'
 export { darkSemanticColors } from './tokens/colors'
 
 // ─── Utility Functions ─────────────────────────────────────────────────────────

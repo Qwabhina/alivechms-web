@@ -31,11 +31,9 @@ import {
    useModal,
    useToast,
    useStepperWizard,
-   useTableExport
+   useTableExport,
+   type ExportFormat
 } from '@/design-system'
-
-// Type for export format
-type ExportFormat = 'csv' | 'excel' | 'pdf' | 'print'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sidebar Navigation
@@ -184,11 +182,6 @@ const indeterminate = ref(true)
 // Forms - Radio
 // ─────────────────────────────────────────────────────────────────────────────
 const radioValue = ref('option1')
-const radioOptions = [
-   { value: 'option1', label: 'Option 1' },
-   { value: 'option2', label: 'Option 2' },
-   { value: 'option3', label: 'Option 3' }
-]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Forms - Switch
@@ -201,7 +194,7 @@ const switchDisabled = ref(false)
 // Forms - Slider
 // ─────────────────────────────────────────────────────────────────────────────
 const sliderValue = ref(50)
-const rangeValue = ref([20, 80])
+const rangeValue = ref(80)
 const sliderWithTooltip = ref(75)
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -294,10 +287,10 @@ const handleAction = (action: string, row: User) => {
 // Data - Stat Card
 // ─────────────────────────────────────────────────────────────────────────────
 const statCards = [
-   { title: 'Total Users', value: 1234, trend: 12, trendLabel: '+12%', icon: 'users' },
-   { title: 'Revenue', value: 45678, trend: 8, trendLabel: '+8%', icon: 'dollar' },
-   { title: 'Bounce Rate', value: 24.5, trend: -3, trendLabel: '-3%', icon: 'chart' },
-   { title: 'New Signups', value: 89, trend: -5, trendLabel: '-5%', icon: 'user-plus' }
+   { label: 'Total Users', value: 1234, trend: 12, trendLabel: '+12%', icon: 'users' },
+   { label: 'Revenue', value: 45678, trend: 8, trendLabel: '+8%', icon: 'dollar' },
+   { label: 'Bounce Rate', value: 24.5, trend: -3, trendLabel: '-3%', icon: 'chart' },
+   { label: 'New Signups', value: 89, trend: -5, trendLabel: '-5%', icon: 'user-plus' }
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -346,8 +339,8 @@ const toast = useToast()
 const showToast = (variant: 'success' | 'warning' | 'danger' | 'info', message: string) => {
    if (variant === 'success') {
       toast.success(message)
-   } else if (variant === 'error' || variant === 'danger') {
-      toast.danger(message)
+   } else if (variant === 'danger') {
+      toast.error(message)
    } else if (variant === 'warning') {
       toast.warning(message)
    } else {
@@ -358,7 +351,7 @@ const showToast = (variant: 'success' | 'warning' | 'danger' | 'info', message: 
 // ─────────────────────────────────────────────────────────────────────────────
 // Feedback - Spinner
 // ─────────────────────────────────────────────────────────────────────────────
-const spinnerSizes = ['sm', 'md', 'lg', 'xl']
+const spinnerSizes = ['sm', 'md', 'lg', 'xl'] as const
 const spinnerColors = ['primary', 'success', 'warning', 'danger', 'info']
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -369,13 +362,7 @@ const progressValue = ref(65)
 // ─────────────────────────────────────────────────────────────────────────────
 // Composables - useTheme
 // ─────────────────────────────────────────────────────────────────────────────
-const { applyDarkMode, isDarkMode } = useTheme()
-const isDark = ref(false)
-
-const toggleTheme = () => {
-   isDark.value = !isDark.value
-   applyDarkMode(isDark.value)
-}
+const { isDarkMode, toggleDarkMode } = useTheme()
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Composables - useModal
@@ -392,10 +379,10 @@ const modalForm = reactive({
 const {
    currentIdx,
    next,
-   prev,
+   back: prev,
    goTo,
-   isFirst,
-   isLast,
+   isFirstStep: isFirst,
+   isLastStep: isLast,
    steps: wizardSteps
 } = useStepperWizard([
    { id: 'wstep1', label: 'Step 1' },
@@ -420,7 +407,7 @@ const exportData = ref([
 
 const { exportData: doExport, isExporting } = useTableExport()
 
-const handleExport = async (format: 'csv' | 'json' | 'excel') => {
+const handleExport = async (format: ExportFormat) => {
    await doExport({
       rows: exportData.value,
       columns: [
@@ -446,8 +433,9 @@ const handleExport = async (format: 'csv' | 'json' | 'excel') => {
 
             <!-- Quick Navigation -->
             <div class="quick-nav">
-               <ChButton v-for="section in sidebarSections" :key="section.title" variant="ghost" size="sm">
-                  {{ section.title }}
+              <ChButton v-for="item in sidebarSections.flatMap(s => s.items)" :key="item.id" variant="ghost" size="sm"
+                  @click="handleNavClick(item.id)">
+                  {{ item.label }}
                </ChButton>
             </div>
 
@@ -785,7 +773,9 @@ const handleExport = async (format: 'csv' | 'json' | 'excel') => {
                   <template #header>
                      <h3>Radio Group</h3>
                   </template>
-                  <ChRadio v-model="radioValue" :options="radioOptions" label="Choose an option" />
+                 <ChRadio v-model="radioValue" value="option1" label="Option 1" />
+                  <ChRadio v-model="radioValue" value="option2" label="Option 2" />
+                  <ChRadio v-model="radioValue" value="option3" label="Option 3" />
                </ChCard>
             </section>
 
@@ -835,8 +825,8 @@ const handleExport = async (format: 'csv' | 'json' | 'excel') => {
                   <template #header>
                      <h3>Range</h3>
                   </template>
-                  <ChSlider v-model="rangeValue" range :min="0" :max="100" />
-                  <p>Value: {{ rangeValue[0] }} - {{ rangeValue[1] }}</p>
+                 <ChSlider v-model="rangeValue" :min="0" :max="100" show-value />
+                  <p>Value: {{ rangeValue }}</p>
                </ChCard>
 
                <ChCard class="demo-card">
@@ -1002,7 +992,7 @@ const handleExport = async (format: 'csv' | 'json' | 'excel') => {
                <p class="section-description">Cards for displaying key metrics.</p>
 
                <div class="stat-cards-grid">
-                  <ChStatCard v-for="stat in statCards" :key="stat.title" :title="stat.title" :value="stat.value"
+                 <ChStatCard v-for="stat in statCards" :key="stat.label" :label="stat.label" :value="stat.value"
                      :trend="stat.trend" :trend-label="stat.trendLabel" />
                </div>
             </section>
@@ -1170,8 +1160,8 @@ const handleExport = async (format: 'csv' | 'json' | 'excel') => {
                      <h3>Dark Mode Toggle</h3>
                   </template>
                   <div class="theme-demo">
-                     <p>Current theme: {{ isDark ? 'Dark' : 'Light' }}</p>
-                     <ChButton @click="toggleTheme">
+                    <p>Current theme: {{ isDarkMode ? 'Dark' : 'Light' }}</p>
+                     <ChButton @click="toggleDarkMode">
                         Toggle Theme
                      </ChButton>
                   </div>
@@ -1260,7 +1250,7 @@ const handleExport = async (format: 'csv' | 'json' | 'excel') => {
                      <pre>{{ exportData }}</pre>
                      <div class="button-row">
                         <ChButton :loading="isExporting" @click="handleExport('csv')">Export CSV</ChButton>
-                        <ChButton :loading="isExporting" @click="handleExport('json')">Export JSON</ChButton>
+                       <ChButton :loading="isExporting" @click="handleExport('pdf')">Export PDF</ChButton>
                         <ChButton :loading="isExporting" @click="handleExport('excel')">Export Excel</ChButton>
                      </div>
                   </div>
