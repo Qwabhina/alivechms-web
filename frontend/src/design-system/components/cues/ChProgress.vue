@@ -241,7 +241,16 @@ const valueLabel = computed(() =>
   animation: ch-progress-indeterminate 1.4s var(--ch-ease-in-out) infinite;
 }
 
-/* Make the track relative so absolute positioning works for the fill */
+/*
+ * Make the track relative so absolute positioning works for the fill.
+ *
+ * ─── Browser compatibility note ──────────────────────────────────────────
+ * :has() is supported in Chrome 105+, Safari 15.4+, Firefox 121+.
+ * All major evergreen browsers support it as of late 2023. If you need to
+ * support older browsers, add `position: relative` via a JS class toggle
+ * on the track when value is null (indeterminate mode).
+ * See: https://caniuse.com/css-has
+ */
 .ch-progress__track:has(.ch-progress__fill--indeterminate) {
   position: relative;
 }

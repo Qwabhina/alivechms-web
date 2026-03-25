@@ -101,6 +101,21 @@ const positionClass = computed(() => `ch-toast-container--${props.position}`)
       aria-atomic="false"
     >
       <!--
+        ─── Why aria-live="off" on the container? ────────────────────────────
+        Each individual ChToast sets its own role="alert" (for error/warning)
+        or role="status" (for success/info). These roles imply aria-live
+        ("assertive" for alert, "polite" for status).
+
+        If the CONTAINER also had aria-live="polite", screen readers would
+        announce changes at BOTH levels — once for the container's live
+        region detecting a new child, and again for the toast's own role.
+        Setting the container to aria-live="off" prevents this double-
+        announcement. The individual toasts handle their own announcements.
+
+        Do NOT change this to "polite" or "assertive" — it will cause
+        duplicate announcements in VoiceOver, NVDA, and JAWS.
+      -->
+      <!--
         TransitionGroup animates toasts in and out of the DOM.
         `tag="div"` wraps the list in a div (required by TransitionGroup).
         The enter/leave transition classes map to keyframes in animations.css.

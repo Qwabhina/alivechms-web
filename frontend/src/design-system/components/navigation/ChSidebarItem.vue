@@ -123,19 +123,11 @@ const emit = defineEmits<{
  */
 const isOpen = ref(hasActiveChild())
 
-/** Tracks tooltip visibility for collapsed mode */
-const showTooltip = ref(false)
-
-/** Show tooltip only when collapsed and hovering */
-function handleMouseEnter() {
-  if (props.collapsed) {
-    showTooltip.value = true
-  }
-}
-
-function handleMouseLeave() {
-  showTooltip.value = false
-}
+// NOTE: Tooltip in collapsed mode is handled entirely via CSS ::after
+// pseudo-element on the button (using `data-tooltip` attribute). This is
+// more performant than a Vue-rendered tooltip — no reactive state needed,
+// no event handlers, and the CSS approach handles show/hide via :hover
+// with zero JS overhead.
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
@@ -276,8 +268,6 @@ function handleClick() {
       :data-tooltip="collapsed ? item.label : undefined"
       type="button"
       @click="handleClick"
-      @mouseenter="handleMouseEnter"
-      @mouseleave="handleMouseLeave"
     >
       <!-- Icon slot — always visible even in collapsed mode -->
       <span v-if="item.icon" class="ch-sidebar-item__icon" aria-hidden="true">
@@ -287,13 +277,6 @@ function handleClick() {
       <!-- Fallback dot if no icon provided -->
       <span v-else class="ch-sidebar-item__dot" aria-hidden="true" />
 
-      <!-- Tooltip — shown on hover in collapsed mode -->
-      <span
-        v-if="showTooltip && collapsed"
-        class="ch-sidebar-item__tooltip"
-      >
-        {{ item.label }}
-      </span>
 
       <!--
         Label + badge — hidden in collapsed mode via CSS `display: none`.
@@ -521,43 +504,13 @@ function handleClick() {
   display: none;
 }
 
-/* ─── Tooltip (collapsed mode) ───────────────────────────────────────────── */
-.ch-sidebar-item__tooltip {
-  position:         absolute;
-  left:             100%;
-  top:              50%;
-  transform:        translateY(-50%);
-  margin-left:      var(--ch-space-2);
-  padding:          var(--ch-space-1) var(--ch-space-2);
-  background-color: var(--ch-color-bg-strong);
-  color:            var(--ch-color-text);
-  font-size:        var(--ch-text-xs);
-  font-weight:      var(--ch-font-medium);
-  white-space:      nowrap;
-  border-radius:    var(--ch-radius-md);
-  box-shadow:       var(--ch-shadow-md);
-  z-index:          1000;
-  pointer-events:   none;
-  opacity:          0;
-  animation:        ch-tooltip-fade-in var(--ch-duration-fast) forwards;
-}
-
-/* Tooltip arrow */
-.ch-sidebar-item__tooltip::before {
-  content:          '';
-  position:         absolute;
-  right:            100%;
-  top:              50%;
-  transform:        translateY(-50%);
-  border:           4px solid transparent;
-  border-right-color: var(--ch-color-bg-strong);
-}
-
-@keyframes ch-tooltip-fade-in {
-  to {
-    opacity: 1;
-  }
-}
+/*
+ * ─── Tooltip (collapsed mode) ─────────────────────────────────────────────
+ * Tooltip is rendered entirely via CSS ::after pseudo-element below.
+ * A previous Vue-rendered <span> tooltip was removed because both
+ * implementations fired on hover, causing a visual overlap. The CSS
+ * approach is sufficient and more performant (zero JS overhead).
+ */
 
 /* Center the icon when collapsed */
 .ch-sidebar-item--collapsed {

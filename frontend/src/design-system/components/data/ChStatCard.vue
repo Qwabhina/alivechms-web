@@ -290,10 +290,18 @@ const iconClasses = computed(() => [
   gap: var(--ch-space-0_5);
 }
 
-/* Large prominent metric number */
+/* Large prominent metric number.
+ *
+ * ─── Design choice: serif font ──────────────────────────────────────────
+ * Uses --ch-font-display (Lora, a serif typeface) instead of the default
+ * sans-serif. This is intentional: large numeric values feel more
+ * authoritative and distinguished in a serif face, creating visual
+ * hierarchy that separates the primary metric from surrounding UI text.
+ * This is a deliberate departure from the system's sans-serif default
+ * and should NOT be "fixed" to use --ch-font-sans.
+ */
 .ch-stat-card__value {
   font-family: var(--ch-font-display);
-  /* Lora serif for authority */
   font-size: var(--ch-text-3xl);
   /* 30px */
   font-weight: var(--ch-font-semibold);

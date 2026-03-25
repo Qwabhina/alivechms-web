@@ -105,10 +105,14 @@ export function usePullToRefresh(options: UsePullToRefreshOptions) {
       onRefresh,
       threshold = 64,
       maxPull = 120,
-      resistance = 0.4,
+      resistance: rawResistance = 0.4,
       completionDelay = 400,
       requireScrollTop = true,
    } = options
+
+   // Clamp resistance to [0.01, 1]. A value of 0 would result in zero pull
+   // distance (unusable component). Negative values would invert the gesture.
+   const resistance = Math.max(0.01, Math.min(1, rawResistance))
 
    // ── Reactive state ──────────────────────────────────────────────────────────
 

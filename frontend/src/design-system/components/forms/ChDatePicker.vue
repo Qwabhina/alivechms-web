@@ -27,7 +27,7 @@
  *   :min-date="new Date()" :max-date="endOfYear" />
  */
 
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -207,8 +207,7 @@ function open() {
   if (d) viewDate.value = new Date(d.getFullYear(), d.getMonth(), 1)
 }
 
-// ─── Click outside ────────────────────────────────────────────────────────────
-import { onMounted, onUnmounted } from 'vue'
+// Click outside — uses onMounted/onUnmounted imported at the top of this file
 const rootRef = ref<HTMLElement | null>(null)
 
 function onDocClick(e: MouseEvent) {

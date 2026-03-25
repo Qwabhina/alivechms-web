@@ -75,7 +75,7 @@ const darkThemeOverrides: ThemeOverrides = Object.entries(darkSemanticColors).re
   {} as ThemeOverrides
 )
 
-// ─── Module-level singleton ───────────────────────────────────────────────────
+// ─── Module-level singletons ──────────────────────────────────────────────────
 /**
  * The current set of active overrides.
  * Stored as a `ref` so computed properties or watchers can react to changes.
@@ -88,62 +88,98 @@ const darkThemeOverrides: ThemeOverrides = Object.entries(darkSemanticColors).re
  */
 const _overrides = ref<ThemeOverrides>({})
 
+/**
+ * Dark mode state — module-level singleton like _overrides.
+ *
+ * Previously this lived inside useTheme(), which meant every component that
+ * called useTheme() created its own isDarkMode ref, ran checkDarkMode(),
+ * applyDarkMode(), and added a NEW media query listener. This caused:
+ *   1. Listener accumulation (memory leak)
+ *   2. Redundant localStorage reads on every useTheme() call
+ *   3. Redundant DOM writes (classList, style.setProperty) on every call
+ *
+ * Moving to module scope means all of this runs exactly once, when the
+ * module is first imported. All useTheme() consumers share this ref.
+ */
+const _isDarkMode = ref(false)
+
+// ─── Module-level dark mode functions ─────────────────────────────────────────
+// Forward-declared so _checkDarkMode and the media listener can reference
+// applyOverrides/resetTheme. These are defined after useTheme but called at
+// module init, which is fine because JS hoists function declarations.
+
+/**
+ * Reads the saved theme preference or falls back to the system preference.
+ * Runs once at module load time.
+ */
+function _checkDarkMode() {
+  const savedTheme = localStorage.getItem('ch-theme')
+  if (savedTheme === 'dark') {
+    _isDarkMode.value = true
+  } else if (savedTheme === 'light') {
+    _isDarkMode.value = false
+  } else {
+    _isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
+}
+
+/**
+ * Applies or removes dark mode overrides.
+ * Called at module init and when the system preference changes.
+ *
+ * NOTE: This function directly sets CSS vars on :root rather than calling
+ * the composable's applyOverrides/resetTheme, because those are defined
+ * inside useTheme() and aren't available at module scope. Instead we use
+ * the same generateCSSVars + setProperty mechanism directly.
+ */
+function _applyDarkMode(enabled: boolean) {
+  const root = document.documentElement
+  if (enabled) {
+    // Merge dark overrides into _overrides and apply all vars
+    _overrides.value = { ..._overrides.value, ...darkThemeOverrides }
+    const vars = generateCSSVars(_overrides.value)
+    for (const [prop, value] of Object.entries(vars)) {
+      root.style.setProperty(prop, value)
+    }
+    root.classList.add('dark')
+  } else {
+    // Reset to defaults
+    const defaultVars = generateCSSVars({})
+    for (const prop of Object.keys(defaultVars)) {
+      root.style.removeProperty(prop)
+    }
+    _overrides.value = {}
+    for (const [prop, value] of Object.entries(defaultVars)) {
+      root.style.setProperty(prop, value)
+    }
+    root.classList.remove('dark')
+  }
+}
+
+// ─── Module-level initialization ──────────────────────────────────────────────
+// Runs exactly once when the module is first imported. This is the fix for
+// the memory leak: previously each useTheme() call added a new listener.
+_checkDarkMode()
+_applyDarkMode(_isDarkMode.value)
+
+const _mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+_mediaQuery.addEventListener('change', (e: MediaQueryListEvent) => {
+  // Only respond to system preference if user hasn't explicitly set a theme
+  if (!localStorage.getItem('ch-theme')) {
+    _isDarkMode.value = e.matches
+    _applyDarkMode(e.matches)
+  }
+})
+
 // ─── Composable ──────────────────────────────────────────────────────────────
 /**
  * Returns theme control functions and the current overrides state.
  * Can be called from any Vue component or other composable.
+ *
+ * All state is module-level singleton — calling this from multiple components
+ * does NOT create duplicate listeners or redundant DOM operations.
  */
 export function useTheme() {
-  // ─── Dark Mode Detection ────────────────────────────────────────────────────
-  const isDarkMode = ref(false)
-
-  // Check initial dark mode preference (system setting or saved preference)
-  function checkDarkMode() {
-    // Check if user has a saved preference
-    const savedTheme = localStorage.getItem('ch-theme')
-    if (savedTheme === 'dark') {
-      isDarkMode.value = true
-    } else if (savedTheme === 'light') {
-      isDarkMode.value = false
-    } else {
-      // Fallback to system preference
-      isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
-    }
-  }
-
-  // Toggle dark mode
-  function toggleDarkMode() {
-    isDarkMode.value = !isDarkMode.value
-    localStorage.setItem('ch-theme', isDarkMode.value ? 'dark' : 'light')
-    applyDarkMode(isDarkMode.value)
-  }
-
-  // Apply dark mode styles
-  function applyDarkMode(enabled: boolean) {
-    if (enabled) {
-      applyOverrides(darkThemeOverrides)
-      document.documentElement.classList.add('dark')
-    } else {
-      // Remove dark mode overrides by resetting to defaults
-      resetTheme()
-      document.documentElement.classList.remove('dark')
-    }
-  }
-
-  // Initialize dark mode
-  checkDarkMode()
-  applyDarkMode(isDarkMode.value)
-
-  // Listen for system preference changes
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-  const handleSystemThemeChange = (e: MediaQueryListEvent) => {
-    // Only apply system preference if user hasn't explicitly set a theme
-    if (!localStorage.getItem('ch-theme')) {
-      isDarkMode.value = e.matches
-      applyDarkMode(e.matches)
-    }
-  }
-  mediaQuery.addEventListener('change', handleSystemThemeChange)
 
   // ─── applyOverrides ────────────────────────────────────────────────────────
   /**
@@ -296,6 +332,17 @@ export function useTheme() {
     return getComputedStyle(target).getPropertyValue(varName).trim()
   }
 
+  // ─── Dark mode toggle (composable-level wrapper) ─────────────────────────
+  /**
+   * Toggles dark mode on/off. Writes the preference to localStorage and
+   * applies the visual change. Delegates to module-level singletons.
+   */
+  function toggleDarkMode() {
+    _isDarkMode.value = !_isDarkMode.value
+    localStorage.setItem('ch-theme', _isDarkMode.value ? 'dark' : 'light')
+    _applyDarkMode(_isDarkMode.value)
+  }
+
   // ─── Return public API ────────────────────────────────────────────────────
   return {
     applyOverrides,
@@ -315,10 +362,12 @@ export function useTheme() {
     currentOverrides: readonly(_overrides),
 
     /**
-     * Dark mode properties and methods
+     * Dark mode properties and methods.
+     * isDarkMode and toggleDarkMode reference module-level singletons,
+     * so they work identically regardless of which component calls useTheme().
      */
-    isDarkMode: readonly(isDarkMode),
+    isDarkMode: readonly(_isDarkMode),
     toggleDarkMode,
-    applyDarkMode,
+    applyDarkMode: _applyDarkMode,
   }
 }

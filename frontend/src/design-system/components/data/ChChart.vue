@@ -441,8 +441,14 @@ watch(() => props.options, () => updateChart(), { deep: true })
  */
 watch(() => props.loading, (isLoading) => {
   if (!isLoading) {
-    // Use nextTick equivalent — wait one microtask for v-if to render the canvas
-    setTimeout(() => createChart(), 0)
+    // Use nextTick equivalent — wait one microtask for v-if to render the canvas.
+    // Guard: if loading flips false→true→false quickly, the setTimeout from the
+    // first transition can fire after the component unmounts (destroyChart already
+    // nulled chartInstance). Checking canvasRef.value ensures the DOM node still
+    // exists before attempting chart creation.
+    setTimeout(() => {
+      if (canvasRef.value) createChart()
+    }, 0)
   } else {
     destroyChart()
   }

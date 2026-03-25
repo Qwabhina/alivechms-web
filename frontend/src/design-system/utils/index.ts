@@ -246,8 +246,12 @@ export function shuffle<T>(array: T[]): T[] {
    // Spread without cast — TypeScript already infers T[] from T[]
    const result = [...array]
    for (let i = result.length - 1; i > 0; i--) {
+      // j is always in [0, i] and i is always in [1, result.length - 1],
+      // so both result[i] and result[j] are guaranteed to be defined.
+      // Using non-null assertions (!) instead of `as [T, T]` to avoid
+      // suppressing the type checker more broadly than necessary.
       const j = Math.floor(Math.random() * (i + 1))
-         ;[result[i], result[j]] = [result[j], result[i]] as [T, T]
+         ;[result[i], result[j]] = [result[j]!, result[i]!]
    }
    return result
 }

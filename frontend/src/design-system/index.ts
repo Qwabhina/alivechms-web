@@ -119,6 +119,7 @@ export { default as ChTableExportDialog } from './components/data/ChTableExportD
 export { default as ChStatCard }          from './components/data/ChStatCard.vue'
 export { default as ChDataList }          from './components/data/ChDataList.vue'
 export { default as ChChart }             from './components/data/ChChart.vue'
+export { default as ChPagination }        from './components/data/ChPagination.vue'
 
 // ── Forms & Modals ────────────────────────────────────────────────────────────
 export { default as ChFormField }     from './components/forms/ChFormField.vue'
@@ -141,6 +142,7 @@ export { default as ChSkeleton }       from './components/cues/ChSkeleton.vue'
 export { default as ChProgress }       from './components/cues/ChProgress.vue'
 export { default as ChToast }          from './components/cues/ChToast.vue'
 export { default as ChToastContainer } from './components/cues/ChToastContainer.vue'
+export { default as ChAlert }          from './components/cues/ChAlert.vue'
 export { useToast } from './composables/useToast'
 export { useModal }        from './composables/useModal'
 export { useStepperWizard } from './composables/useStepperWizard'
