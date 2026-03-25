@@ -10,9 +10,6 @@ import "@/design-system/styles/animations.css";
 import App from './App.vue'
 import router from './router'
 
-import { useTheme } from "@/design-system";
-const { applyOverrides, toggleDarkMode } = useTheme();
-
 injectCSSVars();
 const app = createApp(App)
 
