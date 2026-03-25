@@ -129,7 +129,7 @@ const formattedTime = computed(() => {
 .ch-timeline-item__dot {
   width:           24px;
   height:          24px;
-  border-radius:   var(--ch-radius-full);
+  border-radius:   var(--ch-radius-none);
   display:         flex;
   align-items:     center;
   justify-content: center;
@@ -146,7 +146,7 @@ const formattedTime = computed(() => {
 .ch-timeline-item__default-dot {
   width:         8px;
   height:        8px;
-  border-radius: var(--ch-radius-full);
+  border-radius: var(--ch-radius-none);
   background:    var(--ch-color-text-subtle);
   transition:    background-color var(--ch-duration-fast) var(--ch-ease-out);
 }

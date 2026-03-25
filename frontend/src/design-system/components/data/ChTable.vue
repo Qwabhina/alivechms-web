@@ -610,7 +610,7 @@ async function handleExport(config: ExportDialogResult) {
   padding:       var(--ch-space-1_5) var(--ch-space-3);
   background:    var(--ch-color-danger-bg);
   border:        1px solid var(--ch-color-danger);
-  border-radius: var(--ch-radius-lg);
+  border-radius: var(--ch-radius-none); /* sharp edge */
   color:         var(--ch-color-danger-fg);
   font-size:     var(--ch-text-xs);
   font-weight:   var(--ch-font-medium);
@@ -638,9 +638,9 @@ async function handleExport(config: ExportDialogResult) {
 /* ─── Table wrapper ───────────────────────────────────────────────────────── */
 .ch-table-wrapper {
   overflow-x:    auto;
-  border:        1px solid var(--ch-color-border);
-  border-radius: var(--ch-radius-xl);
-  box-shadow:    var(--ch-shadow-sm);
+  border:        1px solid var(--ch-color-border-strong);
+  border-radius: var(--ch-radius-none);
+  box-shadow:    var(--ch-shadow-md); /* sharp structural shadow */
 }
 
 /* ─── Table ───────────────────────────────────────────────────────────────── */
@@ -727,7 +727,7 @@ async function handleExport(config: ExportDialogResult) {
 /* ─── Skeleton ────────────────────────────────────────────────────────────── */
 .ch-table__skeleton {
   height:          14px;
-  border-radius:   var(--ch-radius-sm);
+  border-radius:   var(--ch-radius-none);
   background:      linear-gradient(90deg,
     var(--ch-color-bg-muted) 0%, var(--ch-color-bg-subtle) 50%, var(--ch-color-bg-muted) 100%);
   background-size: 200% 100%;

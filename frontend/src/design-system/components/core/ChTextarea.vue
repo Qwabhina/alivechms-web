@@ -330,8 +330,8 @@ function onBlur(e: FocusEvent) {
  */
 .ch-textarea-wrapper {
   background-color: var(--ch-color-surface);
-  border:           1px solid var(--ch-color-border);
-  border-radius:    var(--ch-radius-lg); /* 8px */
+  border:           1px solid var(--ch-color-border-strong);
+  border-radius:    var(--ch-radius-none); /* 0px */
   transition:
     border-color var(--ch-duration-fast) var(--ch-ease-out),
     box-shadow   var(--ch-duration-fast) var(--ch-ease-out);
@@ -345,10 +345,11 @@ function onBlur(e: FocusEvent) {
   overflow: hidden;
 }
 
-/* Focus: brand-colored border + halo (same as ChInput) */
+/* Focus: brand-colored border + sharp outline */
 .ch-textarea-wrapper--focused {
-  border-color: var(--ch-color-border-focus);
-  box-shadow:   0 0 0 3px var(--ch-color-primary-muted);
+  border-color: var(--ch-color-primary);
+  outline:      2px solid var(--ch-color-primary);
+  outline-offset: 1px;
 }
 
 /* Error: danger-colored border */
@@ -356,9 +357,10 @@ function onBlur(e: FocusEvent) {
   border-color: var(--ch-color-danger);
 }
 
-/* Error + focused: danger halo */
+/* Error + focused: danger sharp outline */
 .ch-textarea-wrapper--error.ch-textarea-wrapper--focused {
-  box-shadow: 0 0 0 3px var(--ch-color-danger-bg);
+  outline:      2px solid var(--ch-color-danger);
+  outline-offset: 1px;
 }
 
 .ch-textarea-wrapper--disabled {

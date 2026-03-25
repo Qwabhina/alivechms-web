@@ -137,13 +137,13 @@ const classes = computed(() => [
    * This prevents a 1px layout shift if a bordered variant is toggled dynamically.
    */
   border:        1px solid transparent;
-  border-radius: var(--ch-radius-md); /* 6px by default — overridden by --pill */
+  border-radius: var(--ch-radius-none); /* 0px by default */
 }
 
-/* ─── Pill Shape ──────────────────────────────────────────────────────────── */
-/* Fully rounded sides — the most common badge shape */
+/* ─── Pill Shape (Now Small Radius) ───────────────────────────────────────── */
+/* Previously fully rounded sides, now a subtle 2px rounding to keep the sharp aesthetic */
 .ch-badge--pill {
-  border-radius: var(--ch-radius-full); /* 9999px */
+  border-radius: var(--ch-radius-sm); /* 2px */
 }
 
 /* ─── Sizes ───────────────────────────────────────────────────────────────── */

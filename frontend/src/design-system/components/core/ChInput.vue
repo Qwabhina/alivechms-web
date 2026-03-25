@@ -178,8 +178,8 @@ const wrapperClasses = computed(() => [
 
   {
     // State modifiers
-    'ch-input-wrapper--focused':  isFocused.value, // blue border + focus ring
-    'ch-input-wrapper--error':    hasError.value,  // red border + red focus ring
+    'ch-input-wrapper--focused':  isFocused.value, // primary border + sharp outline
+    'ch-input-wrapper--error':    hasError.value,  // red border + red outline
     'ch-input-wrapper--disabled': props.disabled,  // dimmed background
     'ch-input-wrapper--readonly': props.readonly,  // subtle background
 
@@ -323,51 +323,48 @@ function onClear() {
 <style scoped>
 /* ─── Wrapper ─────────────────────────────────────────────────────────────── */
 .ch-input-wrapper {
-  position:         relative;     /* for any absolutely-positioned children later */
-  display:          flex;         /* row: [leading] [input] [clear/trailing] */
-  align-items:      center;       /* vertically center all children */
-  background-color: var(--ch-color-surface);  /* white */
-  border:           1px solid var(--ch-color-border); /* neutral-200 */
-  border-radius:    var(--ch-radius-lg);              /* 8px */
+  position:         relative;
+  display:          flex;
+  align-items:      center;
+  background-color: var(--ch-color-surface);
+  border:           1px solid var(--ch-color-border-strong);
+  border-radius:    var(--ch-radius-none); /* 0px */
 
-  /*
-   * Transition both `border-color` and `box-shadow` together.
-   * The focus ring is a box-shadow (not an outline) so it stays
-   * inside the border-radius shape.
-   */
   transition:
     border-color var(--ch-duration-fast) var(--ch-ease-out),
     box-shadow   var(--ch-duration-fast) var(--ch-ease-out);
 }
 
-/* Focus state: brand-colored border + soft glowing halo */
-.ch-input-wrapper--focused {
-  border-color: var(--ch-color-border-focus); /* primary-500 */
-  /*
-   * `0 0 0 3px` = no offset, no blur, 3px spread.
-   * Spread-only box-shadow creates an even outline — the focus "ring".
-   * Using box-shadow instead of outline lets it respect border-radius.
-   */
-  box-shadow: 0 0 0 3px var(--ch-color-primary-muted);
+/* Hover state */
+.ch-input-wrapper:hover:not(.ch-input-wrapper--disabled) {
+  border-color: var(--ch-color-border-focus);
 }
 
-/* Error state: swap border to danger color */
+/* Focus state: brand-colored border + sharp outline */
+.ch-input-wrapper--focused {
+  border-color: var(--ch-color-primary);
+  outline:      2px solid var(--ch-color-primary);
+  outline-offset: 1px;
+}
+
+/* Error state */
 .ch-input-wrapper--error {
   border-color: var(--ch-color-danger);
 }
 
-/* Error + focused: keep danger border, use danger-tinted halo */
+/* Error + focused: danger sharp outline */
 .ch-input-wrapper--error.ch-input-wrapper--focused {
-  box-shadow: 0 0 0 3px var(--ch-color-danger-bg);
+  outline:      2px solid var(--ch-color-danger);
+  outline-offset: 1px;
 }
 
-/* Disabled: subtle gray background to signal non-interactivity */
+/* Disabled */
 .ch-input-wrapper--disabled {
   background-color: var(--ch-color-bg-subtle);
   cursor:           not-allowed;
 }
 
-/* Readonly: same visual as disabled but with default cursor */
+/* Readonly */
 .ch-input-wrapper--readonly {
   background-color: var(--ch-color-bg-subtle);
 }

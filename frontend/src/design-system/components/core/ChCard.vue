@@ -183,31 +183,21 @@ const classes = computed(() => [
 
 <style scoped>
 /* ─── Base ────────────────────────────────────────────────────────────────── */
+/* ─── Base ────────────────────────────────────────────────────────────────── */
 .ch-card {
-  background-color: var(--ch-color-surface); /* white */
-  border-radius:    var(--ch-radius-xl);     /* 12px — softer than buttons */
+  background-color: var(--ch-color-surface);
+  border-radius:    var(--ch-radius-none); /* 0px */
+  overflow:         hidden;
 
-  /*
-   * `overflow: hidden` clips child content to the card's rounded corners.
-   * Without this, a full-bleed image or table inside the card would
-   * have square corners that stick out beyond the card's rounded ones.
-   */
-  overflow: hidden;
-
-  /*
-   * Transitions for hover/active states.
-   * `transform` animates the lift effect.
-   * `border-color` animates the border darkening on hover.
-   */
   transition:
-    box-shadow   var(--ch-duration-normal) var(--ch-ease-out),
-    transform    var(--ch-duration-normal) var(--ch-ease-out),
-    border-color var(--ch-duration-normal) var(--ch-ease-out);
+    box-shadow   var(--ch-duration-fast) var(--ch-ease-out),
+    transform    var(--ch-duration-fast) var(--ch-ease-out),
+    border-color var(--ch-duration-fast) var(--ch-ease-out);
 }
 
 /* ─── Border ──────────────────────────────────────────────────────────────── */
 .ch-card--bordered {
-  border: 1px solid var(--ch-color-border); /* subtle 1px edge */
+  border: 1px solid var(--ch-color-border-strong);
 }
 
 /* ─── Shadows ─────────────────────────────────────────────────────────────── */
@@ -217,35 +207,22 @@ const classes = computed(() => [
 .ch-card--shadow-lg   { box-shadow: var(--ch-shadow-lg); }
 
 /* ─── Hover / Clickable ───────────────────────────────────────────────────── */
-/*
- * On hover, three things happen:
- *   1. Shadow deepens — card appears to lift off the page
- *   2. Border darkens — subtle edge highlight
- *   3. translateY(-1px) — a 1px upward shift reinforces the "lifting" illusion
- *
- * This combination creates a convincing depth effect with minimal movement.
- */
 .ch-card--hoverable:hover {
-  box-shadow:   var(--ch-shadow-md);
-  border-color: var(--ch-color-border-strong);
-  transform:    translateY(-1px);
+  box-shadow:   var(--ch-shadow-lg);
+  border-color: var(--ch-color-border-focus);
+  transform:    translate(-2px, -2px);
 }
 
 .ch-card--clickable {
   cursor:      pointer;
-  user-select: none; /* prevent text selection on rapid clicks */
+  user-select: none;
 }
 
-/*
- * On click/press, reverse the lift — card "settles" back down.
- * This gives physical button-like feedback.
- */
 .ch-card--clickable:active {
-  transform:  translateY(0);
-  box-shadow: var(--ch-shadow-sm);
+  transform:  translate(2px, 2px);
+  box-shadow: none;
 }
 
-/* Keyboard focus ring for accessible clickable cards */
 .ch-card--clickable:focus-visible {
   outline:        2px solid var(--ch-color-border-focus);
   outline-offset: 2px;

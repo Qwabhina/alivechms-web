@@ -332,11 +332,10 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
   align-items:   center;
   gap:           var(--ch-space-2);
   background:    var(--ch-color-surface);
-  border:        1px solid var(--ch-color-border);
-  border-radius: var(--ch-radius-lg);
+  border:        1px solid var(--ch-color-border-strong);
+  border-radius: var(--ch-radius-none);
   cursor:        pointer;
-  transition:    border-color var(--ch-duration-fast) var(--ch-ease-out),
-                 box-shadow   var(--ch-duration-fast) var(--ch-ease-out);
+  transition:    border-color var(--ch-duration-fast) var(--ch-ease-out);
 }
 
 .ch-datepicker--sm .ch-datepicker__trigger { padding: var(--ch-space-1_5) var(--ch-space-3);   min-height: 32px; font-size: var(--ch-text-xs); }
@@ -346,10 +345,12 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
 .ch-datepicker__trigger:focus-within,
 .ch-datepicker--open .ch-datepicker__trigger {
   border-color: var(--ch-color-border-focus);
-  box-shadow:   0 0 0 3px var(--ch-color-primary-muted);
-  outline:      none;
+  outline:      2px solid var(--ch-color-primary);
+  outline-offset: -1px;
 }
 .ch-datepicker--error .ch-datepicker__trigger { border-color: var(--ch-color-danger); }
+.ch-datepicker--error .ch-datepicker__trigger:focus-within,
+.ch-datepicker--error.ch-datepicker--open .ch-datepicker__trigger { outline: 2px solid var(--ch-color-danger); outline-offset: -1px; }
 .ch-datepicker--disabled .ch-datepicker__trigger { opacity: 0.5; cursor: not-allowed; }
 
 .ch-datepicker__icon    { color: var(--ch-color-text-subtle); flex-shrink: 0; }
@@ -369,9 +370,9 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
   top:           calc(100% + var(--ch-space-1));
   left:          0;
   background:    var(--ch-color-surface);
-  border:        1px solid var(--ch-color-border);
-  border-radius: var(--ch-radius-xl);
-  box-shadow:    var(--ch-shadow-lg);
+  border:        1px solid var(--ch-color-border-strong);
+  border-radius: var(--ch-radius-none);
+  box-shadow:    var(--ch-shadow-xl);
   z-index:       var(--ch-z-dropdown);
   padding:       var(--ch-space-4);
   width:         280px;
@@ -395,7 +396,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
 .ch-datepicker__nav-btn {
   background: none; border: none; cursor: pointer;
   color: var(--ch-color-text-subtle); display: flex; align-items: center;
-  padding: var(--ch-space-1); border-radius: var(--ch-radius-md);
+  padding: var(--ch-space-1); border-radius: var(--ch-radius-none);
   transition: color var(--ch-duration-fast) var(--ch-ease-out),
               background-color var(--ch-duration-fast) var(--ch-ease-out);
 }
@@ -424,7 +425,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
   display:         flex;
   align-items:     center;
   justify-content: center;
-  border-radius:   var(--ch-radius-md);
+  border-radius:   var(--ch-radius-none);
   cursor:          pointer;
   transition:      background-color var(--ch-duration-fast) var(--ch-ease-out);
   aspect-ratio:    1;
@@ -442,7 +443,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
 .ch-datepicker__day--range-start,
 .ch-datepicker__day--range-end {
   background: var(--ch-color-primary);
-  border-radius: var(--ch-radius-full);
+  border-radius: var(--ch-radius-none);
 }
 .ch-datepicker__day--selected .ch-datepicker__day-num,
 .ch-datepicker__day--range-start .ch-datepicker__day-num,
@@ -450,8 +451,8 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
   color: white;
 }
 .ch-datepicker__day--in-range { background: var(--ch-color-primary-subtle); border-radius: 0; }
-.ch-datepicker__day--range-start { border-radius: var(--ch-radius-full) 0 0 var(--ch-radius-full); }
-.ch-datepicker__day--range-end   { border-radius: 0 var(--ch-radius-full) var(--ch-radius-full) 0; }
+.ch-datepicker__day--range-start { border-radius: 0; }
+.ch-datepicker__day--range-end   { border-radius: 0; }
 .ch-datepicker__day--disabled { opacity: 0.3; cursor: not-allowed; }
 
 .ch-datepicker__day-num { font-size: var(--ch-text-xs); color: var(--ch-color-text); line-height: 1; }

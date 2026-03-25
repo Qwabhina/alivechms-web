@@ -245,11 +245,11 @@ function stepStatus(idx: number): 'complete' | 'active' | 'upcoming' {
 .ch-stepper__indicator {
   width:           32px;
   height:          32px;
-  border-radius:   var(--ch-radius-full);
+  border-radius:   var(--ch-radius-none);
   display:         flex;
   align-items:     center;
   justify-content: center;
-  border:          2px solid var(--ch-color-border);
+  border:          2px solid var(--ch-color-border-strong);
   background:      var(--ch-color-surface);
   color:           var(--ch-color-text-subtle);
   font-size:       var(--ch-text-sm);
@@ -266,7 +266,8 @@ function stepStatus(idx: number): 'complete' | 'active' | 'upcoming' {
   border-color:     var(--ch-color-primary);
   color:            var(--ch-color-primary);
   background:       var(--ch-color-primary-subtle);
-  box-shadow:       0 0 0 4px var(--ch-color-primary-muted);
+  outline:          2px solid var(--ch-color-primary);
+  outline-offset:   2px;
 }
 
 .ch-stepper__step--complete .ch-stepper__indicator {
@@ -325,8 +326,8 @@ function stepStatus(idx: number): 'complete' | 'active' | 'upcoming' {
   font-size:     0.625rem;
   color:         var(--ch-color-text-subtle);
   background:    var(--ch-color-bg-muted);
-  border:        1px solid var(--ch-color-border);
-  border-radius: var(--ch-radius-full);
+  border:        1px solid var(--ch-color-border-strong);
+  border-radius: var(--ch-radius-none);
   padding:       1px var(--ch-space-1_5);
 }
 
@@ -348,7 +349,7 @@ function stepStatus(idx: number): 'complete' | 'active' | 'upcoming' {
   padding:       var(--ch-space-3) var(--ch-space-4);
   background:    var(--ch-color-danger-bg);
   border:        1px solid var(--ch-color-danger);
-  border-radius: var(--ch-radius-lg);
+  border-radius: var(--ch-radius-none);
   color:         var(--ch-color-danger-fg);
   font-size:     var(--ch-text-sm);
   font-weight:   var(--ch-font-medium);
@@ -360,7 +361,7 @@ function stepStatus(idx: number): 'complete' | 'active' | 'upcoming' {
   align-items:     center;
   justify-content: space-between;
   padding-top:     var(--ch-space-4);
-  border-top:      1px solid var(--ch-color-border);
+  border-top:      1px solid var(--ch-color-border-strong);
 }
 
 .ch-stepper__footer-right {

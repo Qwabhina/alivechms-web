@@ -364,7 +364,7 @@ function handleKeydown(e: KeyboardEvent, index: number) {
   right:      0;
   height:     2px;
   background: var(--ch-color-primary);
-  border-radius: var(--ch-radius-full) var(--ch-radius-full) 0 0;
+  border-radius: var(--ch-radius-none); /* 0px */
 }
 
 /* Hover underline hint — subtle indicator before the tab is selected */
@@ -376,7 +376,7 @@ function handleKeydown(e: KeyboardEvent, index: number) {
   right:      var(--ch-space-4);
   height:     2px;
   background: var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-full);
+  border-radius: var(--ch-radius-none); /* 0px */
 }
 
 /* ─── Variant: Pills ──────────────────────────────────────────────────────── */
@@ -386,7 +386,7 @@ function handleKeydown(e: KeyboardEvent, index: number) {
  */
 .ch-tabs--pills {
   background-color: var(--ch-color-bg-muted); /* subtle container */
-  border-radius:    var(--ch-radius-xl);
+  border-radius:    var(--ch-radius-none); /* sharp */
   padding:          var(--ch-space-1);
   gap:              var(--ch-space-1);
   align-items:      center;
@@ -394,14 +394,15 @@ function handleKeydown(e: KeyboardEvent, index: number) {
 }
 
 .ch-tabs--pills .ch-tab {
-  border-radius: var(--ch-radius-lg);
+  border-radius: var(--ch-radius-none); /* sharp */
 }
 
-/* Active pill — white background with shadow (lifts off the gray container) */
+/* Active pill — white background with hard shadow (lifts off the gray container) */
 .ch-tabs--pills .ch-tab--active {
   background-color: var(--ch-color-surface);
-  box-shadow:       var(--ch-shadow-sm);
+  box-shadow:       var(--ch-shadow-sm); /* stark offset */
   color:            var(--ch-color-text);
+  border:           1px solid var(--ch-color-border-strong); /* sharp edge */
 }
 
 .ch-tabs--pills .ch-tab:hover:not(:disabled):not(.ch-tab--active) {
@@ -416,29 +417,29 @@ function handleKeydown(e: KeyboardEvent, index: number) {
  * Visually it looks like folder tabs on a desk.
  */
 .ch-tabs--boxed {
-  border-bottom: 1px solid var(--ch-color-border);
+  border-bottom: 2px solid var(--ch-color-border-strong);
   gap:           var(--ch-space-1);
   align-items:   flex-end;
 }
 
 .ch-tabs--boxed .ch-tab {
-  border:        1px solid transparent;
+  border:        2px solid transparent;
   border-bottom: none;
-  border-radius: var(--ch-radius-lg) var(--ch-radius-lg) 0 0; /* only top corners rounded */
-  margin-bottom: -1px; /* overlap the list's border-bottom */
+  border-radius: var(--ch-radius-none); /* 0px corners */
+  margin-bottom: -2px; /* overlap the list's border-bottom */
 }
 
 .ch-tabs--boxed .ch-tab--active {
   background-color: var(--ch-color-surface);
-  border-color:     var(--ch-color-border);
+  border-color:     var(--ch-color-border-strong);
   /* Remove the bottom border so the tab "connects" to the content area below */
-  border-bottom:    1px solid var(--ch-color-surface);
+  border-bottom:    2px solid var(--ch-color-surface);
   color:            var(--ch-color-text);
 }
 
 .ch-tabs--boxed .ch-tab:hover:not(:disabled):not(.ch-tab--active) {
   background-color: var(--ch-color-bg-subtle);
-  border-color:     var(--ch-color-border);
+  border-color:     var(--ch-color-border-strong);
 }
 
 /* ─── Icon ────────────────────────────────────────────────────────────────── */
@@ -458,6 +459,7 @@ function handleKeydown(e: KeyboardEvent, index: number) {
   padding:          0 var(--ch-space-1);
   border-radius:    var(--ch-radius-full);
   background-color: var(--ch-color-bg-muted);
+  border:           1px solid var(--ch-color-border-strong);
   color:            var(--ch-color-text-muted);
   font-size:        0.625rem;  /* 10px */
   font-weight:      var(--ch-font-semibold);
@@ -470,6 +472,7 @@ function handleKeydown(e: KeyboardEvent, index: number) {
 /* Active tab badge gets brand colors */
 .ch-tab--active .ch-tab__badge {
   background-color: var(--ch-color-primary-muted);
+  border-color:     var(--ch-color-primary);
   color:            var(--ch-color-primary);
 }
 </style>

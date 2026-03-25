@@ -221,16 +221,16 @@ const ariaLabel = computed(() => props.alt ?? props.name ?? 'Avatar')
   /* initials should be bold enough to read */
   overflow: hidden;
   /* clip image to the border-radius */
-  border-radius: var(--ch-radius-full);
-  /* circular by default */
+  border-radius: var(--ch-radius-none);
+  /* square by default */
   user-select: none;
   /* can't accidentally select the initials text */
 }
 
-/* Square-ish mode: slightly rounded rectangle instead of circle */
+/* Rounded mode: slightly softer square */
 .ch-avatar--rounded {
-  border-radius: var(--ch-radius-xl);
-  /* 12px */
+  border-radius: var(--ch-radius-sm);
+  /* 2px */
 }
 
 /* ─── Sizes ───────────────────────────────────────────────────────────────── */
@@ -300,8 +300,8 @@ const ariaLabel = computed(() => props.alt ?? props.name ?? 'Avatar')
   min-width: 7px;
   min-height: 7px;
 
-  border-radius: 50%;
-  /* always circular */
+  border-radius: var(--ch-radius-none);
+  /* sharp square */
 
   /*
    * A white border separates the dot from the avatar image,

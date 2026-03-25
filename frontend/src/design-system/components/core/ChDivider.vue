@@ -142,14 +142,15 @@ withDefaults(defineProps<Props>(), {
   flex:              1;        /* equal width lines on both sides of label */
   border-top-width:  1px;
   border-top-style:  var(--_border-style, solid); /* defaults to solid */
-  border-top-color:  var(--ch-color-border);
+  border-top-color:  var(--ch-color-border-strong);
 }
 
 /* Label sits between the two lines with horizontal padding */
 .ch-divider--horizontal .ch-divider__label {
   padding:     0 var(--ch-space-3); /* 12px breathing room on each side of the text */
   white-space: nowrap;               /* prevent the label from wrapping to two lines */
-  color:       var(--ch-color-text-subtle);
+  color:       var(--ch-color-text);
+  font-weight: var(--ch-font-semibold); /* make text sharp and visible */
 }
 
 /* ─── Vertical ────────────────────────────────────────────────────────────── */
@@ -168,7 +169,7 @@ withDefaults(defineProps<Props>(), {
   flex:              1;
   border-left-width: 1px;
   border-left-style: var(--_border-style, solid);
-  border-left-color: var(--ch-color-border);
+  border-left-color: var(--ch-color-border-strong);
 }
 
 /* ─── Border Style Variants ───────────────────────────────────────────────── */

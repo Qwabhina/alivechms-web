@@ -256,7 +256,7 @@ function buildDefaultOptions(): ChartOptions {
         borderColor:     gridColor,
         borderWidth:     1,
         padding:         10,
-        cornerRadius:    8,
+        cornerRadius:    0, /* sharp corners */
         titleFont:       { family: fontFamily, size: fontSize, weight: 'bold' },
         bodyFont:        { family: fontFamily, size: fontSize },
       },
@@ -508,7 +508,7 @@ watch(() => props.loading, (isLoading) => {
 .ch-chart__skeleton {
   width:         100%;
   height:        100%;
-  border-radius: var(--ch-radius-lg);
+  border-radius: var(--ch-radius-none); /* sharp corners */
   background:    linear-gradient(
     90deg,
     var(--ch-color-bg-muted)  0%,

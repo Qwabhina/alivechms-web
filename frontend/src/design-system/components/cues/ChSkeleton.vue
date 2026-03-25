@@ -122,19 +122,19 @@ function resolveStyle(props: Props): Record<string, string> {
 
 /* ─── Shapes ──────────────────────────────────────────────────────────────── */
 .ch-skeleton--line {
-  border-radius: var(--ch-radius-sm);
+  border-radius: var(--ch-radius-none);
 }
 
 .ch-skeleton--block {
-  border-radius: var(--ch-radius-lg);
+  border-radius: var(--ch-radius-none);
 }
 
 .ch-skeleton--badge {
-  border-radius: var(--ch-radius-full);
+  border-radius: var(--ch-radius-none);
 }
 
 .ch-skeleton--circle {
-  border-radius: var(--ch-radius-full);
+  border-radius: var(--ch-radius-none);
 }
 
 /* ─── Shimmer animation ───────────────────────────────────────────────────── */

@@ -139,7 +139,7 @@ const ariaRole = computed(() =>
   align-items:   flex-start;
   gap:           var(--ch-space-3);
   padding:       var(--ch-space-3) var(--ch-space-4);
-  border-radius: var(--ch-radius-lg);
+  border-radius: var(--ch-radius-none);
   border:        1px solid transparent;
   font-family:   var(--ch-font-sans);
   font-size:     var(--ch-text-sm);
@@ -201,7 +201,7 @@ const ariaRole = computed(() =>
   background:   none;
   border:       none;
   padding:      var(--ch-space-1);
-  border-radius: var(--ch-radius-md);
+  border-radius: var(--ch-radius-none);
   cursor:       pointer;
   color:        currentColor;
   opacity:      0.6;

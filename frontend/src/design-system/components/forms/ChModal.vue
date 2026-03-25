@@ -237,9 +237,9 @@ function onBackdropClick() {
 /* ─── Panel ───────────────────────────────────────────────────────────────── */
 .ch-modal {
   background:     var(--ch-color-surface);
-  border:         1px solid var(--ch-color-border);
-  border-radius:  var(--ch-radius-2xl);
-  box-shadow:     var(--ch-shadow-xl);
+  border:         1px solid var(--ch-color-border-strong);
+  border-radius:  var(--ch-radius-none);
+  box-shadow:     var(--ch-shadow-2xl);
   width:          100%;
   display:        flex;
   flex-direction: column;
@@ -270,7 +270,7 @@ function onBackdropClick() {
   justify-content: space-between;
   gap:             var(--ch-space-4);
   padding:         var(--ch-space-6) var(--ch-space-6) var(--ch-space-4);
-  border-bottom:   1px solid var(--ch-color-border);
+  border-bottom:   1px solid var(--ch-color-border-strong);
   flex-shrink:     0;
 }
 
@@ -300,7 +300,7 @@ function onBackdropClick() {
   cursor:        pointer;
   color:         var(--ch-color-text-subtle);
   padding:       var(--ch-space-1);
-  border-radius: var(--ch-radius-md);
+  border-radius: var(--ch-radius-none);
   display:       flex;
   align-items:   center;
   transition:
@@ -328,9 +328,9 @@ function onBackdropClick() {
   justify-content: flex-end;
   gap:             var(--ch-space-2);
   padding:         var(--ch-space-4) var(--ch-space-6);
-  border-top:      1px solid var(--ch-color-border);
+  border-top:      1px solid var(--ch-color-border-strong);
   background:      var(--ch-color-bg-subtle);
-  border-radius:   0 0 var(--ch-radius-2xl) var(--ch-radius-2xl);
+  border-radius:   var(--ch-radius-none);
   flex-shrink:     0;
 }
 

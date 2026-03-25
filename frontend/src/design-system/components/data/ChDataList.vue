@@ -241,7 +241,7 @@ const rootClasses = computed(() => [
 
 /* Divider between items — rendered as border-top on every item except the first */
 .ch-data-list--dividers .ch-data-list__item + .ch-data-list__item {
-  border-top: 1px solid var(--ch-color-border);
+  border-top: 1px solid var(--ch-color-border-strong);
 }
 
 /* ─── Horizontal layout ───────────────────────────────────────────────────── */
@@ -316,7 +316,7 @@ const rootClasses = computed(() => [
 
 .ch-data-list__skeleton {
   height:        14px;
-  border-radius: var(--ch-radius-sm);
+  border-radius: var(--ch-radius-none);
   background:    linear-gradient(
     90deg,
     var(--ch-color-bg-muted)  0%,

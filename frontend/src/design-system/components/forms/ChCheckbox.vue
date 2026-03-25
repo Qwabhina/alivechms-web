@@ -166,7 +166,7 @@ function onChange(event: Event) {
   display:        flex;
   align-items:    center;
   justify-content:center;
-  border-radius:  var(--ch-radius-sm);
+  border-radius:  var(--ch-radius-none);
   border:         1.5px solid var(--ch-color-border-strong);
   background:     var(--ch-color-surface);
   color:          white;
@@ -190,7 +190,8 @@ function onChange(event: Event) {
 
 /* Focus ring on the custom box when native input is focused */
 .ch-checkbox__input:focus-visible + .ch-checkbox__box {
-  box-shadow: 0 0 0 3px var(--ch-color-primary-muted);
+  outline: 2px solid var(--ch-color-primary);
+  outline-offset: 2px;
 }
 
 /* Error state */

@@ -198,7 +198,7 @@ function onChange(e: Event) {
    left: 0;
    height: 100%;
    background-color: var(--ch-color-primary);
-   border-radius: var(--ch-radius-full);
+   border-radius: var(--ch-radius-none);
    pointer-events: none;
    transition: width var(--ch-duration-fast) var(--ch-ease-in-out);
 }
@@ -233,13 +233,13 @@ function onChange(e: Event) {
 .ch-slider__input::-webkit-slider-runnable-track {
    height: 100%;
    background-color: var(--ch-color-border-strong);
-   border-radius: var(--ch-radius-full);
+   border-radius: var(--ch-radius-none);
 }
 
 .ch-slider__input::-moz-range-track {
    height: 100%;
    background-color: var(--ch-color-border-strong);
-   border-radius: var(--ch-radius-full);
+   border-radius: var(--ch-radius-none);
 }
 
 /* ── Thumb styling ── */
@@ -253,7 +253,7 @@ function onChange(e: Event) {
    /* center vertically on the track */
    background-color: var(--ch-color-surface);
    border: 2px solid var(--ch-color-primary);
-   border-radius: var(--ch-radius-full);
+   border-radius: var(--ch-radius-none);
    cursor: pointer;
    box-shadow: var(--ch-shadow-sm);
    transition:
@@ -266,7 +266,7 @@ function onChange(e: Event) {
    height: 20px;
    background-color: var(--ch-color-surface);
    border: 2px solid var(--ch-color-primary);
-   border-radius: var(--ch-radius-full);
+   border-radius: var(--ch-radius-none);
    cursor: pointer;
    box-shadow: var(--ch-shadow-sm);
    transition:

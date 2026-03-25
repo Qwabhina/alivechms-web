@@ -236,8 +236,8 @@ Hidden during loading (spinner replaces it visually).
    * when the border becomes visible (e.g. on focus or hover). */
   border: 1px solid transparent;
 
-  border-radius: var(--ch-radius-lg);
-  /* 8px — rounded but not pill */
+  border-radius: var(--ch-radius-sm);
+  /* 2px — sharp but not a razor edge */
   font-family: var(--ch-font-sans);
   font-weight: var(--ch-font-medium);
   /* 500 — heavier than body, not bold */
@@ -350,39 +350,47 @@ Hidden during loading (spinner replaces it visually).
 /* PRIMARY — Filled with brand color. Use for the one main action. */
 .ch-btn--primary {
   background-color: var(--ch-color-primary);
-  /* brand color fill */
-  border-color: var(--ch-color-primary);
-  /* border matches bg */
+  border-color: var(--ch-color-border-strong);
   color: var(--ch-color-primary-fg);
-  /* white text */
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
-  /* subtle depth */
+  box-shadow: var(--ch-shadow-sm);
 }
 
 .ch-btn--primary:hover:not(:disabled) {
   background-color: var(--ch-color-primary-hover);
   /* slightly darker */
-  border-color: var(--ch-color-primary-hover);
-  box-shadow: 0 2px 6px rgb(0 0 0 / 0.15);
-  /* slightly larger shadow on hover */
+  box-shadow: var(--ch-shadow-md);
+  /* sharp offset shadow expands on hover */
+  transform: translate(-1px, -1px);
 }
 
-/* Focus ring for keyboard navigation — uses a colored halo */
+.ch-btn--primary:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+/* Focus ring for keyboard navigation */
 .ch-btn--primary:focus-visible {
-  box-shadow: 0 0 0 3px var(--ch-color-primary-muted);
+  outline: 2px solid var(--ch-color-primary);
+  outline-offset: 2px;
 }
 
 /* SECONDARY — Neutral fill. Use for alternative/cancel actions. */
 .ch-btn--secondary {
   background-color: var(--ch-color-bg-muted);
-  /* light gray fill */
-  border-color: var(--ch-color-border);
+  border-color: var(--ch-color-border-strong);
   color: var(--ch-color-text);
+  box-shadow: var(--ch-shadow-sm);
 }
 
 .ch-btn--secondary:hover:not(:disabled) {
   background-color: var(--ch-color-bg-subtle);
-  border-color: var(--ch-color-border-strong);
+  box-shadow: var(--ch-shadow-md);
+  transform: translate(-1px, -1px);
+}
+
+.ch-btn--secondary:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: none;
 }
 
 /* OUTLINE — Transparent fill with brand-colored border and text. */
@@ -415,20 +423,25 @@ Hidden during loading (spinner replaces it visually).
 /* DANGER — Red-filled. Reserve exclusively for destructive actions. */
 .ch-btn--danger {
   background-color: var(--ch-color-danger);
-  border-color: var(--ch-color-danger);
+  border-color: var(--ch-color-border-strong);
   color: #fff;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+  box-shadow: var(--ch-shadow-sm);
 }
 
 .ch-btn--danger:hover:not(:disabled) {
-  /* `brightness(0.9)` darkens the fill by 10% without needing a separate
-   * hover color token for danger — convenient for semantic colors. */
   filter: brightness(0.9);
+  box-shadow: var(--ch-shadow-md);
+  transform: translate(-1px, -1px);
+}
+
+.ch-btn--danger:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: none;
 }
 
 .ch-btn--danger:focus-visible {
-  box-shadow: 0 0 0 3px var(--ch-color-danger-bg);
-  /* red-tinted halo */
+  outline: 2px solid var(--ch-color-danger);
+  outline-offset: 2px;
 }
 
 /* ─── Loading State ───────────────────────────────────────────────────────── */

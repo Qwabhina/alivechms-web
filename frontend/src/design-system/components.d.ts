@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ChAlert: typeof import('./components/cues/ChAlert.vue')['default']
     ChAvatar: typeof import('./components/core/ChAvatar.vue')['default']
     ChBadge: typeof import('./components/core/ChBadge.vue')['default']
     ChButton: typeof import('./components/core/ChButton.vue')['default']
@@ -24,6 +25,7 @@ declare module 'vue' {
     ChFormField: typeof import('./components/forms/ChFormField.vue')['default']
     ChInput: typeof import('./components/core/ChInput.vue')['default']
     ChModal: typeof import('./components/forms/ChModal.vue')['default']
+    ChPagination: typeof import('./components/data/ChPagination.vue')['default']
     ChProgress: typeof import('./components/cues/ChProgress.vue')['default']
     ChPullToRefresh: typeof import('./components/cues/ChPullToRefresh.vue')['default']
     ChRadio: typeof import('./components/forms/ChRadio.vue')['default']

@@ -380,8 +380,8 @@ function closeDrawer() {
   flex-direction:column;
   overflow:      hidden;            /* clip content during width animation */
 
-  background-color: var(--ch-color-bg-subtle); /* slightly off-white */
-  border-right:     1px solid var(--ch-color-border);
+  background-color: var(--ch-color-surface); /* stark solid white */
+  border-right:     1px solid var(--ch-color-border-strong);
 }
 
 /* Collapsed: shrink to icon-only width */

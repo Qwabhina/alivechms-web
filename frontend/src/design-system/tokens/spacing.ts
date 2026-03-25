@@ -54,88 +54,61 @@ export const spacing = {
 
 // ─── Border Radius ────────────────────────────────────────────────────────────
 /**
- * Controls the roundness of corners on components.
- * Consistent use of this scale prevents a mix of sharp and rounded
- * elements that would look visually inconsistent.
- *
- * Usage patterns:
- *   - Inputs, buttons, badges → `radius-lg` or `radius-full`
- *   - Cards, panels           → `radius-xl`
- *   - Modals, large surfaces  → `radius-2xl`
- *   - Avatars, icons          → `radius-full`
+ * Controls the roundness of corners.
+ * This restyle uses a sharp, modern geometric aesthetic. Most elements
+ * are completely square (0px).
  */
 export const radius = {
-  'radius-none': '0px',      // Sharp corners — tables, code blocks
-  'radius-sm':   '0.25rem',  //  4px — very slight rounding (checkboxes)
-  'radius-md':   '0.375rem', //  6px — subtle rounding
-  'radius-lg':   '0.5rem',   //  8px — ★ default for inputs, buttons
-  'radius-xl':   '0.75rem',  // 12px — cards, panels
-  'radius-2xl':  '1rem',     // 16px — large cards, modals
-  'radius-3xl':  '1.5rem',   // 24px — extra-rounded containers
-  'radius-full': '9999px',   // Fully circular — avatars, pills, dots
+  'radius-none': '0px',      // Sharp corners — default for almost everything
+  'radius-sm':   '0px',      // Overridden to 0px for consistency
+  'radius-md':   '0px',      // Overridden to 0px for consistency
+  'radius-lg':   '0px',      // Overridden to 0px for consistency
+  'radius-xl':   '0px',      // Overridden to 0px for consistency
+  'radius-2xl':  '0px',      // Overridden to 0px for consistency
+  'radius-3xl':  '0px',      // Overridden to 0px for consistency
+  'radius-full': '9999px',   // Kept for true circles (avatars, radio buttons, dots)
 } as const
 
 // ─── Shadows (Elevation System) ───────────────────────────────────────────────
 /**
- * Box shadows that represent the elevation of a surface above the page.
- * Higher elevation = larger, softer shadow.
- *
- * Elevation map:
- *   none  → flat (no depth, e.g. table rows)
- *   xs    → barely lifted (e.g. badge, chip)
- *   sm    → default card
- *   md    → hovered card, dropdown
- *   lg    → modal backdrop, sticky nav
- *   xl    → side drawer, command palette
- *   2xl   → floating action elements
- *   inner → inset well (e.g. pressed input, inset panel)
+ * Box shadows that represent the elevation of a surface.
+ * For the sharp aesthetic, these are solid, unblurred offset shadows
+ * (brutalism-lite) rather than soft diffuse shadows.
  */
 export const shadows = {
   'shadow-none':  'none',
-  'shadow-xs':    '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-  'shadow-sm':    '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
-  'shadow-md':    '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
-  'shadow-lg':    '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
-  'shadow-xl':    '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
-  'shadow-2xl':   '0 25px 50px -12px rgb(0 0 0 / 0.25)',
-  'shadow-inner': 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
+  'shadow-xs':    '1px 1px 0px 0px rgba(0, 0, 0, 1)',
+  'shadow-sm':    '2px 2px 0px 0px rgba(0, 0, 0, 1)',
+  'shadow-md':    '4px 4px 0px 0px rgba(0, 0, 0, 1)',
+  'shadow-lg':    '8px 8px 0px 0px rgba(0, 0, 0, 1)',
+  'shadow-xl':    '12px 12px 0px 0px rgba(0, 0, 0, 1)',
+  'shadow-2xl':   '16px 16px 0px 0px rgba(0, 0, 0, 1)',
+  'shadow-inner': 'inset 2px 2px 0px 0px rgba(0, 0, 0, 0.1)',
 } as const
 
 // ─── Transitions ──────────────────────────────────────────────────────────────
 /**
  * Duration and easing tokens for CSS transitions and animations.
- *
- * ─── Durations ───────────────────────────────────────────────────────────────
- * Use shorter durations for small, frequent interactions (hover, toggle),
- * and longer ones for larger layout changes (modals, page transitions).
- *
- * ─── Easings ─────────────────────────────────────────────────────────────────
- * CSS `cubic-bezier(x1, y1, x2, y2)` defines the acceleration curve:
- *   - `ease-in`     → starts slow, ends fast (entering animations look weighted)
- *   - `ease-out`    → starts fast, ends slow (★ most natural for UI transitions)
- *   - `ease-in-out` → symmetric — slow start and end (good for back/forth)
- *   - `ease-spring` → overshoots slightly, then settles (playful, physical feel)
- *   - `ease-bounce` → more aggressive overshoot (use sparingly — notifications)
- *   - `ease-smooth` → very gentle ease-out (subtle background changes)
+ * Tuned for a fast, snappy, and mechanical feel.
  */
 export const transitions = {
   // Durations
-  'duration-instant':  '50ms',  // Near-instant feedback (toggle switches)
-  'duration-fast':     '100ms', // ★ Default hover state transitions
-  'duration-normal':   '150ms', // ★ Default component transitions (open/close)
-  'duration-moderate': '200ms', // Slightly slower — menus, tooltips
-  'duration-slow':     '300ms', // Modal open/close, page transitions
-  'duration-slower':   '400ms', // Complex multi-part animations
-  'duration-slowest':  '500ms', // Rare — large layout shifts
+  'duration-instant':  '0ms',   // Instant feedback
+  'duration-fast':     '50ms',  // Extremely snappy
+  'duration-normal':   '100ms', // Default component transitions
+  'duration-moderate': '150ms', // Menus, tooltips
+  'duration-slow':     '200ms', // Modal open/close
+  'duration-slower':   '300ms', // Complex animations
+  'duration-slowest':  '400ms',
 
-  // Easings — cubic-bezier values
-  'ease-linear':  'linear',                        // Constant speed — progress bars
-  'ease-in':      'cubic-bezier(0.4, 0, 1, 1)',    // Accelerates into end
-  'ease-out':     'cubic-bezier(0, 0, 0.2, 1)',    // ★ Decelerates to rest (most UI)
-  'ease-in-out':  'cubic-bezier(0.4, 0, 0.2, 1)', // Symmetric — sliders, scrubbing
-  'ease-spring':  'cubic-bezier(0.34, 1.56, 0.64, 1)', // Slight overshoot — modals
-  'ease-bounce':  'cubic-bezier(0.68, -0.55, 0.265, 1.55)', // Playful — badges
-  'ease-smooth':  'cubic-bezier(0.25, 0.46, 0.45, 0.94)',   // Very gentle ease-out
+  // Easings
+  'ease-linear':  'linear',
+  'ease-in':      'cubic-bezier(0.4, 0, 1, 1)',
+  'ease-out':     'cubic-bezier(0, 0, 0.2, 1)',
+  'ease-in-out':  'cubic-bezier(0.4, 0, 0.2, 1)',
+  'ease-spring':  'cubic-bezier(0.175, 0.885, 0.32, 1.275)', // Snappy spring
+  'ease-bounce':  'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+  'ease-smooth':  'cubic-bezier(0.23, 1, 0.32, 1)',
 } as const
 
 // ─── Z-index Scale ────────────────────────────────────────────────────────────

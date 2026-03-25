@@ -177,22 +177,22 @@ const iconClasses = computed(() => [
 /* ─── Card shell ──────────────────────────────────────────────────────────── */
 .ch-stat-card {
   background-color: var(--ch-color-surface);
-  border: 1px solid var(--ch-color-border);
-  border-radius: var(--ch-radius-xl);
+  border: 1px solid var(--ch-color-border-strong);
+  border-radius: var(--ch-radius-none);
   padding: var(--ch-space-5);
-  box-shadow: var(--ch-shadow-sm);
+  box-shadow: var(--ch-shadow-md);
   display: flex;
   flex-direction: column;
   gap: var(--ch-space-3);
   transition:
-    box-shadow var(--ch-duration-normal) var(--ch-ease-out),
-    transform var(--ch-duration-normal) var(--ch-ease-out);
+    box-shadow var(--ch-duration-fast) var(--ch-ease-out),
+    transform var(--ch-duration-fast) var(--ch-ease-out);
 }
 
-/* Subtle lift on hover — cards feel interactive without being clickable */
+/* Sudden lift on hover — sharp tactile feel */
 .ch-stat-card:hover {
-  box-shadow: var(--ch-shadow-md);
-  transform: translateY(-1px);
+  box-shadow: var(--ch-shadow-lg);
+  transform: translate(-2px, -2px);
 }
 
 /* ─── Top row ─────────────────────────────────────────────────────────────── */
@@ -206,7 +206,7 @@ const iconClasses = computed(() => [
 .ch-stat-card__icon {
   width: 40px;
   height: 40px;
-  border-radius: var(--ch-radius-lg);
+  border-radius: var(--ch-radius-none);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -257,7 +257,7 @@ const iconClasses = computed(() => [
   font-size: var(--ch-text-xs);
   font-weight: var(--ch-font-medium);
   padding: var(--ch-space-1) var(--ch-space-2);
-  border-radius: var(--ch-radius-full);
+  border-radius: var(--ch-radius-none);
   line-height: 1;
 }
 
@@ -331,7 +331,7 @@ const iconClasses = computed(() => [
  * background-size: 200% ensures the gradient is wide enough to sweep fully.
  */
 .ch-stat-card__skeleton {
-  border-radius: var(--ch-radius-md);
+  border-radius: var(--ch-radius-none);
   background: linear-gradient(90deg,
       var(--ch-color-bg-muted) 0%,
       var(--ch-color-bg-subtle) 50%,

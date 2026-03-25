@@ -138,7 +138,8 @@ function onChange() {
 
 /* Focus ring */
 .ch-radio__input:focus-visible ~ .ch-radio__circle {
-  box-shadow: 0 0 0 3px var(--ch-color-primary-muted);
+  outline: 2px solid var(--ch-color-primary);
+  outline-offset: 2px;
 }
 
 /* Error */

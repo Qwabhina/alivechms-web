@@ -108,12 +108,13 @@ function toggle() {
 
 /* ─── Focus ring on the track ─────────────────────────────────────────────── */
 .ch-switch:focus-visible .ch-switch__track {
-   box-shadow: 0 0 0 3px var(--ch-color-primary-muted);
-   outline: none;
+   outline: 2px solid var(--ch-color-primary);
+   outline-offset: 2px;
 }
 
 .ch-switch--error:focus-visible .ch-switch__track {
-   box-shadow: 0 0 0 3px var(--ch-color-danger-bg);
+   outline: 2px solid var(--ch-color-danger);
+   outline-offset: 2px;
 }
 
 /* ─── Track ───────────────────────────────────────────────────────────────── */
@@ -121,7 +122,7 @@ function toggle() {
    position: relative;
    flex-shrink: 0;
    background-color: var(--ch-color-border-strong);
-   border-radius: var(--ch-radius-full);
+   border-radius: var(--ch-radius-none);
    transition: background-color var(--ch-duration-fast) var(--ch-ease-out);
 }
 
@@ -152,7 +153,7 @@ function toggle() {
    top: 3px;
    left: 3px;
    background-color: var(--ch-color-surface);
-   border-radius: var(--ch-radius-full);
+   border-radius: var(--ch-radius-none);
    box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
    /*
    * Use duration-instant (50ms) — defined in spacing.ts specifically for

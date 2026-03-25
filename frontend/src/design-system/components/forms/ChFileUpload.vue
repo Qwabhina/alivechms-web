@@ -281,8 +281,8 @@ function onDrop(e: DragEvent) {
    align-items: center;
    gap: var(--ch-space-3);
    padding: var(--ch-space-8) var(--ch-space-6);
-   border: 2px dashed var(--ch-color-border);
-   border-radius: var(--ch-radius-xl);
+   border: 2px dashed var(--ch-color-border-strong);
+   border-radius: var(--ch-radius-none);
    background-color: var(--ch-color-bg-subtle);
    cursor: pointer;
    text-align: center;
@@ -303,11 +303,11 @@ function onDrop(e: DragEvent) {
    outline: none;
 }
 
-/* Active drag state */
 .ch-file-upload__zone--dragging {
    border-color: var(--ch-color-primary);
    background-color: var(--ch-color-primary-subtle);
-   box-shadow: 0 0 0 3px var(--ch-color-primary-muted);
+   outline: 2px solid var(--ch-color-primary);
+   outline-offset: -2px;
 }
 
 .ch-file-upload__zone--has-error {
@@ -339,7 +339,7 @@ function onDrop(e: DragEvent) {
    background-color: var(--ch-color-primary);
    color: white;
    border: none;
-   border-radius: var(--ch-radius-lg);
+   border-radius: var(--ch-radius-none);
    font-family: var(--ch-font-sans);
    font-size: var(--ch-text-sm);
    font-weight: var(--ch-font-medium);
@@ -401,8 +401,8 @@ function onDrop(e: DragEvent) {
    gap: var(--ch-space-2_5);
    padding: var(--ch-space-2_5) var(--ch-space-3);
    background-color: var(--ch-color-bg-muted);
-   border: 1px solid var(--ch-color-border);
-   border-radius: var(--ch-radius-lg);
+   border: 1px solid var(--ch-color-border-strong);
+   border-radius: var(--ch-radius-none);
 }
 
 .ch-file-upload__file-icon {
@@ -442,7 +442,7 @@ function onDrop(e: DragEvent) {
    padding: var(--ch-space-1);
    cursor: pointer;
    color: var(--ch-color-text-subtle);
-   border-radius: var(--ch-radius-md);
+   border-radius: var(--ch-radius-none);
    display: flex;
    align-items: center;
    transition:

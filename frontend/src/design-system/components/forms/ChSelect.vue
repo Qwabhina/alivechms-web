@@ -449,8 +449,8 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
   gap:             var(--ch-space-2);
   width:           100%;
   background:      var(--ch-color-surface);
-  border:          1px solid var(--ch-color-border);
-  border-radius:   var(--ch-radius-lg);
+  border:          1px solid var(--ch-color-border-strong);
+  border-radius:   var(--ch-radius-none);
   cursor:          pointer;
   transition:
     border-color var(--ch-duration-fast) var(--ch-ease-out),
@@ -465,13 +465,13 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
 /* States */
 .ch-select--open .ch-select__trigger,
 .ch-select__trigger:focus {
-  outline:     none;
-  border-color:var(--ch-color-border-focus);
-  box-shadow:  0 0 0 3px var(--ch-color-primary-muted);
+  outline:        2px solid var(--ch-color-primary);
+  outline-offset: -1px;
+  border-color:   var(--ch-color-border-focus);
 }
 
 .ch-select--error .ch-select__trigger { border-color: var(--ch-color-danger); }
-.ch-select--error .ch-select__trigger:focus { box-shadow: 0 0 0 3px var(--ch-color-danger-bg); }
+.ch-select--error .ch-select__trigger:focus { outline: 2px solid var(--ch-color-danger); outline-offset: -1px; }
 .ch-select--disabled .ch-select__trigger { opacity: 0.5; cursor: not-allowed; background: var(--ch-color-bg-subtle); }
 
 /* ─── Display / placeholder ───────────────────────────────────────────────── */
@@ -498,9 +498,9 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
   align-items:   center;
   gap:           var(--ch-space-1);
   padding:       2px var(--ch-space-2);
-  background:    var(--ch-color-primary-muted);
+  background:    var(--ch-color-primary-subtle);
   color:         var(--ch-color-primary);
-  border-radius: var(--ch-radius-full);
+  border-radius: var(--ch-radius-none);
   font-size:     var(--ch-text-xs);
   font-weight:   var(--ch-font-medium);
   line-height:   1;
@@ -549,9 +549,9 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
   left:          0;
   right:         0;
   background:    var(--ch-color-surface);
-  border:        1px solid var(--ch-color-border);
-  border-radius: var(--ch-radius-xl);
-  box-shadow:    var(--ch-shadow-lg);
+  border:        1px solid var(--ch-color-border-strong);
+  border-radius: var(--ch-radius-none);
+  box-shadow:    var(--ch-shadow-xl);
   z-index:       var(--ch-z-dropdown);
   overflow:      hidden;
   display:       flex;
@@ -569,8 +569,8 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
   width:       100%;
   padding:     var(--ch-space-1_5) var(--ch-space-3);
   background:  var(--ch-color-bg-subtle);
-  border:      1px solid var(--ch-color-border);
-  border-radius:var(--ch-radius-lg);
+  border:      1px solid var(--ch-color-border-strong);
+  border-radius:var(--ch-radius-none);
   font-family: var(--ch-font-sans);
   font-size:   var(--ch-text-sm);
   color:       var(--ch-color-text);
@@ -596,7 +596,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
   align-items:   center;
   gap:           var(--ch-space-2);
   padding:       var(--ch-space-2) var(--ch-space-3);
-  border-radius: var(--ch-radius-lg);
+  border-radius: var(--ch-radius-none);
   cursor:        pointer;
   transition:    background-color var(--ch-duration-fast) var(--ch-ease-out);
 }

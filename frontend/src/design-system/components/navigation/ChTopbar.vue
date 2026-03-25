@@ -304,11 +304,8 @@ const userInitials = computed(() => {
   height:           64px;              /* matches sidebar header height */
   padding:          0 var(--ch-space-6);
 
-  background-color: var(--ch-color-bg);
-  border-bottom:    1px solid var(--ch-color-border);
-
-  /* Subtle shadow to lift topbar above page content during scroll */
-  box-shadow: var(--ch-shadow-xs);
+  background-color: var(--ch-color-surface);
+  border-bottom:    1px solid var(--ch-color-border-strong);
 }
 
 /* ─── Left Zone ───────────────────────────────────────────────────────────── */
@@ -327,7 +324,7 @@ const userInitials = computed(() => {
   justify-content: center;
   width:        36px;
   height:       36px;
-  border-radius:var(--ch-radius-lg);
+  border-radius:var(--ch-radius-none);
   border:       none;
   background:   transparent;
   color:        var(--ch-color-text-muted);
@@ -392,7 +389,7 @@ const userInitials = computed(() => {
 .ch-topbar__divider {
   width:  1px;
   height: 20px;
-  background-color: var(--ch-color-border);
+  background-color: var(--ch-color-border-strong);
   margin: 0 var(--ch-space-1);
   flex-shrink: 0;
 }
@@ -405,7 +402,7 @@ const userInitials = computed(() => {
   justify-content:center;
   width:          36px;
   height:         36px;
-  border-radius:  var(--ch-radius-lg);
+  border-radius:  var(--ch-radius-none);
   border:         none;
   background:     transparent;
   color:          var(--ch-color-text-muted);
@@ -428,7 +425,7 @@ const userInitials = computed(() => {
   min-width:   16px;
   height:      16px;
   padding:     0 var(--ch-space-1);
-  border-radius: var(--ch-radius-full);
+  border-radius: var(--ch-radius-none);
 
   background-color: var(--ch-color-danger);
   color:            #fff;
@@ -440,7 +437,7 @@ const userInitials = computed(() => {
   justify-content:  center;
 
   /* White border creates visual separation from the bell icon */
-  border:           2px solid var(--ch-color-bg);
+  border:           1px solid var(--ch-color-surface);
 }
 
 /* ─── User Button ─────────────────────────────────────────────────────────── */
@@ -449,7 +446,7 @@ const userInitials = computed(() => {
   align-items:  center;
   gap:          var(--ch-space-2);
   padding:      var(--ch-space-1) var(--ch-space-2);
-  border-radius:var(--ch-radius-lg);
+  border-radius:var(--ch-radius-none);
   border:       none;
   background:   transparent;
   cursor:       pointer;
@@ -465,7 +462,7 @@ const userInitials = computed(() => {
 .ch-topbar__avatar-img {
   width:         32px;
   height:        32px;
-  border-radius: var(--ch-radius-full);
+  border-radius: var(--ch-radius-none);
   object-fit:    cover;
   flex-shrink:   0;
 }
@@ -474,7 +471,7 @@ const userInitials = computed(() => {
 .ch-topbar__avatar-initials {
   width:            32px;
   height:           32px;
-  border-radius:    var(--ch-radius-full);
+  border-radius:    var(--ch-radius-none);
   background-color: var(--ch-color-primary-muted);
   color:            var(--ch-color-primary);
   font-size:        var(--ch-text-xs);
