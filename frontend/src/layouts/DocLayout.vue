@@ -1,20 +1,25 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChSidebar, ChSidebarItem, ChTopbar, ChToastContainer } from '@/design-system'
+import { ChSidebar, ChTopbar, ChToastContainer } from '@/design-system'
 
 const route = useRoute()
 const router = useRouter()
 
 const isSidebarOpen = ref(true)
 
-const sidebarLinks = [
-  { id: 'foundation', label: 'Foundation', to: '/docs/foundation' },
-  { id: 'core', label: 'Core Components', to: '/docs/core' },
-  { id: 'forms', label: 'Forms & Flows', to: '/docs/forms' },
-  { id: 'data', label: 'Data Display', to: '/docs/data' },
-  { id: 'navigation', label: 'Navigation', to: '/docs/navigation' },
-  { id: 'feedback', label: 'UI Cues', to: '/docs/feedback' },
+const sidebarSections = [
+  {
+    label: 'Components',
+    items: [
+      { label: 'Foundation', to: '/docs/foundation' },
+      { label: 'Core', to: '/docs/core' },
+      { label: 'Forms & Flows', to: '/docs/forms' },
+      { label: 'Data Display', to: '/docs/data' },
+      { label: 'Navigation', to: '/docs/navigation' },
+      { label: 'UI Cues', to: '/docs/feedback' },
+    ]
+  }
 ]
 
 const user = {
@@ -23,40 +28,22 @@ const user = {
   avatar: 'https://i.pravatar.cc/150?img=11'
 }
 
-function navigate(to: string) {
+function handleNavigate(to: string) {
   router.push(to)
 }
 </script>
 
 <template>
   <div class="doc-layout">
-    <ChSidebar :collapsed="!isSidebarOpen" class="doc-sidebar">
-      <template #logo>
-        <div class="doc-logo" v-if="isSidebarOpen">AliveCHMS</div>
-        <div class="doc-logo" v-else>DS</div>
-      </template>
-
-      <ChSidebarItem
-        v-for="link in sidebarLinks"
-        :key="link.id"
-        :item="link"
-        :current-route="route.path"
-        :collapsed="!isSidebarOpen"
-        @click="navigate(link.to)"
-      >
-        <template #icon>
-          <div class="nav-dot"></div>
-        </template>
-      </ChSidebarItem>
-    </ChSidebar>
+    <ChSidebar :sections="sidebarSections" :current-route="route.path" :collapsed="!isSidebarOpen"
+      :church-name="'AliveCHMS'" class="doc-sidebar" @navigate="handleNavigate" />
 
     <div class="doc-main">
       <ChTopbar
         :user="user"
-        :notification-count="0"
-        @toggle-sidebar="isSidebarOpen = !isSidebarOpen"
+:notifications="0" @menu-click="isSidebarOpen = !isSidebarOpen"
       >
-        <template #search>
+        <template #title>
           <div class="doc-topbar-title">Design System Docs</div>
         </template>
       </ChTopbar>
