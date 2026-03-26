@@ -59,13 +59,13 @@ export const spacing = {
  * are completely square (0px).
  */
 export const radius = {
-  'radius-none': '0px',      // Sharp corners — default for almost everything
-  'radius-sm':   '0px',      // Overridden to 0px for consistency
-  'radius-md':   '0px',      // Overridden to 0px for consistency
-  'radius-lg':   '0px',      // Overridden to 0px for consistency
-  'radius-xl':   '0px',      // Overridden to 0px for consistency
-  'radius-2xl':  '0px',      // Overridden to 0px for consistency
-  'radius-3xl':  '0px',      // Overridden to 0px for consistency
+  'radius-none': '2px',      // Sharp corners — default for almost everything
+  'radius-sm': '2px',      // Overridden to 0px for consistency
+  'radius-md': '2px',      // Overridden to 0px for consistency
+  'radius-lg': '2px',      // Overridden to 0px for consistency
+  'radius-xl': '2px',      // Overridden to 0px for consistency
+  'radius-2xl': '2px',      // Overridden to 0px for consistency
+  'radius-3xl': '4px',      // Overridden to 0px for consistency
   'radius-full': '9999px',   // Kept for true circles (avatars, radio buttons, dots)
 } as const
 
@@ -93,22 +93,37 @@ export const shadows = {
  */
 export const transitions = {
   // Durations
-  'duration-instant':  '0ms',   // Instant feedback
-  'duration-fast':     '50ms',  // Extremely snappy
-  'duration-normal':   '100ms', // Default component transitions
-  'duration-moderate': '150ms', // Menus, tooltips
-  'duration-slow':     '200ms', // Modal open/close
-  'duration-slower':   '300ms', // Complex animations
-  'duration-slowest':  '400ms',
+  // 'duration-instant':  '0ms',   // Instant feedback
+  // 'duration-fast':     '50ms',  // Extremely snappy
+  // 'duration-normal':   '100ms', // Default component transitions
+  // 'duration-moderate': '150ms', // Menus, tooltips
+  // 'duration-slow':     '200ms', // Modal open/close
+  // 'duration-slower':   '300ms', // Complex animations
+  // 'duration-slowest':  '400ms',
+  'duration-instant': '50ms',  // Near-instant feedback (toggle switches)
+  'duration-fast': '100ms', // ★ Default hover state transitions
+  'duration-normal': '150ms', // ★ Default component transitions (open/close)
+  'duration-moderate': '200ms', // Slightly slower — menus, tooltips
+  'duration-slow': '300ms', // Modal open/close, page transitions
+  'duration-slower': '400ms', // Complex multi-part animations
+  'duration-slowest': '500ms', // Rare — large layout shifts
 
   // Easings
-  'ease-linear':  'linear',
-  'ease-in':      'cubic-bezier(0.4, 0, 1, 1)',
-  'ease-out':     'cubic-bezier(0, 0, 0.2, 1)',
-  'ease-in-out':  'cubic-bezier(0.4, 0, 0.2, 1)',
-  'ease-spring':  'cubic-bezier(0.175, 0.885, 0.32, 1.275)', // Snappy spring
-  'ease-bounce':  'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
-  'ease-smooth':  'cubic-bezier(0.23, 1, 0.32, 1)',
+  // 'ease-linear':  'linear',
+  // 'ease-in':      'cubic-bezier(0.4, 0, 1, 1)',
+  // 'ease-out':     'cubic-bezier(0, 0, 0.2, 1)',
+  // 'ease-in-out':  'cubic-bezier(0.4, 0, 0.2, 1)',
+  // 'ease-spring':  'cubic-bezier(0.175, 0.885, 0.32, 1.275)', // Snappy spring
+  // 'ease-bounce':  'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+  // 'ease-smooth':  'cubic-bezier(0.23, 1, 0.32, 1)',
+  'ease-linear': 'linear',                        // Constant speed — progress bars
+  'ease-in': 'cubic-bezier(0.4, 0, 1, 1)',    // Accelerates into end
+  'ease-out': 'cubic-bezier(0, 0, 0.2, 1)',    // ★ Decelerates to rest (most UI)
+  'ease-in-out': 'cubic-bezier(0.4, 0, 0.2, 1)', // Symmetric — sliders, scrubbing
+  'ease-spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)', // Slight overshoot — modals
+  'ease-bounce': 'cubic-bezier(0.68, -0.55, 0.265, 1.55)', // Playful — badges
+  'ease-smooth': 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',   // Very gentle ease-out
+
 } as const
 
 // ─── Z-index Scale ────────────────────────────────────────────────────────────
