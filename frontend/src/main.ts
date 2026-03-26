@@ -11,9 +11,9 @@ import App from './App.vue'
 import router from './router'
 
 injectCSSVars({
-   '--ch-color-primary': '#10b981',
-   '--ch-color-primary-hover': '#059669',
-   '--ch-color-primary-active': '#047857',
+   '--ch-color-primary': '#00026D',
+   '--ch-color-primary-hover': '#0003ae',
+   '--ch-color-primary-active': '#0004ed',
    '--ch-color-primary-contrast': '#ffffff',
 });
 const app = createApp(App)

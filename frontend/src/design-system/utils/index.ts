@@ -225,7 +225,7 @@ export function formatRelativeTime(date: Date | string | number): string {
  *
  * @example
  * groupBy(members, 'status')
- * // { Active: [...], Inactive: [...] }
+ * { Active: [...], Inactive: [...] }
  */
 export function groupBy<T extends Record<string, unknown>>(
    array: T[],

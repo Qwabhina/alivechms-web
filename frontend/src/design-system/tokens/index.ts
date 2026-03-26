@@ -150,7 +150,7 @@ export function injectCSSVars(
   target: HTMLElement = document.documentElement // defaults to <html> = :root
 ): void {
   // Store the overrides so useTheme can read brand tokens later (e.g. on theme toggle)
-  _initialOverrides = { ...overrides }
+  _initialOverrides = { ...overrides } as Record<string, string>
 
   // Generate the full flat map of CSS var name → value
   const vars = generateCSSVars(overrides)

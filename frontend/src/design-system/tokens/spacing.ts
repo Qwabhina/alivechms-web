@@ -77,12 +77,12 @@ export const radius = {
  */
 export const shadows = {
   'shadow-none':  'none',
-  'shadow-xs':    '1px 1px 0px 0px rgba(0, 0, 0, 1)',
-  'shadow-sm':    '2px 2px 0px 0px rgba(0, 0, 0, 1)',
-  'shadow-md':    '4px 4px 0px 0px rgba(0, 0, 0, 1)',
-  'shadow-lg':    '8px 8px 0px 0px rgba(0, 0, 0, 1)',
-  'shadow-xl':    '12px 12px 0px 0px rgba(0, 0, 0, 1)',
-  'shadow-2xl':   '16px 16px 0px 0px rgba(0, 0, 0, 1)',
+  'shadow-xs': '1px 1px 0px 0px rgba(0, 0, 0, 0.75)',
+  'shadow-sm': '2px 2px 0px 0px rgba(0, 0, 0, 0.75)',
+  'shadow-md': '4px 4px 0px 0px rgba(0, 0, 0, 0.75)',
+  'shadow-lg': '8px 8px 0px 0px rgba(0, 0, 0, 0.75)',
+  'shadow-xl': '12px 12px 0px 0px rgba(0, 0, 0, 0.75)',
+  'shadow-2xl': '16px 16px 0px 0px rgba(0, 0, 0, 0.75)',
   'shadow-inner': 'inset 2px 2px 0px 0px rgba(0, 0, 0, 0.1)',
 } as const
 
@@ -100,13 +100,13 @@ export const transitions = {
   // 'duration-slow':     '200ms', // Modal open/close
   // 'duration-slower':   '300ms', // Complex animations
   // 'duration-slowest':  '400ms',
-  'duration-instant': '50ms',  // Near-instant feedback (toggle switches)
-  'duration-fast': '100ms', // ★ Default hover state transitions
-  'duration-normal': '150ms', // ★ Default component transitions (open/close)
-  'duration-moderate': '200ms', // Slightly slower — menus, tooltips
-  'duration-slow': '300ms', // Modal open/close, page transitions
-  'duration-slower': '400ms', // Complex multi-part animations
-  'duration-slowest': '500ms', // Rare — large layout shifts
+  'duration-instant': '100ms',  // Near-instant feedback (toggle switches)
+  'duration-fast': '200ms', // ★ Default hover state transitions
+  'duration-normal': '250ms', // ★ Default component transitions (open/close)
+  'duration-moderate': '350ms', // Slightly slower — menus, tooltips
+  'duration-slow': '400ms', // Modal open/close, page transitions
+  'duration-slower': '600ms', // Complex multi-part animations
+  'duration-slowest': '750ms', // Rare — large layout shifts
 
   // Easings
   // 'ease-linear':  'linear',
