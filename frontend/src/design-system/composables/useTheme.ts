@@ -63,17 +63,8 @@
  */
 
 import { ref, readonly, watch } from 'vue'
-import { generateCSSVars, type ThemeOverrides } from '../tokens'
+import { generateCSSVars, type ThemeOverrides, _initialOverrides } from '../tokens'
 import { darkSemanticColors } from '../tokens/colors'
-
-// Convert dark semantic colors to CSS custom properties with --ch- prefix
-const darkThemeOverrides: ThemeOverrides = Object.entries(darkSemanticColors).reduce(
-  (acc, [key, value]) => {
-    acc[`--ch-${key}`] = value
-    return acc
-  },
-  {} as ThemeOverrides
-)
 
 // ─── Module-level singletons ──────────────────────────────────────────────────
 /**
@@ -124,6 +115,35 @@ function _checkDarkMode() {
 }
 
 /**
+ * Brand-safe tokens that should persist across theme switches.
+ * These represent brand customizations that should not be overridden by dark mode.
+ */
+const brandSafeTokens = [
+  '--ch-color-primary',
+  '--ch-color-primary-hover',
+  '--ch-color-primary-active',
+  '--ch-color-primary-subtle',
+  '--ch-color-primary-muted',
+  '--ch-color-primary-fg',
+]
+
+/**
+ * Dark mode semantic tokens that should be applied when dark mode is enabled.
+ * Excludes brand-related tokens to preserve custom brand colors.
+ */
+const darkModeSemanticOverrides: ThemeOverrides = Object.entries(darkSemanticColors).reduce(
+  (acc, [key, value]) => {
+    const varName = `--ch-${key}`
+    // Only include non-brand semantic tokens
+    if (!brandSafeTokens.includes(varName)) {
+      acc[varName] = value
+    }
+    return acc
+  },
+  {} as ThemeOverrides
+)
+
+/**
  * Applies or removes dark mode overrides.
  * Called at module init and when the system preference changes.
  *
@@ -131,25 +151,61 @@ function _checkDarkMode() {
  * the composable's applyOverrides/resetTheme, because those are defined
  * inside useTheme() and aren't available at module scope. Instead we use
  * the same generateCSSVars + setProperty mechanism directly.
+ * 
+ * FIXED: Now preserves brand customizations (like custom primary colors)
+ * when switching themes, only applying/removing dark mode-specific semantic colors.
  */
 function _applyDarkMode(enabled: boolean) {
   const root = document.documentElement
   if (enabled) {
-    // Merge dark overrides into _overrides and apply all vars
-    _overrides.value = { ..._overrides.value, ...darkThemeOverrides }
+    // Preserve brand-safe tokens from current overrides AND initial overrides
+    // _initialOverrides captures what was passed to injectCSSVars() in main.ts
+    // _overrides.value captures what was set via useTheme's applyOverrides()
+    const preservedBrandTokens: ThemeOverrides = {}
+    brandSafeTokens.forEach(token => {
+      const value = _overrides.value[token] || _initialOverrides[token]
+      if (value) {
+        preservedBrandTokens[token] = value
+      }
+    })
+
+    // Merge: current overrides → dark mode semantic tokens → preserved brand tokens
+    // This ensures brand tokens take precedence over dark mode defaults
+    _overrides.value = {
+      ..._overrides.value,
+      ...darkModeSemanticOverrides,
+      ...preservedBrandTokens,
+    }
+
     const vars = generateCSSVars(_overrides.value)
     for (const [prop, value] of Object.entries(vars)) {
       root.style.setProperty(prop, value)
     }
     root.classList.add('dark')
   } else {
-    // Reset to defaults
-    const defaultVars = generateCSSVars({})
-    for (const prop of Object.keys(defaultVars)) {
+    // Disable dark mode: remove only dark mode semantic tokens, preserve brand tokens
+    const filteredOverrides: ThemeOverrides = { ..._overrides.value }
+
+    // Remove dark mode semantic tokens
+    Object.keys(darkModeSemanticOverrides).forEach(token => {
+      delete filteredOverrides[token]
+    })
+
+    // Preserve brand-safe tokens from both override sources
+    brandSafeTokens.forEach(token => {
+      const value = _overrides.value[token] || _initialOverrides[token]
+      if (value) {
+        filteredOverrides[token] = value
+      }
+    })
+
+    _overrides.value = filteredOverrides
+
+    const vars = generateCSSVars(_overrides.value)
+    for (const prop of Object.keys(vars)) {
       root.style.removeProperty(prop)
     }
-    _overrides.value = {}
-    for (const [prop, value] of Object.entries(defaultVars)) {
+    for (const [prop, value] of Object.entries(vars)) {
       root.style.setProperty(prop, value)
     }
     root.classList.remove('dark')

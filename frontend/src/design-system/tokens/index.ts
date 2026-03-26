@@ -109,6 +109,17 @@ export function generateCSSVars(overrides: ThemeOverrides = {}): Record<string, 
   return vars
 }
 
+// ─── Shared initial overrides ─────────────────────────────────────────────────
+/**
+ * Stores the overrides passed to `injectCSSVars()` so that other modules
+ * (e.g. `useTheme.ts`) can read the brand customizations that were set at
+ * app startup. This bridges the gap between the one-time CSS injection in
+ * `main.ts` and the reactive theme system in `useTheme`.
+ *
+ * Mutable by design — `injectCSSVars()` writes to it, `useTheme` reads from it.
+ */
+export let _initialOverrides: Record<string, string> = {}
+
 // ─── injectCSSVars ────────────────────────────────────────────────────────────
 /**
  * Writes all CSS custom properties directly onto a DOM element's inline style.
@@ -138,6 +149,9 @@ export function injectCSSVars(
   overrides: ThemeOverrides = {},
   target: HTMLElement = document.documentElement // defaults to <html> = :root
 ): void {
+  // Store the overrides so useTheme can read brand tokens later (e.g. on theme toggle)
+  _initialOverrides = { ...overrides }
+
   // Generate the full flat map of CSS var name → value
   const vars = generateCSSVars(overrides)
 
