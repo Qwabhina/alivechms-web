@@ -302,7 +302,7 @@ export function isValidEmail(email: string): boolean {
  * country code (+233244123456). Both pass this check.
  */
 export function isValidPhone(phone: string): boolean {
-   return /^\+?[0-9]{10,14}$/.test(phone.replace(/[\s()\-]/g, ''))
+   return /^\+?[0-9]{10,14}$/.test(phone.replace(/[\s()-]/g, ''))
 }
 
 /**

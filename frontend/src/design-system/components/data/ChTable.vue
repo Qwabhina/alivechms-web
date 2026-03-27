@@ -214,15 +214,21 @@ function handleSort(colKey: string) {
 }
 
 function toggleSelectAll() {
-  allSelected.value
-    ? props.rows.forEach(r => selectedKeys.value.delete(r[props.rowKey as keyof T]))
-    : props.rows.forEach(r => selectedKeys.value.add(r[props.rowKey as keyof T]))
+  if (allSelected.value) {
+    props.rows.forEach(r => selectedKeys.value.delete(r[props.rowKey as keyof T]))
+  } else {
+    props.rows.forEach(r => selectedKeys.value.add(r[props.rowKey as keyof T]))
+  }
   emitSelected()
 }
 
 function toggleRow(row: T) {
   const k = row[props.rowKey as keyof T]
-  selectedKeys.value.has(k) ? selectedKeys.value.delete(k) : selectedKeys.value.add(k)
+  if (selectedKeys.value.has(k)) {
+    selectedKeys.value.delete(k)
+  } else {
+    selectedKeys.value.add(k)
+  }
   emitSelected()
 }
 

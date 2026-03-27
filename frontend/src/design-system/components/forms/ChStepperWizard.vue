@@ -38,7 +38,7 @@
  * </ChStepperWizard>
  */
 
-import { computed } from 'vue'
+
 import ChButton from '../core/ChButton.vue'
 import ChProgress from '../cues/ChProgress.vue'
 import type { WizardInstance } from '../../composables/useStepperWizard'

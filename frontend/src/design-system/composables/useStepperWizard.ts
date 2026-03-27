@@ -101,7 +101,7 @@ export function useStepperWizard(steps: WizardStep[]) {
           errors.value.set(currentIdx.value, msg)
           return false
         }
-      } catch (_e) {
+      } catch {
         errors.value.set(currentIdx.value, 'Validation failed. Please try again.')
         return false
       } finally {

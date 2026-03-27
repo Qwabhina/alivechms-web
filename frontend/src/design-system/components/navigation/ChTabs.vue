@@ -194,7 +194,8 @@ function handleKeydown(e: KeyboardEvent, index: number) {
       const buttons = (e.currentTarget as HTMLElement)
         ?.closest('[role="tablist"]')
         ?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
-      buttons?.[currentEnabledIndex + 1]?.focus() ?? buttons?.[0]?.focus()
+      const target = buttons?.[currentEnabledIndex + 1] ?? buttons?.[0]
+      target?.focus()
     }
   }
 

@@ -62,7 +62,7 @@
  * }
  */
 
-import { ref, readonly, watch } from 'vue'
+import { ref, readonly } from 'vue'
 import { generateCSSVars, type ThemeOverrides, _initialOverrides } from '../tokens'
 import { darkSemanticColors } from '../tokens/colors'
 

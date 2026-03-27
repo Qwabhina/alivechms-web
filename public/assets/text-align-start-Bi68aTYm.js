@@ -1,0 +1,1 @@
+import{a2 as t}from"./index-miKgMMAi.js";const e=t("minus",[["path",{d:"M5 12h14",key:"1ays0h"}]]);const s=t("text-align-start",[["path",{d:"M21 5H3",key:"1fi0y6"}],["path",{d:"M15 12H3",key:"6jk70r"}],["path",{d:"M17 19H3",key:"z6ezky"}]]);export{e as M,s as T};

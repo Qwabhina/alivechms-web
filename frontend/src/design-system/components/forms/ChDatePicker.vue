@@ -27,7 +27,7 @@
  *   :min-date="new Date()" :max-date="endOfYear" />
  */
 
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
