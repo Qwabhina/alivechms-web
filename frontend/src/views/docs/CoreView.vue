@@ -1,10 +1,10 @@
 <script setup lang="ts">
 /**
  * CoreView.vue - Design System Core Components Documentation
- * 
+ *
  * This view provides comprehensive demonstrations of all core UI components
  * in the AliveCHMS brutalist-lite design system.
- * 
+ *
  * Core Components Covered:
  * - ChButton: Interactive action triggers with all variants, sizes, and states
  * - ChCard: Versatile surface containers for grouping related content
@@ -13,17 +13,28 @@
  * - ChBadge: Status indicators and category labels
  * - ChTextarea: Multi-line text inputs for longer-form content
  * - ChDivider: Horizontal and vertical content separators
- * 
+ * - ChIcon: Icon component with 60+ Lucide presets
+ *
  * Each section includes:
  * - Live interactive demonstrations
  * - Multiple variants and configurations
  * - Code usage examples
  * - Real-world use case context
- * 
+ *
  * @requires lucide-vue-next for icons
  */
 
 import { ref, computed } from 'vue'
+import {
+  ChButton,
+  ChCard,
+  ChInput,
+  ChAvatar,
+  ChBadge,
+  ChTextarea,
+  ChDivider,
+  ChIcon,
+} from '@/design-system'
 import {
   // Icon imports for demonstrations
   Search,
@@ -42,7 +53,19 @@ import {
   ChevronRight,
   User,
   Calendar,
-  CheckCircle2
+  CheckCircle2,
+  Star,
+  Heart,
+  Bookmark,
+  Camera,
+  MapPin,
+  Phone,
+  Globe,
+  Shield,
+  Tag,
+  FileText,
+  Folder,
+  Image as ImageIcon,
 } from 'lucide-vue-next'
 
 // ============================================================
@@ -142,6 +165,37 @@ function handleUsernameBlur() {
 function clearSearch() {
   searchQuery.value = ''
 }
+
+// ============================================================
+// ChIcon STATE
+// ============================================================
+
+/** Icon size options */
+const iconSizes = ['xs', 'sm', 'md', 'lg', 'xl'] as const
+const selectedIconSize = ref<'xs' | 'sm' | 'md' | 'lg' | 'xl'>('md')
+
+/** Icon color variants */
+const iconColors = ['default', 'primary', 'success', 'warning', 'danger', 'info', 'muted', 'inherit'] as const
+
+/** Sample icon presets for demonstration */
+const iconPresets = [
+  { name: 'user', label: 'User' },
+  { name: 'mail', label: 'Mail' },
+  { name: 'calendar', label: 'Calendar' },
+  { name: 'settings', label: 'Settings' },
+  { name: 'check', label: 'Check' },
+  { name: 'star', label: 'Star' },
+  { name: 'heart', label: 'Heart' },
+  { name: 'bookmark', label: 'Bookmark' },
+  { name: 'camera', label: 'Camera' },
+  { name: 'map-pin', label: 'Location' },
+  { name: 'phone', label: 'Phone' },
+  { name: 'globe', label: 'Globe' },
+  { name: 'shield', label: 'Shield' },
+  { name: 'tag', label: 'Tag' },
+  { name: 'file-text', label: 'Document' },
+  { name: 'folder', label: 'Folder' },
+]
 </script>
 
 <template>
@@ -1677,6 +1731,272 @@ ChDivider variant="dotted" -- Decorative, use sparingly
       </div>
     </section>
 
+    <!-- ============================================================
+         SECTION 8: CHICON
+         Icon component with 60+ Lucide presets
+         ============================================================ -->
+    <section class="doc-section">
+      <div class="section-intro">
+        <h2 class="doc-section-title">
+          <span class="section-number">08</span>
+          ChIcon
+        </h2>
+        <p class="section-desc">
+          Standardized icon component with 60+ built-in Lucide icon presets.
+          Provides consistent sizing, coloring, and accessibility across the application.
+        </p>
+      </div>
+
+      <!-- ----------------------------------------------------------------
+           BASIC ICON
+           Simple icon with default size and color
+           ---------------------------------------------------------------- -->
+      <div class="demo-block">
+        <div class="demo-header">
+          <span class="demo-title">Basic Icons</span>
+          <span class="demo-tag">name prop | 60+ presets</span>
+        </div>
+        <div class="demo-content">
+          <div class="icon-grid">
+            <div v-for="icon in iconPresets.slice(0, 8)" :key="icon.name" class="icon-item">
+              <ChIcon :name="icon.name as any" size="md" />
+              <span class="icon-label">{{ icon.label }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="code-example">
+          <code>
+&lt;!-- User interface icons --&gt;
+&lt;ChIcon name="user" /&gt;
+&lt;ChIcon name="mail" /&gt;
+&lt;ChIcon name="calendar" /&gt;
+&lt;ChIcon name="settings" /&gt;
+
+&lt;!-- Status icons --&gt;
+&lt;ChIcon name="check" /&gt;
+&lt;ChIcon name="star" /&gt;
+&lt;ChIcon name="heart" /&gt;
+          </code>
+        </div>
+      </div>
+
+      <!-- ----------------------------------------------------------------
+           ICON SIZES
+           Five size presets for different contexts
+           ---------------------------------------------------------------- -->
+      <div class="demo-block">
+        <div class="demo-header">
+          <span class="demo-title">Icon Sizes</span>
+          <span class="demo-tag">xs | sm | md | lg | xl</span>
+        </div>
+        <div class="demo-content">
+          <div class="icon-size-row">
+            <div class="icon-size-item">
+              <ChIcon name="star" size="xs" />
+              <span class="icon-size-label">xs (16px)</span>
+            </div>
+            <div class="icon-size-item">
+              <ChIcon name="star" size="sm" />
+              <span class="icon-size-label">sm (18px)</span>
+            </div>
+            <div class="icon-size-item">
+              <ChIcon name="star" size="md" />
+              <span class="icon-size-label">md (20px)</span>
+            </div>
+            <div class="icon-size-item">
+              <ChIcon name="star" size="lg" />
+              <span class="icon-size-label">lg (24px)</span>
+            </div>
+            <div class="icon-size-item">
+              <ChIcon name="star" size="xl" />
+              <span class="icon-size-label">xl (32px)</span>
+            </div>
+          </div>
+        </div>
+        <div class="code-example">
+          <code>
+&lt;ChIcon name="star" size="xs" /&gt;  &lt;!-- 16px --&gt;
+&lt;ChIcon name="star" size="sm" /&gt;  &lt;!-- 18px --&gt;
+&lt;ChIcon name="star" size="md" /&gt;  &lt;!-- 20px, default --&gt;
+&lt;ChIcon name="star" size="lg" /&gt;  &lt;!-- 24px --&gt;
+&lt;ChIcon name="star" size="xl" /&gt;  &lt;!-- 32px --&gt;
+          </code>
+        </div>
+      </div>
+
+      <!-- ----------------------------------------------------------------
+           ICON COLORS
+           Semantic color variants
+           ---------------------------------------------------------------- -->
+      <div class="demo-block">
+        <div class="demo-header">
+          <span class="demo-title">Color Variants</span>
+          <span class="demo-tag">semantic colors</span>
+        </div>
+        <div class="demo-content">
+          <div class="icon-color-row">
+            <div class="icon-color-item">
+              <ChIcon name="check" color="default" size="lg" />
+              <span class="icon-color-label">default</span>
+            </div>
+            <div class="icon-color-item">
+              <ChIcon name="info" color="primary" size="lg" />
+              <span class="icon-color-label">primary</span>
+            </div>
+            <div class="icon-color-item">
+              <ChIcon name="check" color="success" size="lg" />
+              <span class="icon-color-label">success</span>
+            </div>
+            <div class="icon-color-item">
+              <ChIcon name="warning" color="warning" size="lg" />
+              <span class="icon-color-label">warning</span>
+            </div>
+            <div class="icon-color-item">
+              <ChIcon name="error" color="danger" size="lg" />
+              <span class="icon-color-label">danger</span>
+            </div>
+            <div class="icon-color-item">
+              <ChIcon name="info" color="info" size="lg" />
+              <span class="icon-color-label">info</span>
+            </div>
+            <div class="icon-color-item">
+              <ChIcon name="star" color="muted" size="lg" />
+              <span class="icon-color-label">muted</span>
+            </div>
+          </div>
+        </div>
+        <div class="code-example">
+          <code>
+&lt;ChIcon name="check" color="default" /&gt;
+&lt;ChIcon name="info" color="primary" /&gt;
+&lt;ChIcon name="check" color="success" /&gt;
+&lt;ChIcon name="warning" color="warning" /&gt;
+&lt;ChIcon name="error" color="danger" /&gt;
+&lt;ChIcon name="info" color="info" /&gt;
+&lt;ChIcon name="star" color="muted" /&gt;
+          </code>
+        </div>
+      </div>
+
+      <!-- ----------------------------------------------------------------
+           ICON WITH LABEL
+           Accessible icon with aria-label
+           ---------------------------------------------------------------- -->
+      <div class="demo-block">
+        <div class="demo-header">
+          <span class="demo-title">Accessible Icons</span>
+          <span class="demo-tag">label prop | aria-label</span>
+        </div>
+        <div class="demo-content">
+          <div class="icon-accessible-row">
+            <ChIcon name="settings" label="Settings" size="lg" />
+            <ChIcon name="bell" label="Notifications" size="lg" />
+            <ChIcon name="user" label="User Profile" size="lg" />
+            <ChIcon name="search" label="Search" size="lg" />
+          </div>
+          <p class="icon-accessible-desc">
+            When using icons standalone (not decorative), provide a <code>label</code> prop
+            for screen reader accessibility. This adds <code>aria-label</code> and <code>role="img"</code>.
+          </p>
+        </div>
+        <div class="code-example">
+          <code>
+&lt;!-- Decorative icon (no label needed) --&gt;
+&lt;ChIcon name="star" /&gt;
+
+&lt;!-- Functional icon (with label for accessibility) --&gt;
+&lt;ChIcon name="settings" label="Settings" /&gt;
+&lt;ChIcon name="bell" label="Notifications" /&gt;
+          </code>
+        </div>
+      </div>
+
+      <!-- ----------------------------------------------------------------
+           ICON PRESETS REFERENCE
+           Complete list of available icons
+           ---------------------------------------------------------------- -->
+      <div class="demo-block">
+        <div class="demo-header">
+          <span class="demo-title">Icon Presets</span>
+          <span class="demo-tag">60+ built-in icons</span>
+        </div>
+        <div class="demo-content">
+          <div class="icon-grid-full">
+            <div v-for="icon in iconPresets" :key="icon.name" class="icon-item">
+              <ChIcon :name="icon.name as any" size="md" />
+              <span class="icon-label">{{ icon.name }}</span>
+            </div>
+          </div>
+          <p class="icon-grid-desc">
+            Plus 50+ more including: arrow-left, arrow-right, chevron-down, edit, delete,
+            download, upload, filter, sort, refresh, lock, unlock, eye, camera, image,
+            file, folder, clipboard, attachment, cart, credit-card, chart, and many more.
+          </p>
+        </div>
+      </div>
+
+      <!-- ----------------------------------------------------------------
+           API REFERENCE
+           Complete API documentation
+           ---------------------------------------------------------------- -->
+      <div class="api-reference-block">
+        <h3 class="api-reference-title">API Reference</h3>
+
+        <div class="api-table-wrapper">
+          <h4 class="api-table-subtitle">Props</h4>
+          <table class="api-table">
+            <thead>
+              <tr>
+                <th>Prop</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>name</code></td>
+                <td><code>IconName</code></td>
+                <td>-</td>
+                <td>Name of preset icon (60+ available)</td>
+              </tr>
+              <tr>
+                <td><code>path</code></td>
+                <td><code>string</code></td>
+                <td>-</td>
+                <td>Custom SVG path (overrides name)</td>
+              </tr>
+              <tr>
+                <td><code>size</code></td>
+                <td><code>'xs' | 'sm' | 'md' | 'lg' | 'xl'</code></td>
+                <td><code>'md'</code></td>
+                <td>Icon size preset</td>
+              </tr>
+              <tr>
+                <td><code>color</code></td>
+                <td><code>IconColor</code></td>
+                <td><code>'inherit'</code></td>
+                <td>Semantic color variant</td>
+              </tr>
+              <tr>
+                <td><code>label</code></td>
+                <td><code>string</code></td>
+                <td>-</td>
+                <td>Accessible label (adds aria-label)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="api-table-wrapper">
+          <h4 class="api-table-subtitle">IconColor Type</h4>
+          <code class="type-code">
+            'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'inherit'
+          </code>
+        </div>
+      </div>
+    </section>
+
   </div>
 </template>
 
@@ -2276,6 +2596,183 @@ ChDivider variant="dotted" -- Decorative, use sparingly
   color: var(--ch-color-text-muted);
 }
 
+/* ============================================================
+   ICON DEMONSTRATIONS
+   ============================================================ */
+
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
+.icon-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--ch-color-bg);
+  border: 1px solid var(--ch-color-border);
+  border-radius: var(--ch-radius-sm);
+  transition: border-color var(--ch-duration-fast);
+}
+
+.icon-item:hover {
+  border-color: var(--ch-color-primary);
+}
+
+.icon-label {
+  font-size: var(--ch-text-xs);
+  color: var(--ch-color-text-muted);
+  text-align: center;
+}
+
+.icon-size-row {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.icon-size-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.icon-size-label {
+  font-size: var(--ch-text-xs);
+  color: var(--ch-color-text-muted);
+}
+
+.icon-color-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.icon-color-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.icon-color-label {
+  font-size: var(--ch-text-xs);
+  color: var(--ch-color-text-muted);
+}
+
+.icon-accessible-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.icon-accessible-desc {
+  font-size: var(--ch-text-sm);
+  color: var(--ch-color-text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.icon-accessible-desc code {
+  background: var(--ch-color-bg-muted);
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--ch-radius-sm);
+  font-family: var(--ch-font-mono);
+  font-size: var(--ch-text-xs);
+}
+
+.icon-grid-full {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.icon-grid-desc {
+  font-size: var(--ch-text-sm);
+  color: var(--ch-color-text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.api-reference-block {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--ch-color-bg-subtle);
+  border: 1px solid var(--ch-color-border);
+  border-radius: var(--ch-radius-md);
+}
+
+.api-reference-title {
+  font-family: var(--ch-font-display);
+  font-size: var(--ch-text-lg);
+  font-weight: var(--ch-font-semibold);
+  color: var(--ch-color-text);
+  margin: 0 0 1.5rem 0;
+}
+
+.api-table-wrapper {
+  margin-bottom: 1.5rem;
+}
+
+.api-table-wrapper:last-child {
+  margin-bottom: 0;
+}
+
+.api-table-subtitle {
+  font-size: var(--ch-text-sm);
+  font-weight: var(--ch-font-semibold);
+  color: var(--ch-color-text);
+  margin: 0 0 0.75rem 0;
+}
+
+.api-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ch-text-sm);
+}
+
+.api-table th {
+  text-align: left;
+  padding: 0.75rem;
+  background: var(--ch-color-bg-muted);
+  border: 1px solid var(--ch-color-border);
+  font-weight: var(--ch-font-semibold);
+  color: var(--ch-color-text);
+}
+
+.api-table td {
+  padding: 0.75rem;
+  border: 1px solid var(--ch-color-border);
+  color: var(--ch-color-text);
+}
+
+.api-table td code {
+  background: var(--ch-color-bg);
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--ch-radius-sm);
+  font-family: var(--ch-font-mono);
+  font-size: var(--ch-text-xs);
+  color: var(--ch-color-primary);
+}
+
+.type-code {
+  display: block;
+  background: var(--ch-color-bg);
+  padding: 0.75rem;
+  border-radius: var(--ch-radius-sm);
+  font-family: var(--ch-font-mono);
+  font-size: var(--ch-text-xs);
+  color: var(--ch-color-text);
+  line-height: 1.6;
+}
 /* ============================================================
    RESPONSIVE ADJUSTMENTS
    ============================================================ */
