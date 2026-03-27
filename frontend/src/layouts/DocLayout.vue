@@ -44,6 +44,13 @@ import {
   Check,
   AlertCircle,
   Info,
+  MousePointer,
+  Code,
+  MessageSquare,
+  ChevronDown as ChevronDownIcon,
+  Database,
+  Calendar,
+  DollarSign,
 } from 'lucide-vue-next'
 
 // Type definitions for sidebar navigation items
@@ -106,6 +113,18 @@ const sidebarSections: NavSection[] = [
       { label: 'Data Display', to: '/docs/data', icon: LayoutGrid },
       { label: 'Navigation', to: '/docs/navigation', icon: Compass },
       { label: 'UI Cues & Feedback', to: '/docs/feedback', icon: Bell },
+      { label: 'Interactive', to: '/docs/interactive', icon: MousePointer },
+    ]
+  },
+  {
+    id: 'composables',
+    label: 'Composables & Utils',
+    icon: Code,
+    items: [
+      { label: 'useValidation', to: '/docs/composables#use-validation', icon: Check },
+      { label: 'useLocalStorage', to: '/docs/composables#local-storage', icon: Database },
+      { label: 'Date Utilities', to: '/docs/composables#date-utils', icon: Calendar },
+      { label: 'Currency Formatting', to: '/docs/composables#currency', icon: DollarSign },
     ]
   },
   {

@@ -53,6 +53,11 @@ const router = createRouter({
           component: () => import('../views/docs/FeedbackView.vue'),
         },
         {
+          path: 'interactive',
+          name: 'docs-interactive',
+          component: () => import('../views/docs/InteractiveView.vue'),
+        },
+        {
           path: 'patterns/layout',
           name: 'docs-patterns-layout',
           component: () => import('../views/docs/LayoutPatternsView.vue'),
