@@ -145,6 +145,10 @@ export const semanticColors = {
   'color-info':           palette.info600,
   'color-info-bg':        palette.info50,
   'color-info-fg':        palette.info700,
+
+  // ── Tooltip ──
+  'color-tooltip': palette.neutral900, // Near black background
+  'color-tooltip-fg': palette.neutral0,   // White text
 } as const
 
 // ─── Dark Mode Semantic Colors ────────────────────────────────────────────────
@@ -197,6 +201,10 @@ export const darkSemanticColors = {
   'color-info':           palette.info500,
   'color-info-bg':        palette.info700,
   'color-info-fg':        palette.info100,
+
+  // ── Tooltip ──
+  'color-tooltip': palette.neutral100, // Light gray in dark mode
+  'color-tooltip-fg': palette.neutral900, // Dark text
 } as const
 
 /**

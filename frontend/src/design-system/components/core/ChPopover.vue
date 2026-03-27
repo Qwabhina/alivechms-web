@@ -73,6 +73,46 @@ const popoverStyle = computed(() => ({
   '--ch-popover-max-width': props.maxWidth,
 }))
 
+// ─── Position Calculation ────────────────────────────────────────────────────
+
+/**
+ * Calculate popover position based on trigger element
+ */
+function getPopoverPosition(): { top: string; left: string } {
+  if (!triggerRef.value) return { top: '0', left: '0' }
+
+  const trigger = triggerRef.value
+  const rect = trigger.getBoundingClientRect()
+  const offset = props.offset || 8
+
+  switch (props.placement) {
+    case 'top':
+      return {
+        top: `${rect.top - offset}px`,
+        left: `${rect.left + rect.width / 2}px`,
+      }
+    case 'bottom':
+      return {
+        top: `${rect.bottom + offset}px`,
+        left: `${rect.left + rect.width / 2}px`,
+      }
+    case 'left':
+      return {
+        top: `${rect.top + rect.height / 2}px`,
+        left: `${rect.left - offset}px`,
+      }
+    case 'right':
+      return {
+        top: `${rect.top + rect.height / 2}px`,
+        left: `${rect.right + offset}px`,
+      }
+    default:
+      return { top: '0', left: '0' }
+  }
+}
+
+const computedPosition = computed(getPopoverPosition)
+
 // ─── Methods ──────────────────────────────────────────────────────────────────
 
 function showPopover() {
@@ -178,7 +218,12 @@ watch(isOpen, (newVal) => {
     <Teleport to="body">
       <Transition name="ch-popover-fade">
         <div v-if="isOpen" ref="popoverRef" class="ch-popover"
-          :class="[placementClass, props.class, { 'ch-popover--modal': modal }]" :style="popoverStyle" role="dialog"
+          :class="[placementClass, props.class, { 'ch-popover--modal': modal }]" :style="[popoverStyle, {
+            position: 'fixed',
+            top: computedPosition.top,
+            left: computedPosition.left,
+            transform: 'translate(-50%, 0)'
+          }]" role="dialog"
           :aria-modal="modal ? 'true' : 'false'">
           <div v-if="$slots.header" class="ch-popover__header">
             <slot name="header"></slot>
@@ -212,8 +257,6 @@ watch(isOpen, (newVal) => {
 }
 
 .ch-popover {
-  position: absolute;
-  z-index: var(--ch-z-popover);
   min-width: var(--ch-popover-min-width, 200px);
   max-width: var(--ch-popover-max-width, 320px);
   background: var(--ch-color-surface);
@@ -221,34 +264,7 @@ watch(isOpen, (newVal) => {
   border-radius: var(--ch-radius-none);
   box-shadow: var(--ch-shadow-xl);
   overflow: hidden;
-}
-
-.ch-popover--top {
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(-8px);
-  margin-bottom: var(--ch-space-2);
-}
-
-.ch-popover--bottom {
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(8px);
-  margin-top: var(--ch-space-2);
-}
-
-.ch-popover--left {
-  right: 100%;
-  top: 50%;
-  transform: translateY(-50%) translateX(-8px);
-  margin-right: var(--ch-space-2);
-}
-
-.ch-popover--right {
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%) translateX(8px);
-  margin-left: var(--ch-space-2);
+  z-index: var(--ch-z-popover);
 }
 
 .ch-popover__header {
@@ -317,21 +333,6 @@ watch(isOpen, (newVal) => {
 .ch-popover-fade-enter-from,
 .ch-popover-fade-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(4px);
-}
-
-.ch-popover--left.ch-popover-fade-enter-from,
-.ch-popover--left.ch-popover-fade-leave-to {
-  transform: translateY(-50%) translateX(4px);
-}
-
-.ch-popover--right.ch-popover-fade-enter-from,
-.ch-popover--right.ch-popover-fade-leave-to {
-  transform: translateY(-50%) translateX(-4px);
-}
-
-.ch-popover--top.ch-popover-fade-enter-from,
-.ch-popover--top.ch-popover-fade-leave-to {
-  transform: translateX(-50%) translateY(4px);
+  transform: translate(-50%, 8px);
 }
 </style>
