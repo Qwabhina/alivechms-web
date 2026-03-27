@@ -98,27 +98,131 @@ export function toKebabCase(str: string): string {
 
 // ─── Number Utilities ──────────────────────────────────────────────────────────
 
+/** Options for currency formatting */
+export interface CurrencyFormatOptions {
+   /** BCP 47 locale tag. Default: 'en-GH' */
+   locale?: string
+   /** Whether to show currency symbol. Default: true */
+   showSymbol?: boolean
+   /** Whether to show thousands separator. Default: true */
+   useGrouping?: boolean
+   /** Number of decimal places. Default: auto-detect from currency */
+   decimalPlaces?: number
+   /** Currency display style: 'symbol' | 'code' | 'name' */
+   currencyDisplay?: 'symbol' | 'code' | 'name'
+   /** Currency sign display: 'standard' | 'accounting' */
+   currencySign?: 'standard' | 'accounting'
+}
+
 /**
- * Formats a number as a currency string.
+ * Formats a number as a currency string with extensive customization.
  *
  * Defaults to GHS (Ghanaian Cedi) and the `en-GH` locale — the standard
  * for this application. Pass explicit arguments to override for other contexts.
  *
  * @param amount   - The number to format
  * @param currency - ISO 4217 currency code. Default: 'GHS'
- * @param locale   - BCP 47 locale tag. Default: 'en-GH'
+ * @param options  - Formatting options
  *
  * @example
- * formatCurrency(1234.56)          // 'GH₵1,234.56'
- * formatCurrency(1234.56, 'USD')   // '$1,234.56'
- * formatCurrency(1234.56, 'EUR', 'de-DE') // '1.234,56 €'
+ * formatCurrency(1234.56)                          // 'GH₵1,234.56'
+ * formatCurrency(1234.56, 'USD')                   // '$1,234.56'
+ * formatCurrency(1234.56, 'EUR', { locale: 'de-DE' }) // '1.234,56 €'
+ * formatCurrency(1234.56, 'GHS', { currencyDisplay: 'code' }) // 'GHS 1,234.56'
+ * formatCurrency(1234.56, 'JPY', { decimalPlaces: 0 }) // '¥1,235'
  */
 export function formatCurrency(
    amount: number,
    currency: string = 'GHS',
+   options: CurrencyFormatOptions = {},
+): string {
+   const {
+      locale = 'en-GH',
+      showSymbol = true,
+      useGrouping = true,
+      decimalPlaces,
+      currencyDisplay = 'symbol',
+      currencySign = 'standard',
+   } = options
+
+   const intlOptions: Intl.NumberFormatOptions = {
+      style: 'currency',
+      currency,
+      currencyDisplay,
+      currencySign,
+      useGrouping,
+   }
+
+   // Set decimal places based on currency or explicit option
+   if (decimalPlaces !== undefined) {
+      intlOptions.minimumFractionDigits = decimalPlaces
+      intlOptions.maximumFractionDigits = decimalPlaces
+   } else {
+      // Auto-detect based on currency
+      const currenciesWithNoDecimals = ['JPY', 'KRW', 'VND', 'XAF', 'XOF', 'CLP', 'COP']
+      if (currenciesWithNoDecimals.includes(currency.toUpperCase())) {
+         intlOptions.minimumFractionDigits = 0
+         intlOptions.maximumFractionDigits = 0
+      } else {
+         intlOptions.minimumFractionDigits = 2
+         intlOptions.maximumFractionDigits = 2
+      }
+   }
+
+   // Handle currency symbol visibility
+   if (!showSymbol) {
+      intlOptions.currencyDisplay = 'narrowSymbol'
+   }
+
+   return new Intl.NumberFormat(locale, intlOptions).format(amount)
+}
+
+/**
+ * Formats a number as currency with compact notation (e.g., "GH₵1.2K")
+ *
+ * @param amount   - The number to format
+ * @param currency - ISO 4217 currency code. Default: 'GHS'
+ * @param locale   - BCP 47 locale tag. Default: 'en-GH'
+ *
+ * @example
+ * formatCurrencyCompact(1234)    // 'GH₵1.2K'
+ * formatCurrencyCompact(1234567) // 'GH₵1.2M'
+ */
+export function formatCurrencyCompact(
+   amount: number,
+   currency: string = 'GHS',
    locale: string = 'en-GH',
 ): string {
-   return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amount)
+   return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      notation: 'compact',
+      compactDisplay: 'short',
+      maximumFractionDigits: 1,
+   }).format(amount)
+}
+
+/**
+ * Formats a number with locale-aware thousands separators
+ *
+ * @param number        - The number to format
+ * @param locale        - BCP 47 locale tag. Default: 'en-GH'
+ * @param decimalPlaces - Number of decimal places. Default: 0
+ *
+ * @example
+ * formatNumber(1234567)        // '1,234,567'
+ * formatNumber(1234.567, 'en', 2) // '1,234.57'
+ */
+export function formatNumber(
+   number: number,
+   locale: string = 'en-GH',
+   decimalPlaces: number = 0,
+): string {
+   return new Intl.NumberFormat(locale, {
+      minimumFractionDigits: decimalPlaces,
+      maximumFractionDigits: decimalPlaces,
+      useGrouping: true,
+   }).format(number)
 }
 
 /**

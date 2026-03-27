@@ -85,6 +85,18 @@ export { default as ChCard }     from './components/core/ChCard.vue'
 export { default as ChBadge }    from './components/core/ChBadge.vue'
 export { default as ChAvatar }   from './components/core/ChAvatar.vue'
 export { default as ChDivider }  from './components/core/ChDivider.vue'
+export { default as ChTooltip } from './components/core/ChTooltip.vue'
+export { default as ChPopover } from './components/core/ChPopover.vue'
+export { default as ChDropdown } from './components/core/ChDropdown.vue'
+export { default as ChDropdownItem } from './components/core/ChDropdownItem.vue'
+export { default as ChDropdownDivider } from './components/core/ChDropdownDivider.vue'
+export { default as ChIcon } from './components/core/ChIcon.vue'
+
+// Core component types
+export type { TooltipPlacement } from './components/core/ChTooltip.vue'
+export type { PopoverTrigger, PopoverPlacement } from './components/core/ChPopover.vue'
+export type { DropdownItem as ChDropdownItemType, DropdownItemVariant } from './components/core/ChDropdown.vue'
+export type { IconSize, IconColor, IconName } from './components/core/ChIcon.vue'
 
 // ─── Composables ──────────────────────────────────────────────────────────────
 /**
@@ -93,10 +105,87 @@ export { default as ChDivider }  from './components/core/ChDivider.vue'
  */
 export { useTheme }       from './composables/useTheme'
 export { useTableExport, type ExportFormat } from './composables/useTableExport'
+export { useToast } from './composables/useToast'
+export { useModal } from './composables/useModal'
+export { useStepperWizard } from './composables/useStepperWizard'
+export { useValidation, useForm, validators, type ValidationRule, type ValidatorFn, type UseValidationOptions } from './composables/useValidation'
+export { useLocalStorage, useSessionStorage, type UseLocalStorageOptions, type StorageInfo } from './composables/useLocalStorage'
 export { darkSemanticColors } from './tokens/colors'
 
 // ─── Utility Functions ─────────────────────────────────────────────────────────
+/**
+ * General utilities for string, number, date, array, DOM, validation, color, and function operations.
+ * Also includes enhanced date utilities (date-fns-like) via `utils/date`.
+ */
 export * from './utils'
+export * as dateUtils from './utils/date'
+// Re-export commonly used date utils at top level for convenience
+export {
+   parse,
+   format,
+   formatISO,
+   formatTime,
+   formatRelative,
+   formatDistance,
+   isToday,
+   isYesterday,
+   isTomorrow,
+   isSameDay,
+   isSameMonth,
+   isSameYear,
+   isPast,
+   isFuture,
+   isAfter,
+   isBefore,
+   isWithinRange,
+   addDays,
+   addMonths,
+   addYears,
+   addHours,
+   addMinutes,
+   addSeconds,
+   subDays,
+   subMonths,
+   subYears,
+   startOfDay,
+   endOfDay,
+   startOfMonth,
+   endOfMonth,
+   startOfYear,
+   endOfYear,
+   startOfWeek,
+   endOfWeek,
+   differenceInMilliseconds,
+   differenceInSeconds,
+   differenceInMinutes,
+   differenceInHours,
+   differenceInDays,
+   differenceInMonths,
+   differenceInYears,
+   getDate,
+   getDay,
+   getMonth,
+   getYear,
+   getHours,
+   getMinutes,
+   getSeconds,
+   getMilliseconds,
+   setDate,
+   setDay,
+   setMonth,
+   setYear,
+   setHours,
+   setMinutes,
+   setSeconds,
+   now,
+   timestamp,
+   isLeapYear,
+   getDaysInMonth,
+   getDaysInYear,
+   clamp,
+   closestTo,
+   areIntervalsOverlapping,
+} from './utils/date'
 
 // ─── Upcoming Exports ─────────────────────────────────────────────────────────
 // Uncomment each group as its components are implemented.
@@ -107,11 +196,15 @@ export { default as ChSidebar }             from './components/navigation/ChSide
 export { default as ChSidebarItem }         from './components/navigation/ChSidebarItem.vue'
 export { default as ChTopbar }              from './components/navigation/ChTopbar.vue'
 export { default as ChTabs }                from './components/navigation/ChTabs.vue'
+export { default as ChBreadcrumb } from './components/navigation/ChBreadcrumb.vue'
+export { default as ChBreadcrumbItem } from './components/navigation/ChBreadcrumbItem.vue'
+export { default as ChCommandPalette } from './components/navigation/ChCommandPalette.vue'
 
 // Navigation types — export so consuming code can build nav arrays type-safely
 export type { NavSection, NavItem }         from './components/navigation/ChSidebar.vue'
 export type { Tab }                         from './components/navigation/ChTabs.vue'
 export type { TopbarUser }                  from './components/navigation/ChTopbar.vue'
+export type { Command, CommandGroup } from './components/navigation/ChCommandPalette.vue'
 
 // ── Data Display ──────────────────────────────────────────────────────────────
 export { default as ChTable }             from './components/data/ChTable.vue'
@@ -120,6 +213,14 @@ export { default as ChStatCard }          from './components/data/ChStatCard.vue
 export { default as ChDataList }          from './components/data/ChDataList.vue'
 export { default as ChChart }             from './components/data/ChChart.vue'
 export { default as ChPagination }        from './components/data/ChPagination.vue'
+export { default as ChAccordion } from './components/data/ChAccordion.vue'
+export { default as ChAccordionItem } from './components/data/ChAccordionItem.vue'
+export { default as ChCarousel } from './components/data/ChCarousel.vue'
+export { default as ChEmptyState } from './components/data/ChEmptyState.vue'
+
+// Data Display types
+export type { CarouselSlide } from './components/data/ChCarousel.vue'
+export type { EmptyStateIcon } from './components/data/ChEmptyState.vue'
 
 // ── Forms & Modals ────────────────────────────────────────────────────────────
 export { default as ChFormField }     from './components/forms/ChFormField.vue'
@@ -142,7 +243,4 @@ export { default as ChSkeleton }       from './components/cues/ChSkeleton.vue'
 export { default as ChProgress }       from './components/cues/ChProgress.vue'
 export { default as ChToast }          from './components/cues/ChToast.vue'
 export { default as ChToastContainer } from './components/cues/ChToastContainer.vue'
-export { default as ChAlert }          from './components/cues/ChAlert.vue'
-export { useToast } from './composables/useToast'
-export { useModal }        from './composables/useModal'
-export { useStepperWizard } from './composables/useStepperWizard'
+export { default as ChAlert } from './components/cues/ChAlert.vue'
