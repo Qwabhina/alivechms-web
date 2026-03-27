@@ -76,7 +76,7 @@ const { isDarkMode, toggleDarkMode } = useTheme()
 const searchQuery = ref('')
 const expandedSections = ref<Record<string, boolean>>({
   'getting-started': true,
-  components: true,
+  components: false,
   patterns: false,
   resources: false,
 })
@@ -358,7 +358,7 @@ onMounted(() => {
         <button class="theme-toggle" @click="toggleTheme">
           <Moon v-if="!isDarkMode" :size="18" />
           <Sun v-else :size="18" />
-          <span>{{ isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
+          <span>{{ !isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
         </button>
       </div>
     </aside>

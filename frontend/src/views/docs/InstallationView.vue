@@ -31,24 +31,6 @@ const copyToClipboard = (text: string) => {
     </header>
 
     <section class="doc-section">
-      <h2 class="doc-section-title">NPM Installation</h2>
-      <p>Install the design system package via your preferred package manager:</p>
-      
-      <div class="code-terminal">
-        <div class="terminal-header">
-          <Terminal :size="16" />
-          <span>Terminal</span>
-          <button class="copy-btn" @click="copyToClipboard('npm install @alivechms/design-system')">
-            <Copy :size="14" />
-          </button>
-        </div>
-        <div class="terminal-body">
-          <code>npm install @alivechms/design-system</code>
-        </div>
-      </div>
-    </section>
-
-    <section class="doc-section">
       <h2 class="doc-section-title">Initial Setup</h2>
       <p>
         The design system relies on CSS variables for theming. You must inject 
@@ -70,7 +52,7 @@ const copyToClipboard = (text: string) => {
                 <Code2 :size="16" />
                 <span>main.ts</span>
               </div>
-              <pre><code>import { createApp } from 'vue'
+              <code>import { createApp } from 'vue'
 import { injectCSSVars } from '@alivechms/design-system'
 import '@alivechms/design-system/styles/base.css'
 import App from './App.vue'
@@ -78,7 +60,7 @@ import App from './App.vue'
 // Initialize CSS variables
 injectCSSVars()
 
-createApp(App).mount('#app')</code></pre>
+createApp(App).mount('#app')</code>
             </div>
           </div>
         </div>
@@ -92,7 +74,7 @@ createApp(App).mount('#app')</code></pre>
               If you plan to use the built-in animations, import the animation styles.
             </p>
             <div class="code-block-wrapper">
-              <pre><code>import '@alivechms/design-system/styles/animations.css'</code></pre>
+              <pre><code>&lt;script  setup lang="ts"&gt; import '@alivechms/design-system/styles/animations.css' &lt;/script&gt;</code></pre>
             </div>
           </div>
         </div>
