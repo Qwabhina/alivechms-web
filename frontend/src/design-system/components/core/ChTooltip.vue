@@ -34,18 +34,19 @@
  * </ChTooltip>
  */
 
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 /**
  * Tooltip placement relative to the trigger:
- * - `top`    → above the trigger (default)
+ * - `top`    → above the trigger
  * - `bottom` → below the trigger
  * - `left`   → to the left of the trigger
  * - `right`  → to the right of the trigger
+ * - `auto`   → automatically choose best placement based on available space
  */
-export type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right'
+export type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right' | 'auto'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -67,11 +68,15 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   content: '',
   title: '',
-  placement: 'top',
+  placement: 'auto',
   delay: 200,
   maxWidth: '240px',
   visible: false,
 })
+
+// ─── Local State ──────────────────────────────────────────────────────────────
+
+const actualPlacement = ref<TooltipPlacement>(props.placement)
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
@@ -79,11 +84,83 @@ const props = withDefaults(defineProps<Props>(), {
  * Builds the placement class for the tooltip.
  * E.g. 'ch-tooltip--top', 'ch-tooltip--bottom', etc.
  */
-const placementClass = computed(() => `ch-tooltip--${props.placement}`)
+const placementClass = computed(() => `ch-tooltip--${actualPlacement.value}`)
+
+// ─── Smart Placement Detection ────────────────────────────────────────────────
+
+const wrapperRef = ref<HTMLElement | null>(null)
+
+/**
+ * Detect the best placement based on available viewport space
+ */
+function detectBestPlacement(): TooltipPlacement {
+  if (props.placement !== 'auto' || !wrapperRef.value) {
+    return props.placement
+  }
+
+  const wrapper = wrapperRef.value
+  const rect = wrapper.getBoundingClientRect()
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+
+  // Calculate available space in each direction
+  const spaceTop = rect.top
+  const spaceBottom = viewportHeight - rect.bottom
+  const spaceLeft = rect.left
+  const spaceRight = viewportWidth - rect.right
+
+  // Estimate tooltip size (approximate)
+  const tooltipHeight = 50
+  const tooltipWidth = 150
+
+  // Find best placement
+  const placements = [
+    { dir: 'top' as TooltipPlacement, space: spaceTop, needed: tooltipHeight },
+    { dir: 'bottom' as TooltipPlacement, space: spaceBottom, needed: tooltipHeight },
+    { dir: 'left' as TooltipPlacement, space: spaceLeft, needed: tooltipWidth },
+    { dir: 'right' as TooltipPlacement, space: spaceRight, needed: tooltipWidth },
+  ]
+
+  // Filter placements that have enough space
+  const validPlacements = placements.filter(p => p.space >= p.needed)
+
+  if (validPlacements.length === 0) {
+    // Fallback to bottom if no placement fits
+    return 'bottom'
+  }
+
+  // Choose the placement with most space
+  validPlacements.sort((a, b) => b.space - a.space)
+  return validPlacements[0]?.dir || 'bottom'
+}
+
+/**
+ * Update placement on scroll/resize
+ */
+function updatePlacement() {
+  actualPlacement.value = detectBestPlacement()
+}
+
+// ─── Lifecycle ────────────────────────────────────────────────────────────────
+
+onMounted(() => {
+  if (props.placement === 'auto') {
+    window.addEventListener('scroll', updatePlacement, true)
+    window.addEventListener('resize', updatePlacement)
+    // Initial detection
+    updatePlacement()
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', updatePlacement, true)
+  window.removeEventListener('resize', updatePlacement)
+})
 </script>
 
 <template>
   <div
+ref="wrapperRef"
     class="ch-tooltip-wrapper"
     :class="{ 'ch-tooltip-wrapper--visible': visible }"
   >

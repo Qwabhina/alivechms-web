@@ -5,13 +5,13 @@
  * @description A floating popup that displays rich content when triggered.
  */
 
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { X } from 'lucide-vue-next'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type PopoverTrigger = 'click' | 'hover' | 'focus'
-export type PopoverPlacement = 'top' | 'bottom' | 'left' | 'right'
+export type PopoverPlacement = 'top' | 'bottom' | 'left' | 'right' | 'auto'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -20,7 +20,7 @@ interface Props {
   open?: boolean
   /** How the popover is triggered. Default: 'click' */
   trigger?: PopoverTrigger
-  /** Placement relative to trigger. Default: 'bottom' */
+  /** Placement relative to trigger. Default: 'bottom'. Use 'auto' for smart placement */
   placement?: PopoverPlacement
   /** Offset from trigger in pixels. Default: 8 */
   offset?: number
@@ -63,55 +63,133 @@ const emit = defineEmits<{
 const isOpen = ref(props.open)
 const triggerRef = ref<HTMLElement | null>(null)
 const popoverRef = ref<HTMLElement | null>(null)
+const actualPlacement = ref<PopoverPlacement>(props.placement)
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
-const placementClass = computed(() => `ch-popover--${props.placement}`)
+const placementClass = computed(() => `ch-popover--${actualPlacement.value}`)
 
 const popoverStyle = computed(() => ({
   '--ch-popover-min-width': props.minWidth,
   '--ch-popover-max-width': props.maxWidth,
 }))
 
+/**
+ * Get transform based on actual placement
+ */
+const transformStyle = computed(() => {
+  switch (actualPlacement.value) {
+    case 'top':
+    case 'bottom':
+      return 'translate(-50%, 0)'
+    case 'left':
+    case 'right':
+      return 'translate(0, -50%)'
+    default:
+      return 'translate(-50%, 0)'
+  }
+})
+
 // ─── Position Calculation ────────────────────────────────────────────────────
 
+interface PopoverPosition {
+  top: string
+  left: string
+  placement: PopoverPlacement
+}
+
 /**
- * Calculate popover position based on trigger element
+ * Calculate popover position based on trigger element and available space
  */
-function getPopoverPosition(): { top: string; left: string } {
-  if (!triggerRef.value) return { top: '0', left: '0' }
+function getPopoverPosition(): PopoverPosition {
+  if (!triggerRef.value || !popoverRef.value) {
+    return { top: '0', left: '0', placement: 'bottom' }
+  }
 
   const trigger = triggerRef.value
-  const rect = trigger.getBoundingClientRect()
+  const popover = popoverRef.value
+  const triggerRect = trigger.getBoundingClientRect()
+  const popoverRect = popover.getBoundingClientRect()
   const offset = props.offset || 8
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
 
-  switch (props.placement) {
+  // Determine the best placement
+  let placement: PopoverPlacement = props.placement
+
+  if (props.placement === 'auto') {
+    // Calculate space available in each direction
+    const spaceTop = triggerRect.top
+    const spaceBottom = viewportHeight - triggerRect.bottom
+    const spaceLeft = triggerRect.left
+    const spaceRight = viewportWidth - triggerRect.right
+
+    // Choose the direction with most space
+    const spaces = [
+      { dir: 'top' as PopoverPlacement, space: spaceTop },
+      { dir: 'bottom' as PopoverPlacement, space: spaceBottom },
+      { dir: 'left' as PopoverPlacement, space: spaceLeft },
+      { dir: 'right' as PopoverPlacement, space: spaceRight },
+    ]
+    spaces.sort((a, b) => b.space - a.space)
+    placement = spaces[0]?.dir || 'bottom'
+  }
+
+  // Calculate position based on placement
+  let top: number
+  let left: number
+
+  switch (placement) {
     case 'top':
-      return {
-        top: `${rect.top - offset}px`,
-        left: `${rect.left + rect.width / 2}px`,
-      }
+      top = triggerRect.top + window.scrollY - offset - popoverRect.height
+      left = triggerRect.left + window.scrollX + triggerRect.width / 2
+      break
     case 'bottom':
-      return {
-        top: `${rect.bottom + offset}px`,
-        left: `${rect.left + rect.width / 2}px`,
-      }
+      top = triggerRect.bottom + window.scrollY + offset
+      left = triggerRect.left + window.scrollX + triggerRect.width / 2
+      break
     case 'left':
-      return {
-        top: `${rect.top + rect.height / 2}px`,
-        left: `${rect.left - offset}px`,
-      }
+      top = triggerRect.top + window.scrollY + triggerRect.height / 2
+      left = triggerRect.left + window.scrollX - offset - popoverRect.width
+      break
     case 'right':
-      return {
-        top: `${rect.top + rect.height / 2}px`,
-        left: `${rect.right + offset}px`,
-      }
+      top = triggerRect.top + window.scrollY + triggerRect.height / 2
+      left = triggerRect.right + window.scrollX + offset
+      break
     default:
-      return { top: '0', left: '0' }
+      top = triggerRect.bottom + window.scrollY + offset
+      left = triggerRect.left + window.scrollX + triggerRect.width / 2
+  }
+
+  actualPlacement.value = placement
+
+  return {
+    top: `${top}px`,
+    left: `${left}px`,
+    placement,
   }
 }
 
 const computedPosition = computed(getPopoverPosition)
+
+/**
+ * Update popover position
+ */
+function updatePosition() {
+  if (isOpen.value && popoverRef.value) {
+    // Force recompute
+    const pos = getPopoverPosition()
+  }
+}
+
+/**
+ * Handle scroll and resize events
+ */
+function handleScrollOrResize() {
+  if (isOpen.value) {
+    updatePosition()
+  }
+}
 
 // ─── Methods ──────────────────────────────────────────────────────────────────
 
@@ -192,19 +270,29 @@ function handleEscape(e: KeyboardEvent) {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('keydown', handleEscape)
+  // Add scroll and resize listeners for proper positioning
+  window.addEventListener('scroll', handleScrollOrResize, true)
+  window.addEventListener('resize', handleScrollOrResize)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('keydown', handleEscape)
+  window.removeEventListener('scroll', handleScrollOrResize, true)
+  window.removeEventListener('resize', handleScrollOrResize)
 })
 
 watch(() => props.open, (newVal) => {
   isOpen.value = newVal
 })
 
-watch(isOpen, (newVal) => {
+watch(isOpen, async (newVal) => {
   emit('update:open', newVal)
+  // Update position after popover is rendered
+  if (newVal) {
+    await nextTick()
+    updatePosition()
+  }
 })
 </script>
 
@@ -222,7 +310,7 @@ watch(isOpen, (newVal) => {
             position: 'fixed',
             top: computedPosition.top,
             left: computedPosition.left,
-            transform: 'translate(-50%, 0)'
+  transform: transformStyle
           }]" role="dialog"
           :aria-modal="modal ? 'true' : 'false'">
           <div v-if="$slots.header" class="ch-popover__header">
@@ -333,6 +421,25 @@ watch(isOpen, (newVal) => {
 .ch-popover-fade-enter-from,
 .ch-popover-fade-leave-to {
   opacity: 0;
+}
+
+/* Initial state for different placements */
+.ch-popover--top.ch-popover-fade-enter-from,
+.ch-popover--top.ch-popover-fade-leave-to {
   transform: translate(-50%, 8px);
+}
+.ch-popover--bottom.ch-popover-fade-enter-from,
+.ch-popover--bottom.ch-popover-fade-leave-to {
+  transform: translate(-50%, -8px);
+}
+
+.ch-popover--left.ch-popover-fade-enter-from,
+.ch-popover--left.ch-popover-fade-leave-to {
+  transform: translate(0, -50%) translateX(8px);
+}
+
+.ch-popover--right.ch-popover-fade-enter-from,
+.ch-popover--right.ch-popover-fade-leave-to {
+  transform: translate(0, -50%) translateX(-8px);
 }
 </style>
