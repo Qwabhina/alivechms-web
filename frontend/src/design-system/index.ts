@@ -19,7 +19,6 @@
  * import { createApp }    from 'vue'
  * import { injectCSSVars } from '@/design-system'
  * import '@/design-system/styles/base.css'
- * import '@/design-system/styles/animations.css'
  * import App from './App.vue'
  *
  * // Initialize CSS vars BEFORE mounting the app.
@@ -29,11 +28,10 @@
  * createApp(App).mount('#app')
  *
  * ─── Styles to import manually in main.ts ────────────────────────────────────
- * These CSS files cannot be auto-imported — they must be explicitly imported
+ * This CSS file cannot be auto-imported — it must be explicitly imported
  * in your app's entry point (main.ts) after calling injectCSSVars():
  *
- *   import '@/design-system/styles/base.css'       → global reset + element defaults
- *   import '@/design-system/styles/animations.css' → @keyframe definitions
+ *   import '@/design-system/styles/base.css' → global reset + element defaults + animations
  *
  * ─── Note on styles/tokens.css ───────────────────────────────────────────────
  * The original plan included a `styles/tokens.css` file for static CSS custom

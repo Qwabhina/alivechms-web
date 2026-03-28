@@ -13,6 +13,7 @@
  *   3. Styles base HTML elements (h1-h6, p, a, button, input, etc.)
  *   4. Defines focus-visible ring behavior for accessibility
  *   5. Customizes the scrollbar appearance
+ * 6. Imports animations.css for @keyframe definitions+animation utilities
  *
  * Important: All values reference CSS custom properties (--ch-*) defined
  * by the token injection system. If injectCSSVars() hasn't been called,
@@ -20,6 +21,7 @@
  * defaults — so always call injectCSSVars() first.
  */
 
+@import './animations.css';
 /* ─── Box Model Reset ─────────────────────────────────────────────────────────
  *
  * `box-sizing: border-box` changes how width/height are calculated:
