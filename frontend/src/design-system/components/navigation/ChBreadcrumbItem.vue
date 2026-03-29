@@ -22,7 +22,7 @@
  */
 
 import { inject } from 'vue'
-import { BREADCRUMB_KEY } from './ChBreadcrumb.vue'
+import { BREADCRUMB_KEY } from '../../composables/useBreadcrumb.ts'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 

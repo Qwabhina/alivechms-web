@@ -15,14 +15,14 @@
  *
  * ─── Usage in main.ts (app entry point) ──────────────────────────────────────
  * @example
- * // main.ts
+ * main.ts
  * import { createApp }    from 'vue'
  * import { injectCSSVars } from '@/design-system'
  * import '@/design-system/styles/base.css'
  * import App from './App.vue'
  *
- * // Initialize CSS vars BEFORE mounting the app.
- * // This ensures all --ch-* variables exist before any component renders.
+ * Initialize CSS vars BEFORE mounting the app.
+ * This ensures all --ch-* variables exist before any component renders.
  * injectCSSVars()
  *
  * createApp(App).mount('#app')
@@ -44,7 +44,7 @@
  * from tokens/index.ts to generate the CSS string at build time.
  * Add this to `vite.config.ts` so you can use `@/design-system` as the import path:
  * @example
- * // vite.config.ts
+ * vite.config.ts
  * import path from 'path'
  * export default defineConfig({
  *   resolve: {
@@ -184,11 +184,6 @@ export {
    closestTo,
    areIntervalsOverlapping,
 } from './utils/date'
-
-// ─── Upcoming Exports ─────────────────────────────────────────────────────────
-// Uncomment each group as its components are implemented.
-// Keeping them here (commented) serves as a living roadmap of what's coming.
-
 // ── Navigation ────────────────────────────────────────────────────────────────
 export { default as ChSidebar }             from './components/navigation/ChSidebar.vue'
 export { default as ChSidebarItem }         from './components/navigation/ChSidebarItem.vue'
@@ -199,7 +194,7 @@ export { default as ChBreadcrumbItem } from './components/navigation/ChBreadcrum
 export { default as ChCommandPalette } from './components/navigation/ChCommandPalette.vue'
 
 // Navigation types — export so consuming code can build nav arrays type-safely
-export type { NavSection, NavItem }         from './components/navigation/ChSidebar.vue'
+export type { NavItem } from './components/navigation/ChSidebar.vue'
 export type { Tab }                         from './components/navigation/ChTabs.vue'
 export type { TopbarUser }                  from './components/navigation/ChTopbar.vue'
 export type { Command, CommandGroup } from './components/navigation/ChCommandPalette.vue'
