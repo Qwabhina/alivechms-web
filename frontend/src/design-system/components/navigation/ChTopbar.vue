@@ -324,7 +324,7 @@ const userInitials = computed(() => {
   justify-content: center;
   width:        36px;
   height:       36px;
-  border-radius:var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
   border:       none;
   background:   transparent;
   color:        var(--ch-color-text-muted);
@@ -402,7 +402,7 @@ const userInitials = computed(() => {
   justify-content:center;
   width:          36px;
   height:         36px;
-  border-radius:  var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
   border:         none;
   background:     transparent;
   color:          var(--ch-color-text-muted);
@@ -425,7 +425,7 @@ const userInitials = computed(() => {
   min-width:   16px;
   height:      16px;
   padding:     0 var(--ch-space-1);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
 
   background-color: var(--ch-color-danger);
   color:            #fff;
@@ -446,7 +446,7 @@ const userInitials = computed(() => {
   align-items:  center;
   gap:          var(--ch-space-2);
   padding:      var(--ch-space-1) var(--ch-space-2);
-  border-radius:var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   border:       none;
   background:   transparent;
   cursor:       pointer;
@@ -462,7 +462,7 @@ const userInitials = computed(() => {
 .ch-topbar__avatar-img {
   width:         32px;
   height:        32px;
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   object-fit:    cover;
   flex-shrink:   0;
 }
@@ -471,7 +471,7 @@ const userInitials = computed(() => {
 .ch-topbar__avatar-initials {
   width:            32px;
   height:           32px;
-  border-radius:    var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   background-color: var(--ch-color-primary-muted);
   color:            var(--ch-color-primary);
   font-size:        var(--ch-text-xs);

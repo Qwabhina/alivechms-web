@@ -359,7 +359,8 @@ function handleClick() {
   gap:             var(--ch-space-3);  /* 12px between icon and label */
   width:           100%;
   padding:         var(--ch-space-2) var(--ch-space-3); /* 8px 12px */
-  border-radius:   var(--ch-radius-none); /* 0px */
+  border-radius: var(--ch-radius-md);
+    /* control */
   border:          none;
   background:      transparent;
   color:           var(--ch-color-text-muted);
@@ -534,7 +535,8 @@ function handleClick() {
   background-color: var(--ch-color-text);
   color:      var(--ch-color-text-inverse);
   padding:    var(--ch-space-1) var(--ch-space-2_5);
-  border-radius: var(--ch-radius-none); /* sharp tooltip */
+  border-radius: var(--ch-radius-md);
+    /* control */
   font-size:  var(--ch-text-xs);
   font-weight: var(--ch-font-medium);
   white-space: nowrap;

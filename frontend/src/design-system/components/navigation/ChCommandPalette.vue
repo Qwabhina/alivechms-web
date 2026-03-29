@@ -6,49 +6,38 @@
  * actions. Supports fuzzy search, grouped commands, and keyboard navigation.
  *
  * ─── Design decisions ────────────────────────────────────────────────────────
- * - Triggered by keyboard shortcut (Ctrl/Cmd + K by default)
- * - Fuzzy search matching for commands
- * - Full keyboard navigation (Arrow keys, Enter, Escape)
- * - Grouped commands with section headers
- * - Recently used commands tracking
+ * - Rendered via <Teleport> as a centered viewport modal, not a popover.
+ *   Command palettes are not anchored to a trigger — they float in the center.
+ * - selectedIndex tracks a flat position into filteredCommands so selection
+ *   is always unambiguous regardless of how many groups exist.
+ * - groupedResults uses a Map to preserve the original group order from props.
+ * - The search container div is used to focus the inner input via querySelector
+ *   so ChInput doesn't need to expose a focus() method.
  *
  * ─── Accessibility ───────────────────────────────────────────────────────────
- * - Uses `role="dialog"` with proper labeling
- * - Focus trapping when open
- * - Escape key closes the palette
- * - Arrow keys navigate, Enter selects
+ * - role="dialog" + aria-modal on the panel
+ * - role="listbox" + role="option" + aria-selected on items
+ * - Escape closes; Arrow keys navigate; Enter selects
  *
  * ─── Usage ───────────────────────────────────────────────────────────────────
- * @example Basic usage
+ * @example Basic
  * <ChCommandPalette
  *   :commands="[
- *     { id: 'dashboard', label: 'Dashboard', icon: homeIcon, action: () => router.push('/') },
- *     { id: 'members', label: 'Members', icon: usersIcon, action: () => router.push('/members') },
+ *     { id: 'home', label: 'Dashboard', action: () => router.push('/') },
+ *     { id: 'members', label: 'Members', action: () => router.push('/members') },
  *   ]"
  * />
  *
  * @example With groups
  * <ChCommandPalette
  *   :groups="[
- *     {
- *       title: 'Navigation',
- *       commands: [
- *         { id: 'dashboard', label: 'Dashboard' },
- *         { id: 'members', label: 'Members' },
- *       ]
- *     },
- *     {
- *       title: 'Actions',
- *       commands: [
- *         { id: 'new-member', label: 'Add Member' },
- *         { id: 'new-event', label: 'New Event' },
- *       ]
- *     }
+ *     { title: 'Navigation', commands: [{ id: 'home', label: 'Dashboard' }] },
+ *     { title: 'Actions',    commands: [{ id: 'new',  label: 'Add Member' }] },
  *   ]"
  *   @select="handleCommand"
  * />
  *
- * @example Custom trigger
+ * @example Custom trigger with v-model
  * <ChCommandPalette v-model:open="isOpen" :commands="commands">
  *   <template #trigger>
  *     <ChButton>Search...</ChButton>
@@ -56,10 +45,9 @@
  * </ChCommandPalette>
  */
 
-import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Search, CircleHelp } from 'lucide-vue-next'
 import ChInput from '../core/ChInput.vue'
-import ChPopover from '../core/ChPopover.vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -69,15 +57,15 @@ export interface Command {
   id: string
   /** Display label */
   label: string
-  /** Optional description shown below label */
+  /** Optional description shown below the label */
   description?: string
   /** Optional icon SVG path */
   icon?: string
   /** Optional keyboard shortcut hint */
   shortcut?: string
-  /** Optional group/category */
+  /** Group/category — populated automatically when using the groups prop */
   group?: string
-  /** Search keywords (aliases) */
+  /** Search aliases */
   keywords?: string[]
   /** Whether the command is disabled */
   disabled?: boolean
@@ -98,25 +86,25 @@ export interface CommandGroup {
 interface Props {
   /** Controls open state — use v-model:open */
   open?: boolean
-  /** Flat list of commands */
+  /** Flat list of commands (use either this or groups, not both) */
   commands?: Command[]
-  /** Grouped commands */
+  /** Grouped commands — group order is preserved */
   groups?: CommandGroup[]
-  /** Placeholder for search input. Default: 'Type a command or search...' */
+  /** Placeholder for the search input */
   placeholder?: string
-  /** Enable keyboard shortcut to open (Ctrl/Cmd + K). Default: true */
+  /** Enable the global Ctrl/Cmd + K shortcut. Default: true */
   enableShortcut?: boolean
-  /** Keyboard shortcut key. Default: 'k' */
+  /** Which key to combine with Ctrl/Cmd. Default: 'k' */
   shortcutKey?: string
-  /** Custom CSS class */
-  class?: string
-  /** Min width. Default: '400px' */
+  /** CSS class applied to the trigger wrapper */
+  paletteClass?: string
+  /** Min width of the command dialog. Default: '400px' */
   minWidth?: string
-  /** Max height of command list. Default: '400px' */
+  /** Max height of the command list before scrolling. Default: '400px' */
   maxHeight?: string
-  /** Show recent commands. Default: false */
+  /** Show recently used commands when no query is active. Default: false */
   showRecent?: boolean
-  /** Max recent commands to track. Default: 5 */
+  /** Max number of recent commands to track. Default: 5 */
   maxRecent?: number
 }
 
@@ -127,7 +115,7 @@ const props = withDefaults(defineProps<Props>(), {
   placeholder: 'Type a command or search...',
   enableShortcut: true,
   shortcutKey: 'k',
-  class: '',
+  paletteClass: '',
   minWidth: '400px',
   maxHeight: '400px',
   showRecent: false,
@@ -141,106 +129,128 @@ const emit = defineEmits<{
   select: [command: Command]
 }>()
 
+// ─── Refs ─────────────────────────────────────────────────────────────────────
+
+/** Container div wrapping ChInput — used to focus the inner <input> via querySelector */
+const searchContainerRef = ref<HTMLElement | null>(null)
+/** Scrollable results list — used to scroll selected item into view */
+const commandListRef = ref<HTMLElement | null>(null)
+
 // ─── Local state ──────────────────────────────────────────────────────────────
 
 const isOpen = ref(props.open)
 const searchQuery = ref('')
 const selectedIndex = ref(0)
-const inputRef = ref<HTMLInputElement | null>(null)
 const recentCommands = ref<Command[]>([])
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
-/** Flatten groups into a single array for searching */
-const allCommands = computed(() => {
+/** All commands as a flat list, with group name stamped onto each item */
+const allCommands = computed<Command[]>(() => {
   if (props.groups.length > 0) {
     return props.groups.flatMap(g => g.commands.map(c => ({ ...c, group: g.title })))
   }
   return props.commands
 })
 
-/** Filter commands based on search query with fuzzy matching */
-const filteredCommands = computed(() => {
+/** Commands filtered by the current search query */
+const filteredCommands = computed<Command[]>(() => {
   let commands = allCommands.value
 
-  // Add recent commands first if enabled and no query
   if (props.showRecent && recentCommands.value.length > 0 && !searchQuery.value) {
     const recentIds = new Set(recentCommands.value.map(c => c.id))
-    const otherCommands = commands.filter(c => !recentIds.has(c.id))
-    commands = [...recentCommands.value, ...otherCommands]
+    commands = [...recentCommands.value, ...commands.filter(c => !recentIds.has(c.id))]
   }
 
   if (!searchQuery.value) return commands
 
   const query = searchQuery.value.toLowerCase()
-
   return commands.filter(cmd => {
-    const label = cmd.label.toLowerCase()
-    const description = (cmd.description ?? '').toLowerCase()
-    const keywords = (cmd.keywords ?? []).join(' ').toLowerCase()
-
-    // Exact match or includes
-    if (label.includes(query)) return true
-    if (description.includes(query)) return true
-    if (keywords.includes(query)) return true
-
-    // Fuzzy match
-    return fuzzyMatch(query, label)
+    if (cmd.label.toLowerCase().includes(query)) return true
+    if ((cmd.description ?? '').toLowerCase().includes(query)) return true
+    if ((cmd.keywords ?? []).join(' ').toLowerCase().includes(query)) return true
+    return fuzzyMatch(query, cmd.label.toLowerCase())
   })
 })
 
 const hasCommands = computed(() => filteredCommands.value.length > 0)
 
-const groupedResults = computed(() => {
-  if (props.groups.length > 0 && searchQuery.value) {
-    // Group filtered results by their original group
-    const groups: Record<string, Command[]> = {}
-    filteredCommands.value.forEach(cmd => {
-      const group = cmd.group ?? 'Other'
-      if (!groups[group]) groups[group] = []
-      groups[group].push(cmd)
-    })
-    return Object.entries(groups).map(([title, commands]) => ({ title, commands }))
+/**
+ * Map from command id → flat index in filteredCommands.
+ * This is the single source of truth for which item is selected —
+ * avoids the per-group cmdIndex mismatch that would cause multiple items
+ * across different groups to appear selected simultaneously.
+ */
+const flatIndexMap = computed<Map<string, number>>(() => {
+  const map = new Map<string, number>()
+  filteredCommands.value.forEach((cmd, i) => map.set(cmd.id, i))
+  return map
+})
+
+/**
+ * Grouped results for display.
+ * Uses a Map to preserve the original group order from props.groups.
+ * Empty groups (all commands filtered out) are omitted.
+ */
+const groupedResults = computed<CommandGroup[]>(() => {
+  if (props.groups.length === 0) {
+    return [{ title: '', commands: filteredCommands.value }]
   }
-  return [{ title: 'Results', commands: filteredCommands.value }]
+
+  // Pre-seed the Map with original group order so insertion order is preserved
+  const grouped = new Map<string, Command[]>(
+    props.groups.map(g => [g.title, []])
+  )
+
+  filteredCommands.value.forEach(cmd => {
+    const key = cmd.group ?? 'Other'
+    if (!grouped.has(key)) grouped.set(key, [])
+    grouped.get(key)!.push(cmd)
+  })
+
+  return Array.from(grouped.entries())
+    .filter(([, cmds]) => cmds.length > 0)
+    .map(([title, commands]) => ({ title, commands }))
 })
 
 // ─── Functions ────────────────────────────────────────────────────────────────
 
-/** Simple fuzzy matching algorithm */
+/** Simple fuzzy match — every character in query must appear in order in str */
 function fuzzyMatch(query: string, str: string): boolean {
-  let queryIndex = 0
-  for (let i = 0; i < str.length && queryIndex < query.length; i++) {
-    if (str[i] === query[queryIndex]) queryIndex++
+  let qi = 0
+  for (let i = 0; i < str.length && qi < query.length; i++) {
+    if (str[i] === query[qi]) qi++
   }
-  return queryIndex === query.length
+  return qi === query.length
 }
 
 function selectCommand(command: Command) {
   if (command.disabled) return
 
-  // Track as recent
   if (props.showRecent) {
-    recentCommands.value = recentCommands.value.filter(c => c.id !== command.id)
-    recentCommands.value.unshift(command)
-    if (recentCommands.value.length > props.maxRecent) {
-      recentCommands.value.pop()
-    }
+    recentCommands.value = [
+      command,
+      ...recentCommands.value.filter(c => c.id !== command.id),
+    ].slice(0, props.maxRecent)
   }
 
   emit('select', command)
   close()
 }
 
-function navigate(direction: 'up' | 'down') {
+async function navigate(direction: 'up' | 'down') {
   const max = filteredCommands.value.length - 1
   if (max < 0) return
 
-  if (direction === 'down') {
-    selectedIndex.value = selectedIndex.value >= max ? 0 : selectedIndex.value + 1
-  } else {
-    selectedIndex.value = selectedIndex.value <= 0 ? max : selectedIndex.value - 1
-  }
+  selectedIndex.value = direction === 'down'
+    ? (selectedIndex.value >= max ? 0 : selectedIndex.value + 1)
+    : (selectedIndex.value <= 0 ? max : selectedIndex.value - 1)
+
+  // Scroll selected item into view after Vue updates the DOM
+  await nextTick()
+  commandListRef.value
+    ?.querySelector('[aria-selected="true"]')
+    ?.scrollIntoView({ block: 'nearest' })
 }
 
 function showPalette() {
@@ -258,142 +268,158 @@ function close() {
 }
 
 function toggle() {
-  isOpen.value ? close() : open()
+  isOpen.value ? close() : showPalette()
 }
 
-// ─── Keyboard shortcuts ──────────────────────────────────────────────────────
+// ─── Watch ────────────────────────────────────────────────────────────────────
+
+/** Reset selection whenever the filtered list changes due to typing */
+watch(searchQuery, () => {
+  selectedIndex.value = 0
+})
+
+/** Focus the search input whenever the palette opens */
+watch(isOpen, async (val) => {
+  if (val) {
+    await nextTick()
+    searchContainerRef.value?.querySelector('input')?.focus()
+  }
+})
+
+/** Sync external v-model:open */
+watch(() => props.open, (val) => {
+  isOpen.value = val
+})
+
+// ─── Keyboard shortcuts ───────────────────────────────────────────────────────
 
 function handleGlobalKeydown(e: KeyboardEvent) {
-  // Check for Ctrl/Cmd + K
   if (props.enableShortcut && (e.ctrlKey || e.metaKey) && e.key === props.shortcutKey) {
     e.preventDefault()
     toggle()
+    return
   }
 
-  // Handle navigation when open
   if (!isOpen.value) return
 
   switch (e.key) {
-    case 'ArrowDown':
+    case 'ArrowDown': {
       e.preventDefault()
       navigate('down')
       break
-    case 'ArrowUp':
+    }
+    case 'ArrowUp': {
       e.preventDefault()
       navigate('up')
       break
-    case 'Enter':
+    }
+    case 'Enter': {
       e.preventDefault()
-      const selectedCommand = filteredCommands.value[selectedIndex.value]
-      if (selectedCommand) {
-        selectCommand(selectedCommand)
-      }
+      const selected = filteredCommands.value[selectedIndex.value]
+      if (selected) selectCommand(selected)
       break
-    case 'Escape':
+    }
+    case 'Escape': {
       e.preventDefault()
       close()
       break
+    }
   }
 }
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
-onMounted(() => {
-  document.addEventListener('keydown', handleGlobalKeydown)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('keydown', handleGlobalKeydown)
-})
-
-watch(isOpen, async (val) => {
-  if (val) {
-    await nextTick()
-    inputRef.value?.focus()
-  }
-})
-
-watch(() => props.open, (val) => {
-  isOpen.value = val
-})
+onMounted(() => document.addEventListener('keydown', handleGlobalKeydown))
+onUnmounted(() => document.removeEventListener('keydown', handleGlobalKeydown))
 </script>
 
 <template>
-  <div :class="['ch-command-palette', props.class]">
-    <!-- Custom trigger slot -->
+  <div :class="['ch-command-palette', paletteClass]">
+    <!-- Trigger — slot or default search button -->
     <slot name="trigger">
-      <button class="ch-command-palette__trigger" @click="showPalette" :aria-label="'Open command palette'">
+      <button class="ch-command-palette__trigger" aria-label="Open command palette" @click="showPalette">
         <Search :size="16" :stroke-width="2" />
         <span>Search...</span>
-        <kbd class="ch-command-palette__shortcut">{{ enableShortcut ? 'Ctrl K' : '' }}</kbd>
+        <kbd v-if="enableShortcut" class="ch-command-palette__shortcut">⌘ K</kbd>
       </button>
     </slot>
 
-    <!-- Command palette popover -->
-    <ChPopover :open="isOpen" placement="bottom" trigger="click" :min-width="minWidth" @update:open="isOpen = $event">
-      <div class="ch-command-palette__content">
-        <!-- Search input -->
-        <div class="ch-command-palette__search">
-          <ChInput ref="inputRef" v-model="searchQuery" :placeholder="placeholder" size="md" clearable>
-            <template #prefix>
-              <Search :size="16" :stroke-width="2" />
-            </template>
-          </ChInput>
-        </div>
+    <!--
+      The palette is a centered viewport modal, not a popover.
+      <Teleport> ensures it renders above all stacking contexts.
+      Clicking the overlay (not the dialog) closes the palette.
+    -->
+    <Teleport to="body">
+      <Transition name="ch-command-palette">
+        <div v-if="isOpen" class="ch-command-palette__overlay" aria-hidden="false" @click.self="close">
+          <div class="ch-command-palette__dialog" :style="{ '--ch-command-min-width': minWidth }" role="dialog"
+            aria-modal="true" aria-label="Command palette">
+            <!-- Search input -->
+            <div ref="searchContainerRef" class="ch-command-palette__search">
+              <ChInput v-model="searchQuery" :placeholder="placeholder" size="md" clearable>
+                <template #prefix>
+                  <Search :size="16" :stroke-width="2" />
+                </template>
+              </ChInput>
+            </div>
 
-        <!-- Results -->
-        <div class="ch-command-palette__results" :style="{ '--ch-command-max-height': maxHeight }" role="listbox">
-          <!-- No results -->
-          <div v-if="!hasCommands" class="ch-command-palette__empty">
-            <CircleHelp :size="32" :stroke-width="1.5" />
-            <p>No results found</p>
-            <p v-if="searchQuery" class="ch-command-palette__empty-hint">
-              Try a different search term
-            </p>
-          </div>
-
-          <!-- Grouped results -->
-          <template v-else>
-            <div v-for="(group, groupIndex) in groupedResults" :key="group.title" class="ch-command-palette__group">
-              <div v-if="groupedResults.length > 1" class="ch-command-palette__group-title">
-                {{ group.title }}
+            <!-- Results -->
+            <div ref="commandListRef" class="ch-command-palette__results"
+              :style="{ '--ch-command-max-height': maxHeight }" role="listbox" aria-label="Commands">
+              <!-- Empty state -->
+              <div v-if="!hasCommands" class="ch-command-palette__empty">
+                <CircleHelp :size="32" :stroke-width="1.5" />
+                <p>No results found</p>
+                <p v-if="searchQuery" class="ch-command-palette__empty-hint">
+                  Try a different search term
+                </p>
               </div>
-              <div class="ch-command-palette__list">
-                <button v-for="(cmd, cmdIndex) in group.commands" :key="cmd.id" :class="[
-                  'ch-command-palette__item',
-                  {
-                    'ch-command-palette__item--selected':
-                      cmdIndex === selectedIndex &&
-                      (groupedResults.length === 1 || groupIndex === 0),
-                    'ch-command-palette__item--disabled': cmd.disabled,
-                  },
-                ]" :aria-selected="cmdIndex === selectedIndex && groupedResults.length === 1" role="option"
-                  :disabled="cmd.disabled" @click="selectCommand(cmd)">
-                  <!-- Icon -->
-                  <svg v-if="cmd.icon" class="ch-command-palette__item-icon" width="18" height="18" viewBox="0 0 18 18"
-                    fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path :d="cmd.icon" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
 
-                  <!-- Content -->
-                  <div class="ch-command-palette__item-content">
-                    <span class="ch-command-palette__item-label">{{ cmd.label }}</span>
-                    <span v-if="cmd.description" class="ch-command-palette__item-description">
-                      {{ cmd.description }}
-                    </span>
+              <!-- Grouped results -->
+              <template v-else>
+                <div v-for="group in groupedResults" :key="group.title" class="ch-command-palette__group">
+                  <!-- Group heading — hidden when there is only one group -->
+                  <div v-if="groupedResults.length > 1 && group.title" class="ch-command-palette__group-title">
+                    {{ group.title }}
                   </div>
 
-                  <!-- Shortcut -->
-                  <kbd v-if="cmd.shortcut" class="ch-command-palette__item-shortcut">
-                    {{ cmd.shortcut }}
-                  </kbd>
-                </button>
-              </div>
+                  <div class="ch-command-palette__list">
+                    <button v-for="cmd in group.commands" :key="cmd.id" :class="[
+                      'ch-command-palette__item',
+                      {
+                        'ch-command-palette__item--selected':
+      flatIndexMap.get(cmd.id) === selectedIndex,
+    'ch-command-palette__item--disabled': cmd.disabled,
+  },
+]" role="option" :aria-selected="flatIndexMap.get(cmd.id) === selectedIndex"
+                      :disabled="cmd.disabled || undefined" @click="selectCommand(cmd)">
+                      <!-- Icon -->
+                      <svg v-if="cmd.icon" class="ch-command-palette__item-icon" width="18" height="18"
+                        viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <path :d="cmd.icon" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+
+                      <!-- Content -->
+                      <div class="ch-command-palette__item-content">
+                        <span class="ch-command-palette__item-label">{{ cmd.label }}</span>
+                        <span v-if="cmd.description" class="ch-command-palette__item-description">
+                          {{ cmd.description }}
+                        </span>
+                      </div>
+
+                      <!-- Shortcut hint -->
+                      <kbd v-if="cmd.shortcut" class="ch-command-palette__item-shortcut">
+                        {{ cmd.shortcut }}
+                      </kbd>
+                    </button>
+                  </div>
+                </div>
+              </template>
             </div>
-          </template>
+          </div>
         </div>
-      </div>
-    </ChPopover>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -406,13 +432,13 @@ watch(() => props.open, (val) => {
   padding: var(--ch-space-2) var(--ch-space-3);
   background: var(--ch-color-bg-muted);
   border: 1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
   color: var(--ch-color-text-muted);
   font-size: var(--ch-text-sm);
   cursor: pointer;
   transition:
-    border-color var(--ch-duration-fast) var(--ch-ease-out),
-    background-color var(--ch-duration-fast) var(--ch-ease-out);
+    background-color var(--ch-duration-fast) var(--ch-ease-out),
+      border-color var(--ch-duration-fast) var(--ch-ease-out);
 }
 
 .ch-command-palette__trigger:hover {
@@ -436,10 +462,52 @@ watch(() => props.open, (val) => {
   color: var(--ch-color-text-muted);
 }
 
-/* ─── Content ─────────────────────────────────────────────────────────────── */
-.ch-command-palette__content {
+/* ─── Overlay ─────────────────────────────────────────────────────────────── */
+.ch-command-palette__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ch-z-modal, 1000);
+  background: rgb(0 0 0 / 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  /* Push dialog down slightly from the top for a classic command palette feel */
+  padding: 15vh var(--ch-space-4) var(--ch-space-4);
+}
+
+/* ─── Dialog ──────────────────────────────────────────────────────────────── */
+.ch-command-palette__dialog {
+  width: 100%;
+  min-width: var(--ch-command-min-width, 400px);
+  max-width: 640px;
   display: flex;
   flex-direction: column;
+  background: var(--ch-color-surface);
+    border: 1px solid var(--ch-color-border-strong);
+    border-radius: var(--ch-radius-lg);
+    box-shadow: var(--ch-shadow-xl);
+    overflow: hidden;
+  }
+  
+  /* ─── Transition ──────────────────────────────────────────────────────────── */
+  .ch-command-palette-enter-active,
+  .ch-command-palette-leave-active {
+    transition: opacity var(--ch-duration-fast) var(--ch-ease-out);
+  }
+  
+  .ch-command-palette-enter-active .ch-command-palette__dialog,
+  .ch-command-palette-leave-active .ch-command-palette__dialog {
+    transition: transform var(--ch-duration-fast) var(--ch-ease-spring);
+  }
+  
+  .ch-command-palette-enter-from,
+  .ch-command-palette-leave-to {
+    opacity: 0;
+  }
+  
+  .ch-command-palette-enter-from .ch-command-palette__dialog,
+  .ch-command-palette-leave-to .ch-command-palette__dialog {
+    transform: translateY(-8px) scale(0.98);
 }
 
 /* ─── Search ──────────────────────────────────────────────────────────────── */
@@ -469,6 +537,9 @@ watch(() => props.open, (val) => {
   opacity: 0.5;
 }
 
+.ch-command-palette__empty p {
+  margin: 0;
+}
 .ch-command-palette__empty-hint {
   font-size: var(--ch-text-xs);
   color: var(--ch-color-text-subtle);

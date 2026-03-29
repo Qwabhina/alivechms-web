@@ -1,365 +1,168 @@
 <script setup lang="ts">
 /**
- * @component ChSidebar
- * @path /frontend/src/design-system/components/navigation/ChSidebar.vue
- * @description The primary navigation panel for the church management system.
- *
- * ─── Layout ───────────────────────────────────────────────────────────────────
- * The sidebar is divided into four vertical zones:
- *
- *   ┌─────────────────────┐
- *   │  Header (logo/name) │  ← `header` slot or default logo area
- *   ├─────────────────────┤
- *   │  Nav sections       │  ← scrollable, built from `sections` prop
- *   │  (with group labels)│
- *   ├─────────────────────┤
- *   │  Footer nav items   │  ← pinned at bottom (settings, help, logout)
- *   ├─────────────────────┤
- *   │  User profile area  │  ← `user` slot (avatar, name, role)
- *   └─────────────────────┘
- *
- * ─── Collapse behavior ────────────────────────────────────────────────────────
- * The sidebar can be collapsed to icon-only mode (64px wide) or fully
- * expanded (240px wide). The collapse state is managed internally but
- * exposed via `v-model:collapsed` so the parent layout can react
- * (e.g. to adjust the main content's left margin).
- *
- * ─── Mobile behavior ──────────────────────────────────────────────────────────
- * On mobile, the sidebar is hidden by default and slides in as a drawer
- * over the content (with a dimmed overlay behind it). The `open` prop
- * controls the mobile drawer state from the parent (toggled by a
- * hamburger button in ChTopbar).
- *
- * ─── Route awareness ──────────────────────────────────────────────────────────
- * The sidebar expects to be used alongside Vue Router. It accepts a
- * `currentRoute` prop (typically `route.path` from `useRoute()`) to
- * determine which item is active.
- *
- * ─── Nav structure ────────────────────────────────────────────────────────────
- * Nav items are organized into named sections (groups with headings).
- * This maps directly to the backend's domain modules:
- *
- * @example
- * const sections: NavSection[] = [
- *   {
- *     label: 'People',
- *     items: [
- *       { label: 'Members',    to: '/members',    icon: UsersIcon,  badge: 3 },
- *       { label: 'Families',   to: '/families',   icon: HomeIcon },
- *       { label: 'Volunteers', to: '/volunteers', icon: HandIcon },
- *       { label: 'Visitors',   to: '/visitors',   icon: UserPlusIcon },
- *     ]
- *   },
- *   {
- *     label: 'Finance',
- *     items: [
- *       { label: 'Contributions', to: '/contributions', icon: BanknoteIcon },
- *       { label: 'Expenses',      to: '/expenses',      icon: ReceiptIcon },
- *       { label: 'Pledges',       to: '/pledges',       icon: HandshakeIcon },
- *       { label: 'Budgets',       to: '/budgets',       icon: PieChartIcon },
- *     ]
- *   },
- * ]
+ * @component ChSidebarItem
+ * @description A single navigation entry with support for leaf items, groups, and collapsed mode.
  */
 
-// import { computed, ref, watch } from 'vue'
-import { computed } from 'vue'
-
-import ChSidebarItem, { type NavItem } from './ChSidebarItem.vue'
-
-// Re-export NavItem type for use by consuming code
-// (NavItem is imported from ChSidebarItem but not automatically re-exported)
-export type { NavItem }
+import { computed, ref, watch } from 'vue'
+import type { Component } from 'vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/**
- * A labeled group of nav items.
- * The `label` is shown as a small section heading above the items.
- * Set `label: ''` or omit it to render items without a heading.
- */
-export interface NavSection {
-  /** Section heading (e.g. "People", "Finance", "Operations") */
-  label?: string
-  /** The nav items belonging to this section */
-  items:  NavItem[]
+export interface NavItem {
+  label: string
+  to?: string
+  icon?: Component  // 👈 now type-safe
+  badge?: number
+  children?: NavItem[]
+  disabled?: boolean
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
+
 interface Props {
-  /** Main navigation sections — the core content of the sidebar */
-  sections?:     NavSection[]
-
-  /**
-   * Footer nav items — pinned to the bottom of the sidebar.
-   * Used for: Settings, Help, Logout.
-   */
-  footerItems?:  NavItem[]
-
-  /** Current route path from Vue Router (`route.path`) */
-  currentRoute?: string
-
-  /**
-   * Whether the sidebar is in collapsed (icon-only) mode.
-   * Supports v-model: `v-model:collapsed="isCollapsed"`
-   */
+  item: NavItem
+  currentRoute: string
   collapsed?:    boolean
-
-  /**
-   * Controls the mobile drawer open state.
-   * True = drawer slides in over content.
-   * Supports v-model: `v-model:open="drawerOpen"`
-   */
-  open?:         boolean
-
-  /** Church/organization name shown in the header area */
-  churchName?:   string
-
-  /** Church logo URL — displayed in the header */
-  logoSrc?:      string
+  depth?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  sections:     () => [],
-  footerItems:  () => [],
-  currentRoute: '/',
-  collapsed:    false,
-  open:         false,
+  collapsed: false,
+  depth: 0,
 })
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
+
 const emit = defineEmits<{
-  /** v-model:collapsed — emitted when the user clicks the collapse toggle */
-  'update:collapsed': [value: boolean]
-  /** v-model:open — emitted when the mobile drawer should close */
-  'update:open':      [value: boolean]
-  /**
-   * Emitted when a nav item is clicked.
-   * The parent should use this to call `router.push(to)`.
-   * This keeps the sidebar decoupled from Vue Router.
-   */
-  'navigate':         [to: string]
+  navigate: [to: string]
 }>()
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+const isOpen = ref(hasActiveChild())
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
-/** Whether any section has a label — affects layout spacing */
-const hasSectionLabels = computed(() =>
-  props.sections.some(s => !!s.label)
+const isGroup = computed(() => !!props.item.children?.length)
+
+const isActive = computed(() =>
+  !!props.item.to && props.currentRoute === props.item.to
 )
+
+const isChildActive = computed(() =>
+  isGroup.value && checkChildActive(props.item.children ?? [])
+)
+
+const isGroupHighlighted = computed(() =>
+  isGroup.value && (isOpen.value || isChildActive.value)
+)
+
+const showBadge = computed(() =>
+  typeof props.item.badge === 'number' && props.item.badge > 0
+)
+
+const badgeLabel = computed(() => {
+  const n = props.item.badge ?? 0
+  return n > 99 ? '99+' : String(n)
+})
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function checkChildActive(children: NavItem[]): boolean {
+  return children.some(child =>
+    child.to === props.currentRoute ||
+    (child.children ? checkChildActive(child.children) : false)
+  )
+}
+
+function hasActiveChild(): boolean {
+  if (!props.item.children) return false
+  return checkChildActive(props.item.children)
+}
+
+// ─── Watcher – auto‑expand group when a child becomes active ─────────────────
+
+watch(() => props.currentRoute, () => {
+  if (isGroup.value && !isOpen.value && hasActiveChild()) {
+    isOpen.value = true
+  }
+})
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 
-/** Toggles the sidebar between expanded and collapsed */
-function toggleCollapse() {
-  emit('update:collapsed', !props.collapsed)
-}
+function handleClick() {
+  if (props.item.disabled) return
 
-/**
- * Handles navigation events bubbled up from ChSidebarItem.
- * Emits navigate to the parent, then closes the mobile drawer.
- */
-function handleNavigate(to: string) {
-  emit('navigate', to)
-  // Close mobile drawer after navigation
-  if (props.open) {
-    emit('update:open', false)
+  if (isGroup.value) {
+    if (!props.collapsed) {
+      isOpen.value = !isOpen.value
+    }
+    return
   }
-}
 
-/** Closes the mobile overlay when the user clicks the backdrop */
-function closeDrawer() {
-  emit('update:open', false)
+  if (props.item.to) {
+    emit('navigate', props.item.to)
+  }
 }
 </script>
 
 <template>
-  <!--
-    ─── Mobile Overlay ──────────────────────────────────────────────────────
-    A dark semi-transparent backdrop behind the sidebar on mobile.
-    Only renders when the drawer is open.
-    Clicking it closes the drawer.
-  -->
-  <Transition name="ch-overlay">
-    <div
-      v-if="open"
-      class="ch-sidebar-overlay"
-      aria-hidden="true"
-      @click="closeDrawer"
-    ></div>
-  </Transition>
-
-  <!--
-    ─── Sidebar Container ────────────────────────────────────────────────────
-    The main sidebar element.
-
-    CSS classes:
-    - `ch-sidebar--collapsed` → narrows to icon-only width (64px)
-    - `ch-sidebar--open`      → slides in from left on mobile
-
-    `aria-label` gives the nav landmark a name for screen readers.
-    `<nav>` is the correct semantic element for a navigation region.
-  -->
-  <nav
-    :class="[
-      'ch-sidebar',
-      {
-        'ch-sidebar--collapsed': collapsed,
-        'ch-sidebar--open':      open,
-      }
-    ]"
-    aria-label="Main navigation"
-  >
-
+  <li class="ch-sidebar-item-wrapper">
     <!--
-      ─── Header ───────────────────────────────────────────────────────────
-      Shows the logo and church name. Has a named `header` slot so the
-      parent can provide a custom header (e.g. with a multi-branch selector).
-      Falls back to the default logo + name display.
+      Use a button for all items; leaf items get role="link" for accessibility.
+      Depth padding is handled via a CSS custom property.
     -->
-    <div class="ch-sidebar__header">
-      <slot name="header">
-        <!-- Default header: logo image or initials + church name -->
-        <div class="ch-sidebar__brand">
-          <div class="ch-sidebar__logo">
-            <img
-              v-if="logoSrc"
-              :src="logoSrc"
-              :alt="churchName || 'Church logo'"
-              class="ch-sidebar__logo-img"
-            />
-            <!-- Fallback: first letter of church name in a colored square -->
-            <span v-else class="ch-sidebar__logo-fallback">
-              {{ churchName?.charAt(0) ?? 'A' }}
-            </span>
-          </div>
+    <button :class="[
+  'ch-sidebar-item',
+  {
+    'ch-sidebar-item--active': isActive,
+    'ch-sidebar-item--group-active': isGroupHighlighted,
+    'ch-sidebar-item--collapsed': collapsed,
+    'ch-sidebar-item--disabled': item.disabled,
+    'ch-sidebar-item--depth': depth > 0,
+  }
+]"
+:style="{ '--depth': depth }" :aria-current="isActive ? 'page' : undefined"
+      :aria-expanded="isGroup ? isOpen : undefined" :disabled="item.disabled"
+      :data-tooltip="collapsed ? item.label : undefined" :role="item.to && !isGroup ? 'link' : undefined" type="button"
+      @click="handleClick">
+      <!-- Icon – type‑safe component rendering -->
+      <span v-if="item.icon" class="ch-sidebar-item__icon" aria-hidden="true">
+        <component :is="item.icon" :size="18" />
+      </span>
+      <span v-else class="ch-sidebar-item__dot" aria-hidden="true" />
 
-          <!--
-            Church name — hidden in collapsed mode.
-            `aria-hidden` when collapsed since it's not visible.
-          -->
-          <span
-            v-if="!collapsed"
-            class="ch-sidebar__church-name"
-          >
-            {{ churchName ?? 'AliveChms' }}
-          </span>
-        </div>
-      </slot>
+      <span class="ch-sidebar-item__label">{{ item.label }}</span>
 
-      <!--
-        Collapse toggle button — visible on desktop only (CSS hides on mobile).
-        Switches between "collapse" (←) and "expand" (→) arrows.
-        `aria-label` updates to communicate current action to screen readers.
-      -->
-      <button
-        class="ch-sidebar__collapse-btn"
-        :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-        type="button"
-        @click="toggleCollapse"
+      <span
+v-if="showBadge && !isGroup" class="ch-sidebar-item__badge" :aria-label="`${item.badge} pending`">
+        {{ badgeLabel }}
+      </span>
+
+      <span v-if="isGroup" :class="['ch-sidebar-item__chevron', { 'ch-sidebar-item__chevron--open': isOpen }]"
+        aria-hidden="true"
       >
-        <svg
-          width="16" height="16" viewBox="0 0 16 16" fill="none"
-          :style="{ transform: collapsed ? 'rotate(180deg)' : 'none' }"
-          style="transition: transform 0.3s ease"
-        >
-          <!-- Double left-arrow chevron icon -->
-          <path d="M10 4L6 8L10 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M6 4L2 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+            stroke-linejoin="round" />
         </svg>
-      </button>
-    </div>
-
-    <!-- ─── Divider below header ─────────────────────────────────────────── -->
-    <div class="ch-sidebar__rule" aria-hidden="true"></div>
+      </span>
+    </button>
 
     <!--
-      ─── Main Nav (scrollable) ────────────────────────────────────────────
-      Contains all sections and their items.
-      `overflow-y: auto` allows scrolling when there are many items.
+      Children list – animated with max‑height transition.
+      The class .ch-sidebar-item__children--open toggles the visible height.
     -->
-    <div class="ch-sidebar__scroll">
-      <ul
-        class="ch-sidebar__nav"
-        :class="{ 'ch-sidebar__nav--has-labels': hasSectionLabels }"
-        role="list"
-      >
-        <!--
-          Loop through sections.
-          Each section optionally has a label heading above its items.
-        -->
-        <li
-          v-for="(section, sIndex) in sections"
-          :key="sIndex"
-          class="ch-sidebar__section"
-        >
-          <!--
-            Section label (e.g. "PEOPLE", "FINANCE").
-            Hidden in collapsed mode — too wide to show.
-            `aria-hidden` because the label is visual grouping only;
-            the items themselves are accessible individually.
-          -->
-          <span
-            v-if="section.label && !collapsed"
-            class="ch-sidebar__section-label"
-            aria-hidden="true"
-          >
-            {{ section.label }}
-          </span>
-
-          <!--
-            Items list for this section.
-            Each ChSidebarItem handles its own active state, children, badges.
-          -->
-          <ul class="ch-sidebar__section-items" role="list">
-            <ChSidebarItem
-              v-for="item in section.items"
-              :key="item.label"
-              :item="item"
-              :current-route="currentRoute"
-              :collapsed="collapsed"
-              @navigate="handleNavigate"
-            />
-          </ul>
-        </li>
-      </ul>
-    </div>
-
-    <!-- Pushes footer to the bottom of the sidebar -->
-    <div class="ch-sidebar__spacer" aria-hidden="true"></div>
-
-    <!--
-      ─── Footer Nav ───────────────────────────────────────────────────────
-      Pinned at the bottom. Used for Settings, Help & Support, Logout.
-      Separated from the main nav by a divider.
-    -->
-    <div v-if="footerItems.length" class="ch-sidebar__footer">
-      <div class="ch-sidebar__rule" aria-hidden="true"></div>
-      <ul class="ch-sidebar__section-items" role="list">
-        <ChSidebarItem
-          v-for="item in footerItems"
-          :key="item.label"
-          :item="item"
-          :current-route="currentRoute"
-          :collapsed="collapsed"
-          @navigate="handleNavigate"
-        />
-      </ul>
-    </div>
-
-    <!--
-      ─── User Profile Area ────────────────────────────────────────────────
-      A slot for displaying the currently logged-in user.
-      Typical content: ChAvatar + name + role badge + logout button.
-    -->
-    <div v-if="$slots.user" class="ch-sidebar__user">
-      <div class="ch-sidebar__rule" aria-hidden="true"></div>
-      <div class="ch-sidebar__user-content">
-        <slot name="user" :collapsed="collapsed"></slot>
-      </div>
-    </div>
-
-  </nav>
+    <ul
+v-if="isGroup && !collapsed"
+      :class="['ch-sidebar-item__children', { 'ch-sidebar-item__children--open': isOpen }]" role="group">
+      <ChSidebarItem
+v-for="child in item.children" :key="child.label" :item="child" :current-route="currentRoute"
+        :collapsed="collapsed"
+:depth="depth + 1" @navigate="emit('navigate', $event)" />
+    </ul>
+  </li>
 </template>
 
 <style scoped>
@@ -527,6 +330,25 @@ function closeDrawer() {
   display: none; /* hide brand entirely in collapsed mode */
 }
 
+/* ─── Children list with smooth animation ─────────────────────────────────── */
+.ch-sidebar-item__children {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.3s ease-out;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ch-sidebar-item__children--open {
+  max-height: 1000px;
+  /* safe upper bound; adjust if groups can be larger */
+}
+
+/* ─── Depth padding using CSS custom property ────────────────────────────── */
+.ch-sidebar-item--depth {
+  padding-left: calc(var(--ch-space-4) + (var(--depth) * 12px));
+}
 /* ─── Divider Rule ────────────────────────────────────────────────────────── */
 .ch-sidebar__rule {
   height:     1px;

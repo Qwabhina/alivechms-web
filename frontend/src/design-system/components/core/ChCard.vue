@@ -186,7 +186,8 @@ const classes = computed(() => [
 /* ─── Base ────────────────────────────────────────────────────────────────── */
 .ch-card {
   background-color: var(--ch-color-surface);
-  border-radius:    var(--ch-radius-none); /* 0px */
+  border-radius: var(--ch-radius-lg);
+    /* larger surface */
   overflow:         hidden;
 
   transition:

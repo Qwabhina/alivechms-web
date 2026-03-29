@@ -221,7 +221,7 @@ const ariaLabel = computed(() => props.alt ?? props.name ?? 'Avatar')
   /* initials should be bold enough to read */
   overflow: hidden;
   /* clip image to the border-radius */
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   /* square by default */
   user-select: none;
   /* can't accidentally select the initials text */
@@ -229,8 +229,8 @@ const ariaLabel = computed(() => props.alt ?? props.name ?? 'Avatar')
 
 /* Rounded mode: slightly softer square */
 .ch-avatar--rounded {
-  border-radius: var(--ch-radius-sm);
-  /* 2px */
+  /* border-radius: var(--ch-radius-sm); */
+    border-radius: var(--ch-radius-full);
 }
 
 /* ─── Sizes ───────────────────────────────────────────────────────────────── */
@@ -300,7 +300,7 @@ const ariaLabel = computed(() => props.alt ?? props.name ?? 'Avatar')
   min-width: 7px;
   min-height: 7px;
 
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   /* sharp square */
 
   /*

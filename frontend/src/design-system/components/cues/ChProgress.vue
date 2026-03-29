@@ -179,7 +179,7 @@ const valueLabel = computed(() =>
 }
 
 .ch-progress__track--rounded {
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
 }
 
 /* ─── Size — track heights ────────────────────────────────────────────────── */
@@ -206,7 +206,7 @@ const valueLabel = computed(() =>
 }
 
 .ch-progress__fill--rounded {
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
 }
 
 /* ─── Variant colors ──────────────────────────────────────────────────────── */

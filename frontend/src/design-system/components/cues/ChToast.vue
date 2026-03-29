@@ -108,7 +108,7 @@ const iconPath = computed(() => ICONS[props.toast.variant] ?? ICONS.info)
   align-items:   flex-start;
   gap:           var(--ch-space-3);
   padding:       var(--ch-space-3_5) var(--ch-space-4);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-lg);
   border:        1px solid var(--ch-color-border-strong);
   box-shadow:    var(--ch-shadow-lg);
   min-width:     280px;
@@ -193,7 +193,7 @@ const iconPath = computed(() => ICONS[props.toast.variant] ?? ICONS.info)
   padding:       var(--ch-space-0_5);
   cursor:        pointer;
   color:         var(--ch-color-text-subtle);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
   display:       flex;
   align-items:   center;
   transition:

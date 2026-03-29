@@ -236,8 +236,8 @@ Hidden during loading (spinner replaces it visually).
    * when the border becomes visible (e.g. on focus or hover). */
   border: 1px solid transparent;
 
-  border-radius: var(--ch-radius-sm);
-  /* 2px — sharp but not a razor edge */
+  border-radius: var(--ch-radius-md);
+    /* 4px — default button radius */
   font-family: var(--ch-font-sans);
   font-weight: var(--ch-font-medium);
   /* 500 — heavier than body, not bold */

@@ -508,7 +508,8 @@ watch(() => props.loading, (isLoading) => {
 .ch-chart__skeleton {
   width:         100%;
   height:        100%;
-  border-radius: var(--ch-radius-none); /* sharp corners */
+  border-radius: var(--ch-radius-sm);
+    /* subtle corners */
   background:    linear-gradient(
     90deg,
     var(--ch-color-bg-muted)  0%,

@@ -137,7 +137,8 @@ const classes = computed(() => [
    * This prevents a 1px layout shift if a bordered variant is toggled dynamically.
    */
   border:        1px solid transparent;
-  border-radius: var(--ch-radius-none); /* 0px by default */
+  border-radius: var(--ch-radius-sm);
+    /* subtle rounding */
 }
 
 /* ─── Pill Shape (Now Small Radius) ───────────────────────────────────────── */

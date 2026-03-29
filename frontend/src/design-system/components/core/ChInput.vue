@@ -328,7 +328,8 @@ function onClear() {
   align-items:      center;
   background-color: var(--ch-color-surface);
   border:           1px solid var(--ch-color-border-strong);
-  border-radius:    var(--ch-radius-none); /* 0px */
+  border-radius: var(--ch-radius-md);
+    /* 4px — input radius */
 
   transition:
     border-color var(--ch-duration-fast) var(--ch-ease-out),

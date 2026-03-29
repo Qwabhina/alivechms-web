@@ -145,7 +145,7 @@ watch(() => props.modelValue, (newVal) => {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-lg);
   overflow: hidden;
   background: var(--ch-color-surface);
 }

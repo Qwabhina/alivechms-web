@@ -6,11 +6,10 @@
  * options. Supports icons, dividers, disabled items, and keyboard navigation.
  */
 
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useSlots, watch } from 'vue'
 import { Search, CircleHelp } from 'lucide-vue-next'
 import ChPopover, { type PopoverPlacement } from './ChPopover.vue'
 import ChInput from './ChInput.vue'
-import ChDropdownDivider from './ChDropdownDivider.vue'
 import ChDropdownItem from './ChDropdownItem.vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,8 +23,6 @@ export interface DropdownItem<T extends string | number | object = string> {
   value: T
   /** Display label */
   label: string
-  /** Optional icon SVG path or component */
-  icon?: string
   /** Visual variant for emphasis */
   variant?: DropdownItemVariant
   /** Whether the item is disabled */
@@ -47,17 +44,21 @@ interface Props {
   searchable?: boolean
   /** Placeholder for the search input */
   searchPlaceholder?: string
-  /** Field name to search on (for objects). Default: 'label' */
-  searchKey?: string
+  /**
+   * Which DropdownItem field to filter on.
+   * Restricted to string fields to guarantee sensible results.
+   * Default: 'label'
+   */
+  searchKey?: keyof Pick<DropdownItem<T>, 'label' | 'description'>
   /** Minimum characters before search filters. Default: 0 */
   searchMinChars?: number
-  /** Custom CSS class for the dropdown */
-  class?: string
+  /** Custom CSS class forwarded to the ChPopover wrapper */
+  popoverClass?: string
   /** Min width of dropdown. Default: '180px' */
   minWidth?: string
   /** Max width of dropdown. Default: '300px' */
   maxWidth?: string
-  /** Max height before scrolling. Default: '300px' */
+  /** Max height of the items list before scrolling. Default: '300px' */
   maxHeight?: string
 }
 
@@ -69,7 +70,7 @@ const props = withDefaults(defineProps<Props>(), {
   searchPlaceholder: 'Search...',
   searchKey: 'label',
   searchMinChars: 0,
-  class: '',
+  popoverClass: '',
   minWidth: '180px',
   maxWidth: '300px',
   maxHeight: '300px',
@@ -82,6 +83,17 @@ const emit = defineEmits<{
   select: [item: DropdownItem<T>]
 }>()
 
+// ─── Slots ────────────────────────────────────────────────────────────────────
+
+const slots = useSlots()
+
+/**
+ * True when the consumer has provided custom slot content.
+ * When true, we render the slot and skip the items array fallback so that
+ * both never render at the same time.
+ */
+const hasCustomContent = computed(() => !!slots.default)
+
 // ─── Local state ──────────────────────────────────────────────────────────────
 
 const isOpen = ref(props.open)
@@ -90,20 +102,20 @@ const searchQuery = ref('')
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
 const filteredItems = computed(() => {
-  if (!props.searchable || !searchQuery.value) return props.items
+  if (!props.searchable || !searchQuery.value || searchQuery.value.length < props.searchMinChars) {
+    return props.items
+  }
 
   const query = searchQuery.value.toLowerCase()
-  const minChars = props.searchMinChars
-
-  if (query.length < minChars) return props.items
-
   return props.items.filter(item => {
-    const searchableValue = String(item[props.searchKey as keyof DropdownItem<T>] ?? item.label)
-    return searchableValue.toLowerCase().includes(query)
+    const searchable = item[props.searchKey] ?? item.label
+    return String(searchable).toLowerCase().includes(query)
   })
 })
 
-const hasItems = computed(() => filteredItems.value.length > 0)
+const hasItems = computed(() =>
+  hasCustomContent.value || filteredItems.value.length > 0
+)
 
 // ─── Methods ──────────────────────────────────────────────────────────────────
 
@@ -117,9 +129,7 @@ function handleSelect(item: DropdownItem<T>) {
 function handleOpenChange(newOpen: boolean) {
   isOpen.value = newOpen
   emit('update:open', newOpen)
-  if (!newOpen) {
-    searchQuery.value = ''
-  }
+  if (!newOpen) searchQuery.value = ''
 }
 
 // ─── Watch ────────────────────────────────────────────────────────────────────
@@ -130,7 +140,7 @@ watch(() => props.open, (newVal) => {
 </script>
 
 <template>
-  <ChPopover :open="isOpen" :placement="placement" trigger="click" :class="class" :min-width="minWidth"
+  <ChPopover :open="isOpen" :placement="placement" trigger="click" :class="popoverClass" :min-width="minWidth"
     :max-width="maxWidth" @update:open="handleOpenChange">
     <template #trigger>
       <slot name="trigger"></slot>
@@ -148,20 +158,30 @@ watch(() => props.open, (newVal) => {
 
       <!-- Items list -->
       <div class="ch-dropdown__items" role="menu">
-        <!-- Empty state -->
+        <!-- Empty state: only shown when using the items array (not custom slot) -->
         <div v-if="!hasItems" class="ch-dropdown__empty">
           <CircleHelp :size="24" :stroke-width="1.5" />
           <p>No results found</p>
         </div>
 
-        <!-- Slot content (custom items) -->
-        <slot>
-          <!-- Fallback to items array -->
-          <template v-for="item in filteredItems" :key="String(item.value)">
-            <ChDropdownItem :label="item.label" :description="item.description" :icon="item.icon"
-              :variant="item.variant" :disabled="item.disabled" @click="handleSelect(item)" />
-          </template>
-        </slot>
+        <!--
+          Custom slot content takes full control of the item list.
+          The items array fallback is skipped so both never render simultaneously.
+        -->
+        <template v-if="hasCustomContent">
+          <slot></slot>
+        </template>
+
+        <template v-else>
+          <ChDropdownItem v-for="item in filteredItems" :key="String(item.value)" :label="item.label"
+            :description="item.description" :variant="item.variant" :disabled="item.disabled"
+            @click="handleSelect(item)">
+            <!-- Forward the trailing slot down if the consumer needs it -->
+            <template v-if="$slots['item-trailing']" #trailing>
+              <slot name="item-trailing" :item="item"></slot>
+            </template>
+          </ChDropdownItem>
+        </template>
       </div>
     </div>
   </ChPopover>

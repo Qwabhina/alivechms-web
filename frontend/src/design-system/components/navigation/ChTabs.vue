@@ -365,7 +365,8 @@ function handleKeydown(e: KeyboardEvent, index: number) {
   right:      0;
   height:     2px;
   background: var(--ch-color-primary);
-  border-radius: var(--ch-radius-none); /* 0px */
+  border-radius: var(--ch-radius-md);
+    /* control */
 }
 
 /* Hover underline hint — subtle indicator before the tab is selected */
@@ -377,7 +378,8 @@ function handleKeydown(e: KeyboardEvent, index: number) {
   right:      var(--ch-space-4);
   height:     2px;
   background: var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none); /* 0px */
+  border-radius: var(--ch-radius-md);
+    /* control */
 }
 
 /* ─── Variant: Pills ──────────────────────────────────────────────────────── */
@@ -387,7 +389,8 @@ function handleKeydown(e: KeyboardEvent, index: number) {
  */
 .ch-tabs--pills {
   background-color: var(--ch-color-bg-muted); /* subtle container */
-  border-radius:    var(--ch-radius-none); /* sharp */
+  border-radius: var(--ch-radius-md);
+    /* control */
   padding:          var(--ch-space-1);
   gap:              var(--ch-space-1);
   align-items:      center;
@@ -395,7 +398,8 @@ function handleKeydown(e: KeyboardEvent, index: number) {
 }
 
 .ch-tabs--pills .ch-tab {
-  border-radius: var(--ch-radius-none); /* sharp */
+  border-radius: var(--ch-radius-sm);
+    /* subtle */
 }
 
 /* Active pill — white background with hard shadow (lifts off the gray container) */
@@ -426,7 +430,8 @@ function handleKeydown(e: KeyboardEvent, index: number) {
 .ch-tabs--boxed .ch-tab {
   border:        2px solid transparent;
   border-bottom: none;
-  border-radius: var(--ch-radius-none); /* 0px corners */
+  border-radius: var(--ch-radius-md);
+    /* control corners */
   margin-bottom: -2px; /* overlap the list's border-bottom */
 }
 

@@ -245,7 +245,7 @@ function stepStatus(idx: number): 'complete' | 'active' | 'upcoming' {
 .ch-stepper__indicator {
   width:           32px;
   height:          32px;
-  border-radius:   var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   display:         flex;
   align-items:     center;
   justify-content: center;
@@ -327,7 +327,7 @@ function stepStatus(idx: number): 'complete' | 'active' | 'upcoming' {
   color:         var(--ch-color-text-subtle);
   background:    var(--ch-color-bg-muted);
   border:        1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   padding:       1px var(--ch-space-1_5);
 }
 
@@ -349,7 +349,7 @@ function stepStatus(idx: number): 'complete' | 'active' | 'upcoming' {
   padding:       var(--ch-space-3) var(--ch-space-4);
   background:    var(--ch-color-danger-bg);
   border:        1px solid var(--ch-color-danger);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   color:         var(--ch-color-danger-fg);
   font-size:     var(--ch-text-sm);
   font-weight:   var(--ch-font-medium);

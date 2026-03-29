@@ -178,7 +178,7 @@ const iconClasses = computed(() => [
 .ch-stat-card {
   background-color: var(--ch-color-surface);
   border: 1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-lg);
   padding: var(--ch-space-5);
   box-shadow: var(--ch-shadow-md);
   display: flex;
@@ -206,7 +206,7 @@ const iconClasses = computed(() => [
 .ch-stat-card__icon {
   width: 40px;
   height: 40px;
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -257,7 +257,7 @@ const iconClasses = computed(() => [
   font-size: var(--ch-text-xs);
   font-weight: var(--ch-font-medium);
   padding: var(--ch-space-1) var(--ch-space-2);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   line-height: 1;
 }
 
@@ -331,7 +331,7 @@ const iconClasses = computed(() => [
  * background-size: 200% ensures the gradient is wide enough to sweep fully.
  */
 .ch-stat-card__skeleton {
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   background: linear-gradient(90deg,
       var(--ch-color-bg-muted) 0%,
       var(--ch-color-bg-subtle) 50%,

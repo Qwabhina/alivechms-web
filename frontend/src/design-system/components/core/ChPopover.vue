@@ -63,20 +63,26 @@ const emit = defineEmits<{
 const isOpen = ref(props.open)
 const triggerRef = ref<HTMLElement | null>(null)
 const popoverRef = ref<HTMLElement | null>(null)
-const actualPlacement = ref<PopoverPlacement>(props.placement)
+const actualPlacement = ref<Exclude<PopoverPlacement, 'auto'>>(
+  props.placement === 'auto' ? 'bottom' : props.placement
+)
+
+// ─── Position state (imperative, not computed) ────────────────────────────────
+
+/**
+ * Position is stored as a plain ref and written imperatively so that
+ * DOM measurements (getBoundingClientRect) — which Vue cannot track as
+ * reactive dependencies — always produce the correct result.
+ */
+const position = ref({ top: '0px', left: '0px' })
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
-
-const placementClass = computed(() => `ch-popover--${actualPlacement.value}`)
 
 const popoverStyle = computed(() => ({
   '--ch-popover-min-width': props.minWidth,
   '--ch-popover-max-width': props.maxWidth,
 }))
 
-/**
- * Get transform based on actual placement
- */
 const transformStyle = computed(() => {
   switch (actualPlacement.value) {
     case 'top':
@@ -90,105 +96,70 @@ const transformStyle = computed(() => {
   }
 })
 
-// ─── Position Calculation ────────────────────────────────────────────────────
-
-interface PopoverPosition {
-  top: string
-  left: string
-  placement: PopoverPlacement
-}
+// ─── Position Calculation ─────────────────────────────────────────────────────
 
 /**
- * Calculate popover position based on trigger element and available space
+ * Measure the DOM and write the result into `position` and `actualPlacement`.
+ * Must be called after the popover element is mounted (nextTick after open).
  */
-function getPopoverPosition(): PopoverPosition {
-  if (!triggerRef.value || !popoverRef.value) {
-    return { top: '0', left: '0', placement: 'bottom' }
-  }
+function updatePosition(): void {
+  if (!triggerRef.value || !popoverRef.value) return
 
-  const trigger = triggerRef.value
-  const popover = popoverRef.value
-  const triggerRect = trigger.getBoundingClientRect()
-  const popoverRect = popover.getBoundingClientRect()
-  const offset = props.offset || 8
-  const viewportWidth = window.innerWidth
-  const viewportHeight = window.innerHeight
+  const triggerRect = triggerRef.value.getBoundingClientRect()
+  const popoverRect = popoverRef.value.getBoundingClientRect()
+  const { offset } = props
+  const vw = window.innerWidth
+  const vh = window.innerHeight
 
-  // Determine the best placement
-  let placement: PopoverPlacement = props.placement
+  // ── Resolve placement ──────────────────────────────────────────────────────
+  let placement: Exclude<PopoverPlacement, 'auto'>
 
   if (props.placement === 'auto') {
-    // Calculate space available in each direction
-    const spaceTop = triggerRect.top
-    const spaceBottom = viewportHeight - triggerRect.bottom
-    const spaceLeft = triggerRect.left
-    const spaceRight = viewportWidth - triggerRect.right
-
-    // Choose the direction with most space
     const spaces = [
-      { dir: 'top' as PopoverPlacement, space: spaceTop },
-      { dir: 'bottom' as PopoverPlacement, space: spaceBottom },
-      { dir: 'left' as PopoverPlacement, space: spaceLeft },
-      { dir: 'right' as PopoverPlacement, space: spaceRight },
+      { dir: 'bottom' as const, space: vh - triggerRect.bottom },
+      { dir: 'top' as const, space: triggerRect.top },
+      { dir: 'right' as const, space: vw - triggerRect.right },
+      { dir: 'left' as const, space: triggerRect.left },
     ]
-    spaces.sort((a, b) => b.space - a.space)
-    placement = spaces[0]?.dir || 'bottom'
+    placement = spaces.sort((a, b) => b.space - a.space)[0]?.dir ?? 'bottom'
+  } else {
+    placement = props.placement
   }
 
-  // Calculate position based on placement
+  actualPlacement.value = placement
+
+  // ── Calculate raw position ─────────────────────────────────────────────────
   let top: number
   let left: number
 
   switch (placement) {
     case 'top':
-      top = triggerRect.top + window.scrollY - offset - popoverRect.height
-      left = triggerRect.left + window.scrollX + triggerRect.width / 2
+      top = triggerRect.top - offset - popoverRect.height
+      left = triggerRect.left + triggerRect.width / 2
       break
     case 'bottom':
-      top = triggerRect.bottom + window.scrollY + offset
-      left = triggerRect.left + window.scrollX + triggerRect.width / 2
+      top = triggerRect.bottom + offset
+      left = triggerRect.left + triggerRect.width / 2
       break
     case 'left':
-      top = triggerRect.top + window.scrollY + triggerRect.height / 2
-      left = triggerRect.left + window.scrollX - offset - popoverRect.width
+      top = triggerRect.top + triggerRect.height / 2
+      left = triggerRect.left - offset - popoverRect.width
       break
     case 'right':
-      top = triggerRect.top + window.scrollY + triggerRect.height / 2
-      left = triggerRect.right + window.scrollX + offset
+      top = triggerRect.top + triggerRect.height / 2
+      left = triggerRect.right + offset
       break
-    default:
-      top = triggerRect.bottom + window.scrollY + offset
-      left = triggerRect.left + window.scrollX + triggerRect.width / 2
   }
 
-  actualPlacement.value = placement
-
-  return {
-    top: `${top}px`,
-    left: `${left}px`,
-    placement,
+  // ── Clamp to viewport (prevent overflow) ───────────────────────────────────
+  // For top/bottom placements the transform shifts left by 50% of popover width
+  if (placement === 'top' || placement === 'bottom') {
+    const halfW = popoverRect.width / 2
+    left = Math.min(Math.max(left, halfW + 8), vw - halfW - 8)
   }
-}
+  top = Math.min(Math.max(top, 8), vh - popoverRect.height - 8)
 
-const computedPosition = computed(getPopoverPosition)
-
-/**
- * Update popover position
- */
-function updatePosition() {
-  if (isOpen.value && popoverRef.value) {
-    // Force recompute
-    const pos = getPopoverPosition()
-  }
-}
-
-/**
- * Handle scroll and resize events
- */
-function handleScrollOrResize() {
-  if (isOpen.value) {
-    updatePosition()
-  }
+  position.value = { top: `${top}px`, left: `${left}px` }
 }
 
 // ─── Methods ──────────────────────────────────────────────────────────────────
@@ -223,46 +194,35 @@ function handleTriggerClick(e: MouseEvent) {
 }
 
 function handleTriggerEnter() {
-  if (props.trigger === 'hover') {
-    showPopover()
-  }
+  if (props.trigger === 'hover') showPopover()
 }
 
 function handleTriggerLeave() {
-  if (props.trigger === 'hover') {
-    hidePopover()
-  }
+  if (props.trigger === 'hover') hidePopover()
 }
 
 function handleTriggerFocus() {
-  if (props.trigger === 'focus') {
-    showPopover()
-  }
+  if (props.trigger === 'focus') showPopover()
 }
 
 function handleTriggerBlur() {
-  if (props.trigger === 'focus') {
-    hidePopover()
-  }
+  if (props.trigger === 'focus') hidePopover()
 }
 
 function handleClickOutside(e: MouseEvent) {
-  if (!isOpen.value) return
-  if (props.trigger !== 'click') return
-
+  if (!isOpen.value || props.trigger !== 'click') return
   const target = e.target as Node
-  const isInsideTrigger = triggerRef.value?.contains(target)
-  const isInsidePopover = popoverRef.value?.contains(target)
-
-  if (!isInsideTrigger && !isInsidePopover) {
+  if (!triggerRef.value?.contains(target) && !popoverRef.value?.contains(target)) {
     hidePopover()
   }
 }
 
 function handleEscape(e: KeyboardEvent) {
-  if (e.key === 'Escape' && isOpen.value) {
-    hidePopover()
-  }
+  if (e.key === 'Escape' && isOpen.value) hidePopover()
+}
+
+function handleScrollOrResize() {
+  if (isOpen.value) updatePosition()
 }
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
@@ -270,9 +230,8 @@ function handleEscape(e: KeyboardEvent) {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('keydown', handleEscape)
-  // Add scroll and resize listeners for proper positioning
-  window.addEventListener('scroll', handleScrollOrResize, true)
-  window.addEventListener('resize', handleScrollOrResize)
+  window.addEventListener('scroll', handleScrollOrResize, { passive: true, capture: true })
+  window.addEventListener('resize', handleScrollOrResize, { passive: true })
 })
 
 onUnmounted(() => {
@@ -282,14 +241,15 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleScrollOrResize)
 })
 
+// ─── Watch ────────────────────────────────────────────────────────────────────
+
 watch(() => props.open, (newVal) => {
   isOpen.value = newVal
 })
 
 watch(isOpen, async (newVal) => {
-  emit('update:open', newVal)
-  // Update position after popover is rendered
   if (newVal) {
+    // Wait for the popover element to mount, then measure and position it.
     await nextTick()
     updatePosition()
   }
@@ -304,15 +264,17 @@ watch(isOpen, async (newVal) => {
     </div>
 
     <Teleport to="body">
-      <Transition name="ch-popover-fade">
+      <Transition :name="`ch-popover-fade--${actualPlacement}`">
         <div v-if="isOpen" ref="popoverRef" class="ch-popover"
-          :class="[placementClass, props.class, { 'ch-popover--modal': modal }]" :style="[popoverStyle, {
-            position: 'fixed',
-            top: computedPosition.top,
-            left: computedPosition.left,
-  transform: transformStyle
-          }]" role="dialog"
-          :aria-modal="modal ? 'true' : 'false'">
+          :class="[`ch-popover--${actualPlacement}`, props.class, { 'ch-popover--modal': modal }]" :style="[
+            popoverStyle,
+            {
+              position: 'fixed',
+    top: position.top,
+    left: position.left,
+    transform: transformStyle,
+  },
+]" role="dialog" :aria-modal="modal ? 'true' : 'false'">
           <div v-if="$slots.header" class="ch-popover__header">
             <slot name="header"></slot>
           </div>
@@ -349,7 +311,7 @@ watch(isOpen, async (newVal) => {
   max-width: var(--ch-popover-max-width, 320px);
   background: var(--ch-color-surface);
   border: 1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
   box-shadow: var(--ch-shadow-xl);
   overflow: hidden;
   z-index: var(--ch-z-popover);
@@ -365,9 +327,9 @@ watch(isOpen, async (newVal) => {
 }
 
 .ch-popover__content {
+  /* No hardcoded max-height — consumers (e.g. ChDropdown) control their own
+       scrolling via --ch-dropdown-max-height on the inner items list. */
   padding: var(--ch-space-3) var(--ch-space-4);
-  max-height: 400px;
-  overflow-y: auto;
 }
 
 .ch-popover__footer {
@@ -389,7 +351,7 @@ watch(isOpen, async (newVal) => {
   padding: var(--ch-space-1);
   color: var(--ch-color-text-subtle);
   cursor: pointer;
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -411,35 +373,42 @@ watch(isOpen, async (newVal) => {
   z-index: -1;
 }
 
-.ch-popover-fade-enter-active,
-.ch-popover-fade-leave-active {
+/* ─── Transitions (one named transition per placement) ────────────────────── */
+
+.ch-popover-fade--top-enter-active,
+.ch-popover-fade--top-leave-active,
+.ch-popover-fade--bottom-enter-active,
+.ch-popover-fade--bottom-leave-active,
+.ch-popover-fade--left-enter-active,
+.ch-popover-fade--left-leave-active,
+.ch-popover-fade--right-enter-active,
+.ch-popover-fade--right-leave-active {
   transition:
     opacity var(--ch-duration-fast) var(--ch-ease-out),
     transform var(--ch-duration-fast) var(--ch-ease-spring);
 }
 
-.ch-popover-fade-enter-from,
-.ch-popover-fade-leave-to {
+.ch-popover-fade--top-enter-from,
+.ch-popover-fade--top-leave-to {
   opacity: 0;
+  transform: translate(-50%, 6px);
 }
 
-/* Initial state for different placements */
-.ch-popover--top.ch-popover-fade-enter-from,
-.ch-popover--top.ch-popover-fade-leave-to {
-  transform: translate(-50%, 8px);
-}
-.ch-popover--bottom.ch-popover-fade-enter-from,
-.ch-popover--bottom.ch-popover-fade-leave-to {
-  transform: translate(-50%, -8px);
+.ch-popover-fade--bottom-enter-from,
+.ch-popover-fade--bottom-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -6px);
 }
 
-.ch-popover--left.ch-popover-fade-enter-from,
-.ch-popover--left.ch-popover-fade-leave-to {
-  transform: translate(0, -50%) translateX(8px);
+.ch-popover-fade--left-enter-from,
+.ch-popover-fade--left-leave-to {
+  opacity: 0;
+  transform: translate(6px, -50%);
 }
 
-.ch-popover--right.ch-popover-fade-enter-from,
-.ch-popover--right.ch-popover-fade-leave-to {
-  transform: translate(0, -50%) translateX(-8px);
+.ch-popover-fade--right-enter-from,
+.ch-popover-fade--right-leave-to {
+  opacity: 0;
+  transform: translate(-6px, -50%);
 }
 </style>

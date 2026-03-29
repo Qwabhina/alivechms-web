@@ -414,7 +414,7 @@ watch(() => props.modelValue, (newVal) => {
   padding: var(--ch-space-2);
   color: white;
   cursor: pointer;
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -498,7 +498,7 @@ watch(() => props.modelValue, (newVal) => {
   width: 80px;
   height: 60px;
   border: 2px solid var(--ch-color-border);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   overflow: hidden;
   cursor: pointer;
   padding: 0;

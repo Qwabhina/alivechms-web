@@ -7,15 +7,16 @@
  * fully custom content via slots.
  *
  * ─── Accessibility ───────────────────────────────────────────────────────────
- * Uses `aria-label="Breadcrumb"` and `nav` element for screen reader recognition.
- * Each item except the last uses `aria-current="page"` to indicate the current location.
+ * Uses `aria-label="Breadcrumb"` and a `<nav>` element for screen reader
+ * recognition. The last item receives `aria-current="page"` to indicate the
+ * current location in the trail.
  *
  * ─── Usage ───────────────────────────────────────────────────────────────────
  * @example With items array
  * <ChBreadcrumb :items="[
  *   { label: 'Home', href: '/' },
  *   { label: 'Members', href: '/members' },
- *   { label: 'John Doe', href: '/members/1' },
+ *   { label: 'John Doe' },
  * ]" />
  *
  * @example With custom slots
@@ -31,14 +32,14 @@
  * <ChBreadcrumb :items="items" separator="arrow" />
  */
 
-import { computed } from 'vue'
+import { computed, provide, type InjectionKey, type ComputedRef } from 'vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 /**
  * Separator styles:
- * - `/`   → Slash (default, classic breadcrumb)
- * - `>`   → Greater-than symbol
+ * - `/`       → Slash (default, classic breadcrumb)
+ * - `>`       → Greater-than symbol
  * - `chevron` → SVG chevron-right
  * - `arrow`   → SVG arrow-right
  */
@@ -48,11 +49,20 @@ export type BreadcrumbSeparator = '/' | '>' | 'chevron' | 'arrow'
 export interface BreadcrumbItem {
   /** Display text */
   label: string
-  /** Link URL — omit or leave empty for the current (last) item */
+  /** Link URL — omit for the current (last) item */
   href?: string
-  /** Optional icon rendered before the label */
+  /** Optional SVG path for an icon rendered before the label */
   icon?: string
 }
+
+/** Context provided to ChBreadcrumbItem children in slot mode */
+export interface BreadcrumbContext {
+  separator: ComputedRef<BreadcrumbSeparator>
+  separatorPath: ComputedRef<string>
+}
+
+/** Typed injection key — import this in ChBreadcrumbItem */
+export const BREADCRUMB_KEY: InjectionKey<BreadcrumbContext> = Symbol('ChBreadcrumb')
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -61,41 +71,52 @@ interface Props {
   items?: BreadcrumbItem[]
   /** Separator style between items. Default: '/' */
   separator?: BreadcrumbSeparator
-  /** CSS class for the root nav element */
-  class?: string
+  /** CSS class applied to the root `<nav>` element */
+  navClass?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   items: () => [],
   separator: '/',
-  class: '',
+  navClass: '',
 })
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
 /**
- * Returns the SVG path data for the selected separator type.
- * Used when separator is 'chevron' or 'arrow'.
+ * SVG path data for the selected separator.
+ * Only used when separator is 'chevron' or 'arrow'.
  */
-const separatorPath = computed(() => {
+const separatorPath = computed<string>(() => {
   switch (props.separator) {
-    case 'chevron':
-      return 'M5 3l6 6-6 6'
-    case 'arrow':
-      return 'M4 7l6 6-6 6M10 13h8'
-    default:
-      return ''
+    case 'chevron': return 'M5 3l6 6-6 6'
+    case 'arrow': return 'M4 7l6 6-6 6M10 13h8'
+    default: return ''
   }
+})
+
+// ─── Provide context to ChBreadcrumbItem children ─────────────────────────────
+
+/**
+ * ChBreadcrumbItem injects this context to render the correct separator
+ * without requiring the consumer to repeat separator config per-item.
+ */
+provide(BREADCRUMB_KEY, {
+  separator: computed(() => props.separator),
+  separatorPath,
 })
 </script>
 
 <template>
-  <nav :class="['ch-breadcrumb', props.class]" aria-label="Breadcrumb">
+  <nav :class="['ch-breadcrumb', navClass]" aria-label="Breadcrumb">
     <ol class="ch-breadcrumb__list">
-      <!-- Slot content (ChBreadcrumbItem components) -->
+      <!--
+        Slot mode: consumer provides ChBreadcrumbItem children.
+        The items-array fallback only renders when no slot content is given.
+      -->
       <slot>
-        <!-- Fallback to items array if no slot content provided -->
-        <template v-for="(item, index) in items" :key="index">
+        <template v-for="(item, index) in items" :key="item.href ?? item.label">
+          <!-- Separator (aria-hidden so screen readers skip it) -->
           <li v-if="index > 0" class="ch-breadcrumb__separator" aria-hidden="true">
             <template v-if="separator === '/'">/</template>
             <template v-else-if="separator === '>'">&gt;</template>
@@ -104,14 +125,16 @@ const separatorPath = computed(() => {
             </svg>
           </li>
 
+          <!-- Breadcrumb item -->
           <li class="ch-breadcrumb__item" :class="{ 'ch-breadcrumb__item--current': index === items.length - 1 }">
             <component
               :is="item.href && index !== items.length - 1 ? 'a' : 'span'"
-              :href="item.href"
+              :href="item.href && index !== items.length - 1 ? item.href : undefined"
               :class="['ch-breadcrumb__link', { 'ch-breadcrumb__link--current': index === items.length - 1 }]"
               :aria-current="index === items.length - 1 ? 'page' : undefined"
             >
-              <svg v-if="item.icon" class="ch-breadcrumb__icon" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
+              <svg v-if="item.icon" class="ch-breadcrumb__icon" width="14" height="14" viewBox="0 0 14 14" fill="none"
+                stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                 <path :d="item.icon" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
               {{ item.label }}
@@ -146,7 +169,7 @@ const separatorPath = computed(() => {
   align-items: center;
 }
 
-/* ─── Separator ───────────────────────────────────────────────────────────── */
+/* ─── Separator (items-array mode) ───────────────────────────────────────── */
 .ch-breadcrumb__separator {
   display: flex;
   align-items: center;
@@ -159,7 +182,16 @@ const separatorPath = computed(() => {
 .ch-breadcrumb__separator svg {
   width: 14px;
   height: 14px;
-  color: var(--ch-color-text-subtle);
+}
+
+/* ─── Separator (slot mode via ChBreadcrumbItem) ─────────────────────────── */
+/*
+  ChBreadcrumbItem renders a .ch-breadcrumb__separator before its link.
+  We hide it on the first item so only inter-item separators are visible.
+  :deep() is required because the element lives in a child component's template.
+*/
+:deep(.ch-breadcrumb__item:first-child .ch-breadcrumb__separator) {
+  display: none;
 }
 
 /* ─── Link ────────────────────────────────────────────────────────────────── */
@@ -184,7 +216,6 @@ const separatorPath = computed(() => {
 .ch-breadcrumb__link--current {
   color: var(--ch-color-text);
   font-weight: var(--ch-font-semibold);
-  text-decoration: none;
   cursor: default;
 }
 

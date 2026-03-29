@@ -3,7 +3,8 @@
  * @component ChBreadcrumbItem
  * @path /frontend/src/design-system/components/navigation/ChBreadcrumbItem.vue
  * @description A single breadcrumb item for use within ChBreadcrumb.
- * Provides a semantic link or span depending on whether it's the current item.
+ * Renders a semantic link or span and automatically inserts the correct
+ * separator from the parent ChBreadcrumb context.
  *
  * ─── Usage ───────────────────────────────────────────────────────────────────
  * @example
@@ -12,7 +13,16 @@
  *   <ChBreadcrumbItem href="/members">Members</ChBreadcrumbItem>
  *   <ChBreadcrumbItem current>John Doe</ChBreadcrumbItem>
  * </ChBreadcrumb>
+ *
+ * @example With icon slot
+ * <ChBreadcrumbItem href="/settings">
+ *   <template #icon><Settings :size="14" /></template>
+ *   Settings
+ * </ChBreadcrumbItem>
  */
+
+import { inject } from 'vue'
+import { BREADCRUMB_KEY } from './ChBreadcrumb.vue'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -24,25 +34,118 @@ interface Props {
 }
 
 withDefaults(defineProps<Props>(), {
-  href: '',
+  href: undefined,
   current: false,
+})
+
+// ─── Context ──────────────────────────────────────────────────────────────────
+
+/**
+ * Injected from the parent ChBreadcrumb.
+ * Falls back to slash separator if used outside ChBreadcrumb (edge case).
+ */
+const breadcrumb = inject(BREADCRUMB_KEY, {
+  separator: { value: '/' } as { value: string },
+  separatorPath: { value: '' } as { value: string },
 })
 </script>
 
 <template>
   <li class="ch-breadcrumb__item" :class="{ 'ch-breadcrumb__item--current': current }">
+    <!--
+      Separator is rendered before every item and hidden on :first-child via
+      a :deep() rule in ChBreadcrumb. This avoids the need for each item to
+      know its own index.
+    -->
+    <span class="ch-breadcrumb__separator" aria-hidden="true">
+      <template v-if="breadcrumb.separator.value === '/'">/</template>
+      <template v-else-if="breadcrumb.separator.value === '>'">&gt;</template>
+      <svg v-else width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path :d="breadcrumb.separatorPath.value" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </span>
+
+    <!-- Link or static span depending on whether item is current -->
     <component
       :is="href && !current ? 'a' : 'span'"
-      :href="href"
+:href="href && !current ? href : undefined"
       class="ch-breadcrumb__link"
       :class="{ 'ch-breadcrumb__link--current': current }"
       :aria-current="current ? 'page' : undefined"
     >
+      <!-- Icon slot: accepts any component (Lucide, custom SVG, etc.) -->
+      <span v-if="$slots.icon" class="ch-breadcrumb__icon" aria-hidden="true">
+        <slot name="icon"></slot>
+      </span>
+
       <slot></slot>
     </component>
   </li>
 </template>
 
 <style scoped>
-/* Styles are inherited from ChBreadcrumb parent */
+/*
+  ChBreadcrumbItem carries its own styles because Vue's scoped CSS does not
+  cross component boundaries — the parent's scoped styles cannot reach
+  elements rendered inside this component's template.
+*/
+
+/* ─── Item ────────────────────────────────────────────────────────────────── */
+.ch-breadcrumb__item {
+  display: flex;
+  align-items: center;
+}
+
+/* ─── Separator ───────────────────────────────────────────────────────────── */
+.ch-breadcrumb__separator {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--ch-space-2);
+  color: var(--ch-color-text-subtle);
+  font-size: var(--ch-text-sm);
+  flex-shrink: 0;
+}
+
+.ch-breadcrumb__separator svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ─── Link ────────────────────────────────────────────────────────────────── */
+.ch-breadcrumb__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ch-space-1);
+  font-size: var(--ch-text-sm);
+  font-weight: var(--ch-font-medium);
+  color: var(--ch-color-text-muted);
+  text-decoration: none;
+  transition:
+    color var(--ch-duration-fast) var(--ch-ease-out),
+    text-decoration var(--ch-duration-fast) var(--ch-ease-out);
+}
+
+.ch-breadcrumb__link:hover {
+  color: var(--ch-color-text);
+  text-decoration: underline;
+}
+
+.ch-breadcrumb__link--current {
+  color: var(--ch-color-text);
+  font-weight: var(--ch-font-semibold);
+  cursor: default;
+}
+
+.ch-breadcrumb__link--current:hover {
+  text-decoration: none;
+}
+
+/* ─── Icon ────────────────────────────────────────────────────────────────── */
+.ch-breadcrumb__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--ch-color-text-subtle);
+}
 </style>

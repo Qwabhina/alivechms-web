@@ -316,7 +316,7 @@ const rootClasses = computed(() => [
 
 .ch-data-list__skeleton {
   height:        14px;
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   background:    linear-gradient(
     90deg,
     var(--ch-color-bg-muted)  0%,

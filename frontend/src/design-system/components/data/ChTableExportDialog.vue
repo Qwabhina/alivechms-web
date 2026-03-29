@@ -556,7 +556,7 @@ function onBackdropClick(e: MouseEvent) {
 .ch-export-dialog {
   background: var(--ch-color-surface);
   border: 1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-lg);
   box-shadow: var(--ch-shadow-lg);
   width: 100%;
   max-width: 560px;
@@ -597,7 +597,7 @@ function onBackdropClick(e: MouseEvent) {
   cursor: pointer;
   color: var(--ch-color-text-subtle);
   padding: var(--ch-space-1);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
   display: flex;
   align-items: center;
   transition:
@@ -656,7 +656,7 @@ function onBackdropClick(e: MouseEvent) {
   padding: var(--ch-space-3) var(--ch-space-2);
   background: var(--ch-color-bg-subtle);
   border: 1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
   cursor: pointer;
   text-align: center;
   transition:
@@ -730,7 +730,7 @@ function onBackdropClick(e: MouseEvent) {
   gap: var(--ch-space-2);
   padding: var(--ch-space-2) var(--ch-space-3);
   border: 1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
   cursor: pointer;
   background: var(--ch-color-bg-subtle);
   transition:
@@ -777,7 +777,7 @@ function onBackdropClick(e: MouseEvent) {
   gap: var(--ch-space-3);
   padding: var(--ch-space-3) var(--ch-space-4);
   border: 1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
   cursor: pointer;
   transition:
     border-color var(--ch-duration-fast) var(--ch-ease-out),
@@ -832,7 +832,7 @@ function onBackdropClick(e: MouseEvent) {
   padding: var(--ch-space-2) var(--ch-space-3_5);
   background: var(--ch-color-surface);
   border: 1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
   font-family: var(--ch-font-sans);
   font-size: var(--ch-text-sm);
   color: var(--ch-color-text);
@@ -883,7 +883,7 @@ function onBackdropClick(e: MouseEvent) {
   padding: var(--ch-space-2) var(--ch-space-3_5);
   background: var(--ch-color-surface);
   border: 1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
   font-family: var(--ch-font-sans);
   font-size: var(--ch-text-sm);
   color: var(--ch-color-text);
@@ -949,7 +949,7 @@ function onBackdropClick(e: MouseEvent) {
   color: var(--ch-color-text-muted);
   background: var(--ch-color-bg-muted);
   border: 1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   padding: var(--ch-space-1) var(--ch-space-3);
 }
 
@@ -964,7 +964,7 @@ function onBackdropClick(e: MouseEvent) {
   display: inline-flex;
   align-items: center;
   gap: var(--ch-space-1_5);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   font-family: var(--ch-font-sans);
   font-size: var(--ch-text-sm);
   font-weight: var(--ch-font-medium);

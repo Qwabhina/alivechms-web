@@ -62,6 +62,38 @@ import { spacing, radius, shadows, transitions, zIndex } from './spacing'
  */
 export type ThemeOverrides = Partial<Record<string, string>>
 
+// Short constant for the CSS custom property namespace used across the system
+const CSS_VAR_PREFIX = '--ch-'
+
+// Merge all token objects once at module init to avoid re-creating this map
+// on every call to `generateCSSVars`. Tokens are static values imported
+// from the token modules above, so this is safe and slightly more efficient.
+const ALL_TOKENS: Record<string, string> = {
+  ...semanticColors,
+  ...typography,
+  ...spacing,
+  ...radius,
+  ...shadows,
+  ...transitions,
+  ...zIndex,
+}
+
+/**
+ * Normalize override keys so callers may supply either full CSS var names
+ * (e.g. `--ch-color-primary`) or token keys (e.g. `color-primary`).
+ * Returns a map keyed by full CSS custom property names.
+ */
+function normalizeOverrides(overrides: ThemeOverrides = {}): Record<string, string> {
+  const normalized: Record<string, string> = {}
+  for (const [k, v] of Object.entries(overrides)) {
+    // If caller passed a full custom property name, use it as-is.
+    // Otherwise prefix the token key with `--ch-` so both forms are allowed.
+    const name = k.startsWith('--') ? k : `${CSS_VAR_PREFIX}${k.replace(/^--?/, '')}`
+    normalized[name] = v as string
+  }
+  return normalized
+}
+
 // ─── generateCSSVars ──────────────────────────────────────────────────────────
 /**
  * Merges all token objects into a single flat map of CSS custom properties.
@@ -80,30 +112,15 @@ export type ThemeOverrides = Partial<Record<string, string>>
  * { '--ch-color-primary': '#e11d48', '--ch-text-sm': '0.875rem', ... }
  */
 export function generateCSSVars(overrides: ThemeOverrides = {}): Record<string, string> {
-  // Merge all token objects into one flat map.
-  // The spread order doesn't matter here — all keys are unique across files.
-  const allTokens: Record<string, string> = {
-    ...semanticColors,  // color-primary, color-bg, color-text, etc.
-    ...typography,      // font-sans, text-sm, font-bold, etc.
-    ...spacing,         // space-4, space-8, etc.
-    ...radius,          // radius-lg, radius-full, etc.
-    ...shadows,         // shadow-sm, shadow-md, etc.
-    ...transitions,     // duration-fast, ease-out, etc.
-    ...zIndex,          // z-modal, z-toast, etc.
-  }
+  // Allow callers to provide either token-style keys (`color-primary`) or
+  // full CSS custom property names (`--ch-color-primary`). Normalize once.
+  const normalizedOverrides = normalizeOverrides(overrides)
 
-  // Build the output map: prefix each key with `--ch-` and apply any overrides.
   const vars: Record<string, string> = {}
 
-  for (const [key, value] of Object.entries(allTokens)) {
-    // Convert token key → CSS custom property name
-    // e.g. 'color-primary' → '--ch-color-primary'
-    const varName = `--ch-${key}`
-
-    // If the user provided an override for this var, use it.
-    // Otherwise fall back to the token's default value.
-    // The `?? ` (nullish coalescing) means: use override only if it's not null/undefined
-    vars[varName] = overrides[varName] ?? (value as string)
+  for (const [key, value] of Object.entries(ALL_TOKENS)) {
+    const varName = `${CSS_VAR_PREFIX}${key}`
+    vars[varName] = normalizedOverrides[varName] ?? (value as string)
   }
 
   return vars
@@ -149,11 +166,13 @@ export function injectCSSVars(
   overrides: ThemeOverrides = {},
   target: HTMLElement = document.documentElement // defaults to <html> = :root
 ): void {
-  // Store the overrides so useTheme can read brand tokens later (e.g. on theme toggle)
-  _initialOverrides = { ...overrides } as Record<string, string>
+  // Normalize and store overrides so `useTheme` and other modules can read
+  // the same shape (`--ch-*` keys) regardless of how callers supplied keys.
+  const normalized = normalizeOverrides(overrides)
+  _initialOverrides = { ...normalized }
 
   // Generate the full flat map of CSS var name → value
-  const vars = generateCSSVars(overrides)
+  const vars = generateCSSVars(normalized)
 
   // Write each property onto the target element's inline style.
   // `style.setProperty` is the correct API for CSS custom properties

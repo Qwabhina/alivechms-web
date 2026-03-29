@@ -55,18 +55,25 @@ export const spacing = {
 // ─── Border Radius ────────────────────────────────────────────────────────────
 /**
  * Controls the roundness of corners.
- * This restyle uses a sharp, modern geometric aesthetic. Most elements
- * are completely square (0px).
+ *
+ * Token scale (intentionally compact):
+ *  - `radius-none`: 0px (sharp)
+ *  - `radius-sm`:   0.125rem (2px)
+ *  - `radius-md`:   0.25rem  (4px)
+ *  - `radius-lg`:   0.375rem (6px)
+ *  - larger tokens increase progressively for larger surfaces
+ *
+ * Uses `rem` units so values respect the root font-size and user accessibility preferences.
  */
 export const radius = {
-  'radius-none': '2px',      // Sharp corners — default for almost everything
-  'radius-sm': '2px',      // Overridden to 0px for consistency
-  'radius-md': '2px',      // Overridden to 0px for consistency
-  'radius-lg': '2px',      // Overridden to 0px for consistency
-  'radius-xl': '2px',      // Overridden to 0px for consistency
-  'radius-2xl': '2px',      // Overridden to 0px for consistency
-  'radius-3xl': '4px',      // Overridden to 0px for consistency
-  'radius-full': '9999px',   // Kept for true circles (avatars, radio buttons, dots)
+  'radius-none': '0px',      // 0px — sharp corner
+  'radius-sm': '0.125rem',  // 2px — subtle rounding for most UI elements
+  'radius-md': '0.25rem',   // 4px — inputs, small panels
+  'radius-lg': '0.375rem',  // 6px — cards, medium panels
+  'radius-xl': '0.5rem',    // 8px — larger containers
+  'radius-2xl': '1rem',      // 16px — large layout containers
+  'radius-3xl': '1.5rem',    // 24px — very rounded display surfaces
+  'radius-full': '9999px',    // Kept for true circles (avatars, radio buttons, dots)
 } as const
 
 // ─── Shadows (Elevation System) ───────────────────────────────────────────────

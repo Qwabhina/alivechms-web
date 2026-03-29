@@ -6,12 +6,16 @@
  * descriptions, disabled state, and visual variants.
  *
  * ─── Usage ───────────────────────────────────────────────────────────────────
- * @example
- * <ChDropdownItem
- *   label="Edit"
- *   :icon="editIconPath"
- *   @click="handleEdit"
- * />
+ * @example Basic
+ * <ChDropdownItem label="Edit" @click="handleEdit" />
+ *
+ * @example With a Lucide (or any component) icon via slot
+ * <ChDropdownItem label="Edit" @click="handleEdit">
+ *   <template #icon><Pencil :size="16" /></template>
+ * </ChDropdownItem>
+ *
+ * @example With legacy SVG path (backwards compatible)
+ * <ChDropdownItem label="Delete" variant="danger" :icon-path="myPath" />
  *
  * @example With description
  * <ChDropdownItem
@@ -35,8 +39,12 @@ interface Props {
   label: string
   /** Optional description shown below the label */
   description?: string
-  /** Optional icon SVG path */
-  icon?: string
+  /**
+   * Legacy SVG path string (the `d` attribute).
+   * Prefer the `#icon` slot for component-based icons (e.g. Lucide).
+   * @deprecated use `#icon` slot instead
+   */
+  iconPath?: string
   /** Visual variant for emphasis. Default: 'default' */
   variant?: DropdownItemVariant
   /** Whether the item is disabled */
@@ -45,7 +53,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   description: '',
-  icon: '',
+  iconPath: '',
   variant: 'default',
   disabled: false,
 })
@@ -61,9 +69,7 @@ const emit = defineEmits<{
 const classes = computed(() => [
   'ch-dropdown-item',
   `ch-dropdown-item--${props.variant}`,
-  {
-    'ch-dropdown-item--disabled': props.disabled,
-  },
+  { 'ch-dropdown-item--disabled': props.disabled },
 ])
 </script>
 
@@ -74,19 +80,25 @@ const classes = computed(() => [
     :aria-disabled="disabled ? 'true' : 'false'"
     @click="!disabled && emit('click', $event)"
   >
-    <!-- Icon -->
+    <!-- Icon slot: accepts any component (Lucide, custom SVG, etc.) -->
+    <span v-if="$slots.icon" class="ch-dropdown-item__icon" :class="`ch-dropdown-item__icon--${variant}`">
+      <slot name="icon"></slot>
+    </span>
+
+    <!-- Legacy path-string fallback (backwards compat) -->
     <svg
-      v-if="icon"
+v-else-if="iconPath"
       class="ch-dropdown-item__icon"
+:class="`ch-dropdown-item__icon--${variant}`"
       width="16"
       height="16"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
       stroke-width="1.5"
-      :class="`ch-dropdown-item__icon--${variant}`"
+aria-hidden="true"
     >
-      <path :d="icon" stroke-linecap="round" stroke-linejoin="round" />
+      <path :d="iconPath" stroke-linecap="round" stroke-linejoin="round" />
     </svg>
 
     <!-- Content -->
@@ -95,7 +107,7 @@ const classes = computed(() => [
       <span v-if="description" class="ch-dropdown-item__description">{{ description }}</span>
     </div>
 
-    <!-- Custom trailing slot -->
+    <!-- Trailing slot (e.g. badge, shortcut hint) -->
     <slot name="trailing"></slot>
   </div>
 </template>
@@ -108,7 +120,7 @@ const classes = computed(() => [
   gap: var(--ch-space-2);
   padding: var(--ch-space-2) var(--ch-space-3);
   margin: 0 var(--ch-space-1);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-md);
   cursor: pointer;
   transition:
     background-color var(--ch-duration-fast) var(--ch-ease-out),
@@ -126,6 +138,9 @@ const classes = computed(() => [
 
 /* ─── Icon ────────────────────────────────────────────────────────────────── */
 .ch-dropdown-item__icon {
+  display: flex;
+    align-items: center;
+    justify-content: center;
   flex-shrink: 0;
   color: var(--ch-color-text-muted);
 }
@@ -172,7 +187,7 @@ const classes = computed(() => [
   text-overflow: ellipsis;
 }
 
-/* ─── Variant styles ──────────────────────────────────────────────────────── */
+/* ─── Variant hover styles ────────────────────────────────────────────────── */
 .ch-dropdown-item--danger:hover:not(.ch-dropdown-item--disabled) {
   background-color: var(--ch-color-danger-bg);
   color: var(--ch-color-danger-fg);

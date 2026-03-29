@@ -3,28 +3,30 @@
  * @component ChTooltip
  * @path /frontend/src/design-system/components/core/ChTooltip.vue
  * @description A tooltip component that displays contextual information when
- * hovering or focusing on an element. Uses CSS-only positioning with smart
- * placement detection.
+ * hovering or focusing on an element.
  *
  * ─── Design decisions ────────────────────────────────────────────────────────
- * - CSS-only show/hide via data attributes — no JavaScript animation overhead
- * - Supports 4 placements: top, bottom, left, right
- * - Arrow indicator points to the trigger element
- * - Accessible via focus — keyboard users can see tooltips
- * - Max-width ensures readability on long content
+ * - Visibility is JS-controlled (class-based) so opacity transitions work and
+ *   the tooltip element stays in the DOM for accurate placement measurement.
+ * - Auto placement measures the actual tooltip dimensions at show-time — no
+ *   hardcoded size approximations.
+ * - The tooltip hides on scroll so stale positioning is never visible.
+ * - Arrow is rendered via CSS pseudo-elements to avoid DOM-node seam issues.
+ * - Accessible via focus — keyboard users see tooltips via focusin/focusout.
+ * - Supports v-model:visible for controlled / debugging use.
  *
  * ─── Usage ───────────────────────────────────────────────────────────────────
- * @example Basic usage
+ * @example Basic
  * <ChTooltip content="Delete this item">
- *   <ChButton :iconOnly="true"><TrashIcon /></ChButton>
+ *   <ChButton icon-only><TrashIcon /></ChButton>
  * </ChTooltip>
  *
  * @example With title and custom placement
- * <ChTooltip content="This action cannot be undone" placement="bottom" title="Delete">
+ * <ChTooltip content="This action cannot be undone" placement="bottom" title="Warning">
  *   <ChButton variant="danger">Delete</ChButton>
  * </ChTooltip>
  *
- * @example Rich content with HTML
+ * @example Rich content via slot
  * <ChTooltip>
  *   <template #content>
  *     <strong>Keyboard shortcut:</strong><br>
@@ -32,21 +34,19 @@
  *   </template>
  *   <ChButton>Save</ChButton>
  * </ChTooltip>
+ *
+ * @example Controlled / always visible (e.g. for debugging)
+ * <ChTooltip v-model:visible="forceShow" content="Always here">
+ *   <ChButton>Hover me</ChButton>
+ * </ChTooltip>
  */
 
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/**
- * Tooltip placement relative to the trigger:
- * - `top`    → above the trigger
- * - `bottom` → below the trigger
- * - `left`   → to the left of the trigger
- * - `right`  → to the right of the trigger
- * - `auto`   → automatically choose best placement based on available space
- */
 export type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right' | 'auto'
+type ResolvedPlacement = Exclude<TooltipPlacement, 'auto'>
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -55,13 +55,16 @@ interface Props {
   content?: string
   /** Optional title shown in bold above the content */
   title?: string
-  /** Placement relative to trigger. Default: 'top' */
+  /** Placement relative to trigger. Default: 'auto' */
   placement?: TooltipPlacement
   /** Delay in ms before showing. Default: 200 */
   delay?: number
   /** Max width of the tooltip. Default: '240px' */
   maxWidth?: string
-  /** When true, tooltip is always visible (for debugging or controlled use) */
+  /**
+   * When true, forces the tooltip to be visible regardless of hover/focus.
+   * Supports v-model:visible for two-way binding.
+   */
   visible?: boolean
 }
 
@@ -74,87 +77,114 @@ const props = withDefaults(defineProps<Props>(), {
   visible: false,
 })
 
-// ─── Local State ──────────────────────────────────────────────────────────────
+// ─── Emits ────────────────────────────────────────────────────────────────────
 
-const actualPlacement = ref<TooltipPlacement>(props.placement)
+const emit = defineEmits<{
+  'update:visible': [value: boolean]
+}>()
 
-// ─── Computed ─────────────────────────────────────────────────────────────────
-
-/**
- * Builds the placement class for the tooltip.
- * E.g. 'ch-tooltip--top', 'ch-tooltip--bottom', etc.
- */
-const placementClass = computed(() => `ch-tooltip--${actualPlacement.value}`)
-
-// ─── Smart Placement Detection ────────────────────────────────────────────────
+// ─── Refs ─────────────────────────────────────────────────────────────────────
 
 const wrapperRef = ref<HTMLElement | null>(null)
+const tooltipRef = ref<HTMLElement | null>(null)
+
+// ─── Unique ID (for aria-describedby) ─────────────────────────────────────────
+
+// A module-level counter guarantees uniqueness across all instances without
+// needing Vue 3.5's useId().
+let _counter = 0
+const tooltipId = `ch-tooltip-${++_counter}`
+
+// ─── Visibility ───────────────────────────────────────────────────────────────
+
+/** Internal visibility driven by hover/focus events */
+const internalVisible = ref(false)
 
 /**
- * Detect the best placement based on available viewport space
+ * The tooltip is visible when either the internal hover/focus state is true
+ * OR the consumer has forced it via the `visible` prop.
  */
-function detectBestPlacement(): TooltipPlacement {
-  if (props.placement !== 'auto' || !wrapperRef.value) {
-    return props.placement
-  }
+const isVisible = computed(() => props.visible || internalVisible.value)
 
-  const wrapper = wrapperRef.value
-  const rect = wrapper.getBoundingClientRect()
-  const viewportWidth = window.innerWidth
-  const viewportHeight = window.innerHeight
+// ─── Placement ────────────────────────────────────────────────────────────────
 
-  // Calculate available space in each direction
-  const spaceTop = rect.top
-  const spaceBottom = viewportHeight - rect.bottom
-  const spaceLeft = rect.left
-  const spaceRight = viewportWidth - rect.right
+const actualPlacement = ref<ResolvedPlacement>('top')
 
-  // Estimate tooltip size (approximate)
-  const tooltipHeight = 50
-  const tooltipWidth = 150
+/**
+ * Measure available viewport space and choose the placement with the most room.
+ * Called at show-time so the tooltip element is always in the DOM (visibility:
+ * hidden) and its real dimensions are available via getBoundingClientRect.
+ */
+function computePlacement(): ResolvedPlacement {
+  if (props.placement !== 'auto') return props.placement as ResolvedPlacement
+  if (!wrapperRef.value || !tooltipRef.value) return 'top'
 
-  // Find best placement
-  const placements = [
-    { dir: 'top' as TooltipPlacement, space: spaceTop, needed: tooltipHeight },
-    { dir: 'bottom' as TooltipPlacement, space: spaceBottom, needed: tooltipHeight },
-    { dir: 'left' as TooltipPlacement, space: spaceLeft, needed: tooltipWidth },
-    { dir: 'right' as TooltipPlacement, space: spaceRight, needed: tooltipWidth },
+  const wRect = wrapperRef.value.getBoundingClientRect()
+  const tRect = tooltipRef.value.getBoundingClientRect()
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const gap = 8 // arrow + offset
+
+  const candidates = [
+    { dir: 'top' as const, space: wRect.top, needed: tRect.height + gap },
+    { dir: 'bottom' as const, space: vh - wRect.bottom, needed: tRect.height + gap },
+    { dir: 'left' as const, space: wRect.left, needed: tRect.width + gap },
+    { dir: 'right' as const, space: vw - wRect.right, needed: tRect.width + gap },
   ]
 
-  // Filter placements that have enough space
-  const validPlacements = placements.filter(p => p.space >= p.needed)
-
-  if (validPlacements.length === 0) {
-    // Fallback to bottom if no placement fits
-    return 'bottom'
-  }
-
-  // Choose the placement with most space
-  validPlacements.sort((a, b) => b.space - a.space)
-  return validPlacements[0]?.dir || 'bottom'
+  const valid = candidates.filter(p => p.space >= p.needed)
+  // Fall back to all candidates if nothing fits perfectly
+  const ranked = (valid.length > 0 ? valid : candidates).sort((a, b) => b.space - a.space)
+  return ranked[0]?.dir ?? 'top'
 }
 
+// ─── Delay timers ─────────────────────────────────────────────────────────────
+
+let showTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearShowTimer() {
+  if (showTimer !== null) {
+    clearTimeout(showTimer)
+    showTimer = null
+  }
+}
+
+// ─── Show / Hide ──────────────────────────────────────────────────────────────
+
+function show() {
+  clearShowTimer()
+  showTimer = setTimeout(() => {
+    actualPlacement.value = computePlacement()
+    internalVisible.value = true
+    emit('update:visible', true)
+  }, props.delay)
+}
+
+function hide() {
+  clearShowTimer()
+  internalVisible.value = false
+  emit('update:visible', false)
+}
+
+// ─── Scroll handling ──────────────────────────────────────────────────────────
+
 /**
- * Update placement on scroll/resize
+ * Hide on scroll so a tooltip never sits at a stale position.
+ * Only fires when the tooltip is actually open to avoid unnecessary work.
  */
-function updatePlacement() {
-  actualPlacement.value = detectBestPlacement()
+function handleScroll() {
+  if (internalVisible.value) hide()
 }
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
 onMounted(() => {
-  if (props.placement === 'auto') {
-    window.addEventListener('scroll', updatePlacement, true)
-    window.addEventListener('resize', updatePlacement)
-    // Initial detection
-    updatePlacement()
-  }
+  window.addEventListener('scroll', handleScroll, { passive: true, capture: true })
 })
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', updatePlacement, true)
-  window.removeEventListener('resize', updatePlacement)
+  window.removeEventListener('scroll', handleScroll, true)
+  clearShowTimer()
 })
 </script>
 
@@ -162,28 +192,26 @@ onUnmounted(() => {
   <div
 ref="wrapperRef"
     class="ch-tooltip-wrapper"
-    :class="{ 'ch-tooltip-wrapper--visible': visible }"
+:aria-describedby="isVisible ? tooltipId : undefined"
+    @mouseenter="show" @mouseleave="hide" @focusin="show" @focusout="hide"
   >
-    <!-- Trigger slot content -->
+    <!-- Trigger — the default slot is ONLY used here, never inside the tooltip -->
     <slot></slot>
 
-    <!-- Tooltip popup -->
+    <!-- Tooltip popup — always in the DOM so its dimensions are measurable -->
     <div
+:id="tooltipId" ref="tooltipRef"
       class="ch-tooltip"
-      :class="placementClass"
+      :class="[`ch-tooltip--${actualPlacement}`, { 'ch-tooltip--visible': isVisible }]"
       :style="{ '--ch-tooltip-max-width': maxWidth }"
       role="tooltip"
-      :aria-hidden="!visible && !$slots.default ? 'true' : 'false'"
-    >
-      <!-- Arrow indicator -->
-      <div class="ch-tooltip__arrow" aria-hidden="true"></div>
-
-      <!-- Content -->
+:aria-hidden="isVisible ? 'false' : 'true'"
+>
       <div class="ch-tooltip__content">
-        <div v-if="title" class="ch-tooltip__title">{{ title }}</div>
-        <div v-if="content" class="ch-tooltip__text">{{ content }}</div>
-        <slot v-if="$slots.content" name="content"></slot>
-        <slot v-else-if="!content && !title"></slot>
+        <p v-if="title" class="ch-tooltip__title">{{ title }}</p>
+        <p v-if="content" class="ch-tooltip__text">{{ content }}</p>
+        <!-- Rich content slot — completely separate from the trigger slot -->
+        <slot name="content"></slot>
       </div>
     </div>
   </div>
@@ -200,127 +228,147 @@ ref="wrapperRef"
 .ch-tooltip {
   position: absolute;
   z-index: var(--ch-z-tooltip);
-  display: none;
   max-width: var(--ch-tooltip-max-width, 240px);
+  width: max-content;
   padding: var(--ch-space-2) var(--ch-space-3);
   background: var(--ch-color-tooltip);
   border: 1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-none);
+  border-radius: var(--ch-radius-sm);
   box-shadow: var(--ch-shadow-lg);
   font-family: var(--ch-font-sans);
   font-size: var(--ch-text-xs);
   color: var(--ch-color-tooltip-fg);
   line-height: var(--ch-leading-normal);
   pointer-events: none;
-  /* don't interfere with mouse events */
+/* Visibility is controlled via class — NOT display:none — so the element
+     stays measurable (getBoundingClientRect works) and transitions can run. */
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity var(--ch-duration-fast) var(--ch-ease-out),
+    visibility var(--ch-duration-fast) var(--ch-ease-out);
 }
 
-/* Show tooltip on hover/focus of wrapper */
-.ch-tooltip-wrapper:hover .ch-tooltip,
-.ch-tooltip-wrapper:focus-within .ch-tooltip,
-.ch-tooltip-wrapper--visible .ch-tooltip {
-  display: block;
+.ch-tooltip--visible {
+  visibility: visible;
+  opacity: 1;
 }
 
-/* ─── Placement: Top ──────────────────────────────────────────────────────── */
+/* ─── Arrow via pseudo-elements ──────────────────────────────────────────────
+   Two-layer approach eliminates the seam that appears when a single rotated
+   element overlaps the tooltip border:
+   ::before  — the border layer  (border-color background, sits behind)
+   ::after   — the fill layer    (tooltip background, sits in front)
+   Both are 8×8px squares rotated 45°; only the two sides facing away from the
+   tooltip body have a border, so the inner edges blend seamlessly.
+──────────────────────────────────────────────────────────────────────────── */
+.ch-tooltip::before,
+.ch-tooltip::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  transform-origin: center;
+}
+
+.ch-tooltip::before {
+  background: var(--ch-color-border-strong);
+}
+
+.ch-tooltip::after {
+  background: var(--ch-color-tooltip);
+}
+
+/* ─── Placement: top ──────────────────────────────────────────────────────── */
 .ch-tooltip--top {
-  bottom: 100%;
+  bottom: calc(100% + 10px);
   left: 50%;
-  transform: translateX(-50%) translateY(-8px);
-  margin-bottom: var(--ch-space-2);
+  transform: translateX(-50%);
 }
 
-.ch-tooltip--top .ch-tooltip__arrow {
+.ch-tooltip--top::before {
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.ch-tooltip--top::after {
   bottom: -4px;
   left: 50%;
   transform: translateX(-50%) rotate(45deg);
 }
 
-/* ─── Placement: Bottom ───────────────────────────────────────────────────── */
+/* ─── Placement: bottom ───────────────────────────────────────────────────── */
 .ch-tooltip--bottom {
-  top: 100%;
+  top: calc(100% + 10px);
   left: 50%;
-  transform: translateX(-50%) translateY(8px);
-  margin-top: var(--ch-space-2);
+  transform: translateX(-50%);
 }
 
-.ch-tooltip--bottom .ch-tooltip__arrow {
+.ch-tooltip--bottom::before {
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.ch-tooltip--bottom::after {
   top: -4px;
   left: 50%;
   transform: translateX(-50%) rotate(45deg);
 }
 
-/* ─── Placement: Left ─────────────────────────────────────────────────────── */
+/* ─── Placement: left ─────────────────────────────────────────────────────── */
 .ch-tooltip--left {
-  right: 100%;
+  right: calc(100% + 10px);
   top: 50%;
-  transform: translateY(-50%) translateX(-8px);
-  margin-right: var(--ch-space-2);
+  transform: translateY(-50%);
 }
 
-.ch-tooltip--left .ch-tooltip__arrow {
+.ch-tooltip--left::before {
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.ch-tooltip--left::after {
   right: -4px;
   top: 50%;
   transform: translateY(-50%) rotate(45deg);
 }
 
-/* ─── Placement: Right ────────────────────────────────────────────────────── */
+/* ─── Placement: right ────────────────────────────────────────────────────── */
 .ch-tooltip--right {
-  left: 100%;
+  left: calc(100% + 10px);
   top: 50%;
-  transform: translateY(-50%) translateX(8px);
-  margin-left: var(--ch-space-2);
+  transform: translateY(-50%);
 }
 
-.ch-tooltip--right .ch-tooltip__arrow {
+.ch-tooltip--right::before {
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.ch-tooltip--right::after {
   left: -4px;
   top: 50%;
   transform: translateY(-50%) rotate(45deg);
 }
 
-/* ─── Arrow ───────────────────────────────────────────────────────────────── */
-.ch-tooltip__arrow {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background: var(--ch-color-tooltip);
-  border: 1px solid var(--ch-color-border-strong);
-  /* Clip the corner to match tooltip border */
-}
-
-/* Adjust arrow border to match placement */
-.ch-tooltip--top .ch-tooltip__arrow {
-  border-right: none;
-  border-bottom: none;
-}
-
-.ch-tooltip--bottom .ch-tooltip__arrow {
-  border-left: none;
-  border-top: none;
-}
-
-.ch-tooltip--left .ch-tooltip__arrow {
-  border-right: none;
-  border-top: none;
-}
-
-.ch-tooltip--right .ch-tooltip__arrow {
-  border-left: none;
-  border-bottom: none;
-}
-
 /* ─── Content ─────────────────────────────────────────────────────────────── */
 .ch-tooltip__content {
   position: relative;
+  /* Sits above the ::after fill layer so text is never obscured by the arrow */
   z-index: 1;
 }
 
 .ch-tooltip__title {
   font-weight: var(--ch-font-semibold);
-  margin-bottom: var(--ch-space-0_5);
+  margin: 0 0 var(--ch-space-0_5);
 }
 
 .ch-tooltip__text {
+  margin: 0;
   line-height: var(--ch-leading-relaxed);
 }
 </style>

@@ -17,6 +17,8 @@
 
 import { computed } from 'vue'
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 interface Props {
   /** Bind to a shared ref with the same v-model across all radios in the group */
   modelValue?: unknown
@@ -25,9 +27,10 @@ interface Props {
   label?:      string
   hint?:       string
   disabled?:   boolean
+  /** Error state — pass `true` for visual-only, or a string to show a message */
   error?:      string | boolean
   id?:         string
-  /** All radios in the same group should share the same name */
+  /** All radios in the same group must share the same name attribute */
   name?:       string
   size?:       'sm' | 'md' | 'lg'
 }
@@ -37,13 +40,26 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false,
 })
 
+// ─── Emits ────────────────────────────────────────────────────────────────────
+
 const emit = defineEmits<{
   'update:modelValue': [value: unknown]
   change: [value: unknown]
 }>()
 
+// ─── Computed ─────────────────────────────────────────────────────────────────
+
 const isChecked = computed(() => props.modelValue === props.value)
 const hasError  = computed(() => !!props.error)
+
+/** Render the error string only when it is a non-empty string */
+const errorMessage = computed(() =>
+  typeof props.error === 'string' && props.error.length > 0 ? props.error : null,
+)
+
+const errorId = computed(() => props.id ? `${props.id}-error` : undefined)
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
 
 function onChange() {
   emit('update:modelValue', props.value)
@@ -52,44 +68,59 @@ function onChange() {
 </script>
 
 <template>
-  <label
-    class="ch-radio"
-    :class="[
+  <!--
+    Wrapper div is required so the error <p> can sit outside the <label>.
+    Putting block-level elements inside <label> is invalid HTML.
+  -->
+  <div class="ch-radio-wrapper">
+    <label class="ch-radio" :class="[
       `ch-radio--${size}`,
       { 'ch-radio--disabled': disabled },
-      { 'ch-radio--error':    hasError },
-      { 'ch-radio--checked':  isChecked },
-    ]"
-  >
-    <input
-      type="radio"
-      class="ch-radio__input"
-      :id="id"
-      :name="name"
-      :checked="isChecked"
-      :disabled="disabled"
-      :aria-invalid="hasError"
-      :value="value"
-      @change="onChange"
-    />
+      { 'ch-radio--error': hasError },
+      { 'ch-radio--checked': isChecked },
+    ]">
+      <!-- Visually hidden native input — drives all a11y behaviour -->
+      <input type="radio" class="ch-radio__input" :id="id" :name="name" :checked="isChecked" :disabled="disabled"
+        :value="value"
+:aria-invalid="hasError ? 'true' : undefined"
+        :aria-describedby="errorMessage ? errorId : undefined"
+@change="onChange" />
 
-    <!--
-      Custom radio circle.
-      The inner dot scales in on selection via a CSS transform transition.
-    -->
-    <span class="ch-radio__circle" aria-hidden="true">
-      <span class="ch-radio__dot" />
-    </span>
+      <!--
+        Custom radio circle.
+        The inner dot scales in on selection via a CSS transform transition.
+        Checked state styling is also driven by .ch-radio--checked for the dot
+        animation; the border color additionally uses :checked for resilience.
+      -->
+      <span class="ch-radio__circle" aria-hidden="true">
+        <span class="ch-radio__dot" />
+      </span>
 
-    <span v-if="label || hint" class="ch-radio__content">
-      <span v-if="label" class="ch-radio__label">{{ label }}</span>
-      <span v-if="hint"  class="ch-radio__hint">{{ hint }}</span>
-    </span>
-  </label>
+      <!-- Label + hint — accepts rich content via #label slot -->
+      <span v-if="label || hint || $slots.label" class="ch-radio__content">
+        <span class="ch-radio__label">
+          <slot name="label">{{ label }}</slot>
+        </span>
+        <span v-if="hint" class="ch-radio__hint">{{ hint }}</span>
+      </span>
+    </label>
+
+    <!-- Error message — outside <label> so it is valid HTML -->
+    <p v-if="errorMessage" :id="errorId" class="ch-radio__error" role="alert">
+      {{ errorMessage }}
+    </p>
+  </div>
 </template>
 
 <style scoped>
-/* ─── Root ────────────────────────────────────────────────────────────────── */
+/* ─── Wrapper ─────────────────────────────────────────────────────────────── */
+.ch-radio-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ch-space-1);
+}
+
+/* ─── Root label ──────────────────────────────────────────────────────────── */
 .ch-radio {
   display:     inline-flex;
   align-items: flex-start;
@@ -100,44 +131,44 @@ function onChange() {
 
 .ch-radio--disabled { cursor: not-allowed; opacity: 0.5; }
 
-/* ─── Hide native input ───────────────────────────────────────────────────── */
+/* ─── Hide native input (keep in a11y tree) ───────────────────────────────── */
 .ch-radio__input {
   position: absolute;
-  opacity:  0;
-  width:    0;
-  height:   0;
-  margin:   0;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    margin: 0;
   pointer-events: none;
 }
 
 /* ─── Custom circle ───────────────────────────────────────────────────────── */
 .ch-radio__circle {
-  flex-shrink:    0;
-  display:        flex;
-  align-items:    center;
-  justify-content:center;
-  border-radius:  var(--ch-radius-full);
-  border:         1.5px solid var(--ch-color-border-strong);
-  background:     var(--ch-color-surface);
+  flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--ch-radius-full);
+    border: 1.5px solid var(--ch-color-border-strong);
+    background: var(--ch-color-surface);
   transition:
     border-color     var(--ch-duration-fast) var(--ch-ease-out),
     background-color var(--ch-duration-fast) var(--ch-ease-out),
     box-shadow       var(--ch-duration-fast) var(--ch-ease-out);
 }
 
-/* Sizes */
 .ch-radio--sm .ch-radio__circle { width: 14px; height: 14px; }
 .ch-radio--md .ch-radio__circle { width: 16px; height: 16px; }
 .ch-radio--lg .ch-radio__circle { width: 20px; height: 20px; }
 
-/* Checked outer ring */
-.ch-radio--checked .ch-radio__circle {
+/* Checked outer ring — driven by both class and native :checked for resilience */
+.ch-radio--checked .ch-radio__circle,
+.ch-radio__input:checked+.ch-radio__circle {
   border-color: var(--ch-color-primary);
   background:   var(--ch-color-surface);
 }
 
-/* Focus ring */
-.ch-radio__input:focus-visible ~ .ch-radio__circle {
+/* Focus ring forwarded from native input to custom circle */
+.ch-radio__input:focus-visible+.ch-radio__circle {
   outline: 2px solid var(--ch-color-primary);
   outline-offset: 2px;
 }
@@ -147,19 +178,27 @@ function onChange() {
 
 /* ─── Inner dot ───────────────────────────────────────────────────────────── */
 .ch-radio__dot {
-  border-radius:  var(--ch-radius-full);
-  background:     var(--ch-color-primary);
-  /* Starts scaled to 0 — scales up on check */
-  transform:      scale(0);
-  transition:     transform var(--ch-duration-fast) var(--ch-ease-spring);
+  border-radius: var(--ch-radius-full);
+    background: var(--ch-color-primary);
+    transform: scale(0);
+    transition: transform var(--ch-duration-fast) var(--ch-ease-spring);
 }
 
-/* Dot sizes (proportional to circle) */
-.ch-radio--sm .ch-radio__dot { width: 6px;  height: 6px; }
-.ch-radio--md .ch-radio__dot { width: 7px;  height: 7px; }
-.ch-radio--lg .ch-radio__dot { width: 9px;  height: 9px; }
+.ch-radio--sm .ch-radio__dot {
+  width: 6px;
+  height: 6px;
+}
 
-/* Animate dot in when checked */
+.ch-radio--md .ch-radio__dot {
+  width: 7px;
+  height: 7px;
+}
+
+.ch-radio--lg .ch-radio__dot {
+  width: 9px;
+  height: 9px;
+}
+
 .ch-radio--checked .ch-radio__dot { transform: scale(1); }
 
 /* ─── Label + hint ────────────────────────────────────────────────────────── */
@@ -178,8 +217,16 @@ function onChange() {
 }
 
 .ch-radio__hint {
-  font-size:  var(--ch-text-xs);
-  color:      var(--ch-color-text-subtle);
-  line-height:var(--ch-leading-normal);
+  font-size: var(--ch-text-xs);
+    color: var(--ch-color-text-subtle);
+    line-height: var(--ch-leading-normal);
+  }
+  
+  /* ─── Error message ───────────────────────────────────────────────────────── */
+  .ch-radio__error {
+    margin: 0;
+    font-size: var(--ch-text-xs);
+    color: var(--ch-color-danger);
+    line-height: var(--ch-leading-normal);
 }
 </style>

@@ -331,7 +331,8 @@ function onBlur(e: FocusEvent) {
 .ch-textarea-wrapper {
   background-color: var(--ch-color-surface);
   border:           1px solid var(--ch-color-border-strong);
-  border-radius:    var(--ch-radius-none); /* 0px */
+  border-radius: var(--ch-radius-md);
+    /* control radius */
   transition:
     border-color var(--ch-duration-fast) var(--ch-ease-out),
     box-shadow   var(--ch-duration-fast) var(--ch-ease-out);

@@ -122,7 +122,7 @@ function toggle() {
    position: relative;
    flex-shrink: 0;
    background-color: var(--ch-color-border-strong);
-   border-radius: var(--ch-radius-none);
+   border-radius: var(--ch-radius-sm);
    transition: background-color var(--ch-duration-fast) var(--ch-ease-out);
 }
 
@@ -153,7 +153,7 @@ function toggle() {
    top: 3px;
    left: 3px;
    background-color: var(--ch-color-surface);
-   border-radius: var(--ch-radius-none);
+   border-radius: var(--ch-radius-sm);
    box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
    /*
    * Use duration-instant (50ms) — defined in spacing.ts specifically for
