@@ -22,7 +22,7 @@
  */
 
 import { inject } from 'vue'
-import { BREADCRUMB_KEY } from '../../composables/useBreadcrumb.ts'
+import { BREADCRUMB_KEY, defaultBreadcrumbContext } from '../../composables/useBreadcrumb.ts'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -42,12 +42,11 @@ withDefaults(defineProps<Props>(), {
 
 /**
  * Injected from the parent ChBreadcrumb.
- * Falls back to slash separator if used outside ChBreadcrumb (edge case).
+ * Falls back to `defaultBreadcrumbContext` — a proper BreadcrumbContext with
+ * real Vue refs — when used outside ChBreadcrumb (edge case). This avoids the
+ * previous plain-object fallback that satisfied the type only via an unsafe cast.
  */
-const breadcrumb = inject(BREADCRUMB_KEY, {
-  separator: { value: '/' } as { value: string },
-  separatorPath: { value: '' } as { value: string },
-})
+const breadcrumb = inject(BREADCRUMB_KEY, defaultBreadcrumbContext)
 </script>
 
 <template>

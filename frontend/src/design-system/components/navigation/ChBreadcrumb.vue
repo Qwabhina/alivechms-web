@@ -36,9 +36,6 @@ import { computed, provide } from 'vue'
 import type { BreadcrumbSeparator, BreadcrumbItem } from '../../composables/useBreadcrumb.ts'
 import { BREADCRUMB_KEY } from '../../composables/useBreadcrumb.ts'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-// Types are now imported from './breadcrumb.ts'
-
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -86,36 +83,45 @@ provide(BREADCRUMB_KEY, {
   <nav :class="['ch-breadcrumb', navClass]" aria-label="Breadcrumb">
     <ol class="ch-breadcrumb__list">
       <!--
-        Slot mode: consumer provides ChBreadcrumbItem children.
+        Slot mode: consumer provides ChBreadcrumbItem children directly.
         The items-array fallback only renders when no slot content is given.
       -->
       <slot>
-        <template v-for="(item, index) in items" :key="item.href ?? item.label">
+        <!--
+          Items-array mode.
+
+          The separator is now rendered as a <span> *inside* each item's <li>
+          rather than as its own <li>. This matches how ChBreadcrumbItem
+          handles it in slot mode and avoids a <li> used purely for
+          presentation — which is semantically incorrect inside an <ol>.
+
+          The first item's separator is hidden via a shared :first-child CSS
+          rule that covers both render modes.
+        -->
+        <li v-for="(item, index) in items" :key="item.href ?? item.label" class="ch-breadcrumb__item"
+          :class="{ 'ch-breadcrumb__item--current': index === items.length - 1 }">
           <!-- Separator (aria-hidden so screen readers skip it) -->
-          <li v-if="index > 0" class="ch-breadcrumb__separator" aria-hidden="true">
+          <span class="ch-breadcrumb__separator" aria-hidden="true">
             <template v-if="separator === '/'">/</template>
             <template v-else-if="separator === '>'">&gt;</template>
             <svg v-else width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
               <path :d="separatorPath" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
-          </li>
+          </span>
 
-          <!-- Breadcrumb item -->
-          <li class="ch-breadcrumb__item" :class="{ 'ch-breadcrumb__item--current': index === items.length - 1 }">
-            <component
-              :is="item.href && index !== items.length - 1 ? 'a' : 'span'"
-              :href="item.href && index !== items.length - 1 ? item.href : undefined"
-              :class="['ch-breadcrumb__link', { 'ch-breadcrumb__link--current': index === items.length - 1 }]"
-              :aria-current="index === items.length - 1 ? 'page' : undefined"
-            >
-              <svg v-if="item.icon" class="ch-breadcrumb__icon" width="14" height="14" viewBox="0 0 14 14" fill="none"
-                stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <path :d="item.icon" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              {{ item.label }}
-            </component>
-          </li>
-        </template>
+          <!-- Breadcrumb link or current-page span -->
+          <component :is="item.href && index !== items.length - 1 ? 'a' : 'span'"
+            :href="item.href && index !== items.length - 1 ? item.href : undefined"
+            :class="['ch-breadcrumb__link', { 'ch-breadcrumb__link--current': index === items.length - 1 }]"
+            :aria-current="index === items.length - 1 ? 'page' : undefined"
+>
+            <svg v-if="item.icon" class="ch-breadcrumb__icon" width="14" height="14" viewBox="0 0 14 14" fill="none"
+              stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <path :d="item.icon" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            {{ item.label }}
+          </component>
+        </li>
       </slot>
     </ol>
   </nav>
@@ -144,7 +150,7 @@ provide(BREADCRUMB_KEY, {
   align-items: center;
 }
 
-/* ─── Separator (items-array mode) ───────────────────────────────────────── */
+/* ─── Separator ───────────────────────────────────────────────────────────── */
 .ch-breadcrumb__separator {
   display: flex;
   align-items: center;
@@ -159,12 +165,12 @@ provide(BREADCRUMB_KEY, {
   height: 14px;
 }
 
-/* ─── Separator (slot mode via ChBreadcrumbItem) ─────────────────────────── */
 /*
-  ChBreadcrumbItem renders a .ch-breadcrumb__separator before its link.
-  We hide it on the first item so only inter-item separators are visible.
-  :deep() is required because the element lives in a child component's template.
+    Hide the separator on the first item in BOTH render modes: - Items-array mode: the <li>is a direct child,
+    so :first-child works natively. - Slot mode (ChBreadcrumbItem): :deep() is required because the element lives inside a child component's template. Both selectors target the same structure
+  (.ch-breadcrumb__item:first-child > .ch-breadcrumb__separator).
 */
+.ch-breadcrumb__item:first-child .ch-breadcrumb__separator,
 :deep(.ch-breadcrumb__item:first-child .ch-breadcrumb__separator) {
   display: none;
 }

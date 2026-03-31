@@ -26,24 +26,14 @@
  * Chart.js must be installed in the project:
  *   npm install chart.js
  *
- * Chart.js uses a tree-shakable "component registration" model. This wrapper
- * registers all commonly needed components automatically. If you only use
- * a subset of chart types, you can reduce bundle size by importing and
- * registering only what you need (see the registerChartDefaults function).
- *
  * ─── Supported chart types ───────────────────────────────────────────────────
  * All Chart.js types are supported via the `type` prop:
  *   'line' | 'bar' | 'doughnut' | 'pie' | 'radar' | 'polarArea' | 'bubble' | 'scatter'
  *
- * Most common for a church management system:
- *   - `line`     → Attendance over time, contribution trends
- *   - `bar`      → Monthly comparisons, group breakdowns
- *   - `doughnut` → Budget allocation, membership type distribution
- *   - `pie`      → Contribution type breakdown
- *
  * @example Attendance line chart
  * <ChChart
  *   type="line"
+ *   label="Weekly attendance over the past 5 months"
  *   :data="{
  *     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
  *     datasets: [{ label: 'Attendance', data: [220, 245, 198, 260, 231] }]
@@ -54,6 +44,7 @@
  * @example Budget doughnut
  * <ChChart
  *   type="doughnut"
+ *   label="Budget allocation by department"
  *   :data="budgetData"
  *   :options="{ plugins: { legend: { position: 'right' } } }"
  * />
@@ -61,6 +52,7 @@
  * @example Multi-dataset bar chart (contributions vs expenses)
  * <ChChart
  *   type="bar"
+ *   label="Monthly contributions vs expenses"
  *   :data="{
  *     labels: months,
  *     datasets: [
@@ -76,22 +68,21 @@ import {
   watch,
   onMounted,
   onUnmounted,
+  nextTick,
 } from 'vue'
 
 import {
   Chart,
-  // Core registrables — must be registered before any chart renders
-  CategoryScale,   // x-axis with category (string) labels
-  LinearScale,     // y-axis with numeric linear scale
-  RadialLinearScale, // for radar/polar charts
-  PointElement,    // dots on line/scatter charts
-  LineElement,     // lines connecting points
-  BarElement,      // bars in bar charts
-  ArcElement,      // slices in doughnut/pie/polar charts
-  // Plugins — enabled globally
-  Tooltip,         // hover tooltips
-  Legend,          // chart legend
-  Filler,          // fills area under line charts
+  CategoryScale,
+  LinearScale,
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Tooltip,
+  Legend,
+  Filler,
   type ChartType,
   type ChartData,
   type ChartOptions,
@@ -100,10 +91,8 @@ import {
 
 // ─── Register Chart.js components ─────────────────────────────────────────────
 /**
- * Chart.js v3+ uses a tree-shakable architecture where no components are
- * globally registered by default. We must explicitly register every component
- * we intend to use. Calling `Chart.register()` is idempotent — safe to call
- * multiple times (subsequent calls are no-ops for already-registered items).
+ * Chart.js v3+ requires explicit registration of every component used.
+ * `Chart.register()` is idempotent — safe to call multiple times.
  */
 Chart.register(
   CategoryScale,
@@ -118,88 +107,74 @@ Chart.register(
   Filler,
 )
 
-// ─── Token color reader ────────────────────────────────────────────────────────
+// ─── CSS custom property reader ───────────────────────────────────────────────
 /**
- * Reads a CSS custom property value from the document root at call time.
- * Called inside `onMounted` (not at module import time) to ensure
- * `injectCSSVars()` has already run and the vars are available.
+ * Reads any CSS custom property from the document root at call time.
+ * Named `cssVar` rather than `tokenColor` because it is used for non-color
+ * tokens too (e.g. `--ch-font-sans`).
  *
- * @param varName - e.g. '--ch-color-primary'
- * @returns The computed color string, e.g. '#4f46e5'
+ * Called inside `onMounted`/`buildDefaultOptions()` — never at module import
+ * time — so `injectCSSVars()` has already run and all tokens are available.
  */
-function tokenColor(varName: string): string {
-  return getComputedStyle(document.documentElement)
-    .getPropertyValue(varName)
-    .trim()
+function cssVar(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
 
 /**
- * A default palette of 8 colors for multi-dataset charts.
+ * A default palette of 8 colors for multi-dataset/multi-slice charts.
  * Sourced from design system tokens so they always match the active theme.
- * Called lazily (inside onMounted) so tokens are already injected.
+ * Called lazily (inside chart creation) so tokens are already injected.
  */
 function getDefaultPalette(): string[] {
   return [
-    tokenColor('--ch-color-primary'),
-    tokenColor('--ch-color-info'),
-    tokenColor('--ch-color-success'),
-    tokenColor('--ch-color-warning'),
-    tokenColor('--ch-color-danger'),
-    tokenColor('--ch-color-primary-hover'),
-    // Fall back to literal colors for charts with more than 5 datasets
-    '#8b5cf6', '#ec4899',
+    cssVar('--ch-color-primary'),
+    cssVar('--ch-color-info'),
+    cssVar('--ch-color-success'),
+    cssVar('--ch-color-warning'),
+    cssVar('--ch-color-danger'),
+    cssVar('--ch-color-primary-hover'),
+    '#8b5cf6',
+    '#ec4899',
   ]
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-/**
- * All supported Chart.js chart types.
- * `'line' | 'bar' | 'doughnut' | 'pie' | 'radar' | 'polarArea' | 'bubble' | 'scatter'`
- */
-type SupportedChartType = ChartType
-
 // ─── Props ────────────────────────────────────────────────────────────────────
+
 interface Props {
-  /**
-   * The Chart.js chart type.
-   * Most used in this system: 'line', 'bar', 'doughnut', 'pie'
-   */
-  type:     SupportedChartType
+  /** The Chart.js chart type */
+  type: ChartType
 
   /**
    * Chart.js `ChartData` object — labels and datasets.
-   * When this prop changes reactively, the chart updates automatically.
-   *
-   * If datasets don't include a `backgroundColor`, the default token
-   * palette is applied automatically.
+   * Datasets without explicit colors receive the default token palette.
    */
-  data:     ChartData
+  data: ChartData
 
   /**
-   * Chart.js `ChartOptions` object — overrides for any Chart.js option.
-   * Merged on top of this wrapper's opinionated defaults.
-   * Deeply merged — you only need to specify what you want to override.
+   * Chart.js `ChartOptions` — deeply merged on top of this wrapper's defaults.
+   * Only specify what you want to override.
    */
   options?: ChartOptions
 
-  /**
-   * Canvas height in pixels. Chart.js uses the canvas's intrinsic size
-   * for the aspect ratio calculation.
-   * Default: 300
-   */
-  height?:  number
+  /** Canvas height in pixels. Default: 300 */
+  height?: number
 
   /**
-   * Loading state — shows a skeleton shimmer instead of the canvas.
-   * Use while fetching the chart's data.
+   * Accessible description of the chart's content. Rendered as a visually
+   * hidden `<figcaption>` and used as `aria-label` on the `<figure>`.
+   * Should describe what the chart shows, e.g. "Weekly attendance over 5 months".
+   */
+  label?: string
+
+  /**
+   * Loading state — shows a skeleton shimmer and hides the canvas.
+   * Use while the chart's data is being fetched.
    */
   loading?: boolean
 
   /**
-   * When true, makes the chart fill its container's width automatically.
-   * Sets `maintainAspectRatio: false` on the Chart.js options and gives
-   * the canvas `width: 100%`.
+   * Makes the chart fill its container's width automatically.
+   * Sets `maintainAspectRatio: false` on Chart.js options.
    * Default: true
    */
   responsive?: boolean
@@ -207,32 +182,28 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   height:     300,
+  label: 'Chart',
   loading:    false,
   responsive: true,
 })
 
 // ─── Refs ─────────────────────────────────────────────────────────────────────
 
-/** Template ref to the <canvas> DOM element */
 const canvasRef = ref<HTMLCanvasElement | null>(null)
-
-/** The active Chart.js instance — null before mount and after unmount */
 let chartInstance: Chart | null = null
 
-// ─── Defaults builder ─────────────────────────────────────────────────────────
+// ─── Default options builder ──────────────────────────────────────────────────
 /**
- * Builds the opinionated default Chart.js options for this design system.
- * These defaults apply consistent typography, colors, and grid styling
- * that match the app's visual language.
- *
- * Parent-provided `options` are deep-merged ON TOP of these defaults,
- * so any default can be overridden without re-specifying everything.
+ * Builds opinionated Chart.js defaults that match the design system's visual
+ * language. Consumer `options` are deep-merged on top, so any default can be
+ * overridden without re-specifying everything.
  */
 function buildDefaultOptions(): ChartOptions {
-  const textColor   = tokenColor('--ch-color-text-muted')
-  const gridColor   = tokenColor('--ch-color-border')
-  const fontFamily  = tokenColor('--ch-font-sans').replace(/"/g, '') // remove quotes
-  const fontSize    = 12
+  const textColor = cssVar('--ch-color-text-muted')
+  const gridColor = cssVar('--ch-color-border')
+  // CSS custom property may include quotes around the font stack — strip them
+  const fontFamily = cssVar('--ch-font-sans').replace(/"/g, '')
+  const fontSize = 12
 
   return {
     responsive:          props.responsive,
@@ -241,238 +212,230 @@ function buildDefaultOptions(): ChartOptions {
     plugins: {
       legend: {
         labels: {
-          color:     textColor,
-          font:      { family: fontFamily, size: fontSize },
-          // Rounded square legend boxes instead of the default rectangle
+          color: textColor,
+          font: { family: fontFamily, size: fontSize },
           usePointStyle: true,
           pointStyle: 'circle',
-          padding:   16,
+          padding: 16,
         },
       },
       tooltip: {
-        backgroundColor: tokenColor('--ch-color-surface'),
-        titleColor:      tokenColor('--ch-color-text'),
+        backgroundColor: cssVar('--ch-color-surface'),
+        titleColor: cssVar('--ch-color-text'),
         bodyColor:       textColor,
         borderColor:     gridColor,
         borderWidth:     1,
         padding:         10,
-        cornerRadius:    0, /* sharp corners */
+        cornerRadius: 4,
         titleFont:       { family: fontFamily, size: fontSize, weight: 'bold' },
         bodyFont:        { family: fontFamily, size: fontSize },
       },
     },
 
     scales: {
-      // Only applies to cartesian charts (line, bar, scatter).
-      // Chart.js ignores these for polar/radial/doughnut/pie.
+      // Chart.js silently ignores cartesian scale config for non-cartesian
+      // types (doughnut, pie, radar, polarArea) — safe to always include.
       x: {
-        ticks: {
-          color: textColor,
-          font:  { family: fontFamily, size: fontSize },
-        },
-        grid: {
-          color:       gridColor,
-          // Remove vertical grid lines for a cleaner look
-          drawOnChartArea: false,
-        },
-        border: {
-          color: gridColor,
-        },
+        ticks: { color: textColor, font: { family: fontFamily, size: fontSize } },
+        grid: { color: gridColor, drawOnChartArea: false },
+        border: { color: gridColor },
       },
       y: {
-        ticks: {
-          color: textColor,
-          font:  { family: fontFamily, size: fontSize },
-        },
-        grid: {
-          color: gridColor,
-        },
-        border: {
-          color: gridColor,
-          dash:  [4, 4], // dashed horizontal grid lines
-        },
+        ticks: { color: textColor, font: { family: fontFamily, size: fontSize } },
+        grid: { color: gridColor },
+        border: { color: gridColor, dash: [4, 4] },
       },
     },
   } as ChartOptions
 }
 
+// ─── Deep merge ───────────────────────────────────────────────────────────────
 /**
- * Deep merges two objects. Used to merge user `options` on top of defaults.
- * Does NOT handle arrays (they overwrite). This is intentional for Chart.js —
- * you typically want to fully replace arrays like `scales.x.ticks.callback`.
+ * Recursively merges `override` into `base`. Arrays overwrite rather than
+ * concatenate — intentional for Chart.js where you typically want to fully
+ * replace arrays such as `ticks.callback` or `borderDash`.
+ *
+ * Typed as `object` at the boundary to avoid forcing double-casts at every
+ * Chart.js call site; callers cast the result to `ChartOptions` once.
  */
-function deepMerge<T extends Record<string, unknown>>(base: T, override: Partial<T>): T {
-  const result = { ...base }
-  for (const key in override) {
-    const val = override[key]
-    if (val && typeof val === 'object' && !Array.isArray(val) && key in result && typeof result[key] === 'object') {
-      result[key] = deepMerge(result[key] as Record<string, unknown>, val as Record<string, unknown>) as T[typeof key]
+function deepMerge(base: object, override: object): object {
+  const result: Record<string, unknown> = { ...(base as Record<string, unknown>) }
+
+  for (const [key, val] of Object.entries(override as Record<string, unknown>)) {
+    const baseVal = result[key]
+    if (
+      val !== null &&
+      val !== undefined &&
+      typeof val === 'object' &&
+      !Array.isArray(val) &&
+      typeof baseVal === 'object' &&
+      baseVal !== null &&
+      !Array.isArray(baseVal)
+    ) {
+      result[key] = deepMerge(baseVal as object, val as object)
     } else if (val !== undefined) {
-      result[key] = val as T[typeof key]
+      result[key] = val
     }
   }
+
   return result
 }
 
+// ─── Dataset colour application ───────────────────────────────────────────────
 /**
- * Applies the default color palette to datasets that don't specify their own colors.
- * For line charts, also sets `borderColor` and a semi-transparent `backgroundColor`
- * for the area fill.
+ * Applies the default token palette to datasets that do not specify colors.
+ * Each color property is checked independently — a dataset that already sets
+ * only `borderColor` still receives `backgroundColor` from the palette.
+ *
+ * ─── Per-type strategy ───────────────────────────────────────────────────────
+ * - **line**:              `borderColor` per dataset + semi-transparent fill.
+ * - **bar**:               `backgroundColor` per dataset at ~80% opacity.
+ * - **pie/doughnut/polarArea**: `backgroundColor` mapped over *data points*
+ *   (not datasets). These chart types have one dataset with N slices, each
+ *   needing a distinct color — the old code used `datasets.length` (always 1)
+ *   which caused all slices to receive the same single color.
+ * - **other**:             solid `backgroundColor` per dataset.
  */
 function applyDatasetColors(chartData: ChartData): ChartData {
   const palette = getDefaultPalette()
+  const isSliced = ['doughnut', 'pie', 'polarArea'].includes(props.type)
+
   const datasets = (chartData.datasets ?? []).map((dataset: ChartDataset, i: number) => {
     const color = palette[i % palette.length]
 
-    // If the dataset already specifies colors, don't override
-    if (dataset.backgroundColor || (dataset as ChartDataset<'line'>).borderColor) {
-      return dataset
-    }
-
-    // Line chart datasets get a border color + transparent fill
-    if (props.type === 'line') {
+    if (isSliced) {
+      // Slice count comes from data points, not from the number of datasets
+      const sliceCount = (dataset.data ?? []).length
       return {
         ...dataset,
-        borderColor:     color,
-        backgroundColor: `${color}20`, // 20 = ~12% opacity in hex
-        borderWidth:     2,
-        pointBackgroundColor: color,
-        pointRadius:     4,
-        pointHoverRadius:6,
-        tension:         0.4, // slightly curved lines
-        fill:            false,
+        backgroundColor: dataset.backgroundColor
+          ?? palette.slice(0, sliceCount).map(c => `${c}dd`),
+        borderColor: (dataset as ChartDataset<'doughnut'>).borderColor ?? '#fff',
+        borderWidth: (dataset as ChartDataset<'doughnut'>).borderWidth ?? 2,
       }
     }
 
-    // All other chart types get solid fill colors
+    if (props.type === 'line') {
+      const ds = dataset as ChartDataset<'line'>
+      return {
+        ...dataset,
+        borderColor: ds.borderColor ?? color,
+        backgroundColor: dataset.backgroundColor ?? `${color}20`,
+        borderWidth: ds.borderWidth ?? 2,
+        pointBackgroundColor: ds.pointBackgroundColor ?? color,
+        pointRadius: ds.pointRadius ?? 4,
+        pointHoverRadius: ds.pointHoverRadius ?? 6,
+        tension: ds.tension ?? 0.4,
+        fill: ds.fill ?? false,
+      }
+    }
+
+    if (props.type === 'bar') {
+      const ds = dataset as ChartDataset<'bar'>
+      return {
+        ...dataset,
+        backgroundColor: dataset.backgroundColor ?? `${color}cc`,
+        borderColor: ds.borderColor ?? color,
+        borderWidth: ds.borderWidth ?? 0,
+      }
+    }
+
+    // Fallback: bubble, scatter, radar, and future types
     return {
       ...dataset,
-      backgroundColor: props.type === 'bar'
-        ? `${color}cc`   // bars at ~80% opacity (cc in hex)
-        : palette.slice(0, (chartData.datasets ?? []).length).map(c => `${c}dd`),
-      borderColor:     props.type === 'bar' ? color : '#fff',
-      borderWidth:     props.type === 'bar' ? 0 : 2,
+      backgroundColor: dataset.backgroundColor ?? color,
     }
   })
 
-  return { ...chartData, datasets }
+  return { ...chartData, datasets: datasets as ChartData['datasets'] }
 }
 
 // ─── Chart lifecycle ──────────────────────────────────────────────────────────
 
-/**
- * Creates the Chart.js instance on the canvas element.
- * Called in `onMounted` once the canvas DOM node exists.
- */
-function createChart() {
+function mergedOptions(): ChartOptions {
+  return deepMerge(buildDefaultOptions(), props.options ?? {}) as ChartOptions
+}
+
+function createChart(): void {
   if (!canvasRef.value) return
-
-  const mergedOptions = deepMerge(
-    buildDefaultOptions() as Record<string, unknown>,
-    (props.options ?? {}) as Record<string, unknown>
-  ) as ChartOptions
-
   chartInstance = new Chart(canvasRef.value, {
     type:    props.type,
     data:    applyDatasetColors(props.data),
-    options: mergedOptions,
+    options: mergedOptions(),
   })
 }
 
-/**
- * Updates the existing Chart.js instance when data or options change.
- * Chart.js's `chart.update()` is efficient — it only redraws what changed.
- */
-function updateChart() {
+function updateChart(): void {
   if (!chartInstance) return
   chartInstance.data    = applyDatasetColors(props.data)
-  chartInstance.options = deepMerge(
-    buildDefaultOptions() as Record<string, unknown>,
-    (props.options ?? {}) as Record<string, unknown>
-  ) as ChartOptions
+  chartInstance.options = mergedOptions()
   chartInstance.update()
 }
 
-/**
- * Destroys the Chart.js instance and releases its canvas context.
- * MUST be called on component unmount — Chart.js holds a reference to the
- * canvas context and creating a new chart on the same canvas without
- * destroying the old one causes "Canvas is already in use" errors.
- */
-function destroyChart() {
-  if (chartInstance) {
-    chartInstance.destroy()
-    chartInstance = null
-  }
+function destroyChart(): void {
+  // Optional chaining keeps this a one-liner; sets to null so watchers and
+  // updateChart() guard correctly after a destroy.
+  chartInstance?.destroy()
+  chartInstance = null
 }
 
-// ─── Vue lifecycle hooks ──────────────────────────────────────────────────────
+// ─── Vue lifecycle ────────────────────────────────────────────────────────────
 
 onMounted(() => {
-  // Don't create the chart while in loading state — the canvas isn't rendered
   if (!props.loading) createChart()
 })
 
 onUnmounted(() => {
-  // Always destroy on unmount to prevent memory leaks and canvas reuse errors
+  // Always destroy — Chart.js holds a canvas context reference that prevents
+  // reuse and causes "Canvas is already in use" errors if not released.
   destroyChart()
 })
 
 // ─── Watchers ─────────────────────────────────────────────────────────────────
 
-/**
- * Watches the `data` prop for changes.
- * `deep: true` catches nested mutations (e.g. pushing to datasets[0].data).
- * When data changes, update the chart efficiently without full redraw.
- */
 watch(() => props.data, () => updateChart(), { deep: true })
-
-/**
- * Watches options changes.
- * Also triggers a full update since options affect rendering globally.
- */
 watch(() => props.options, () => updateChart(), { deep: true })
 
 /**
- * Watches the loading prop.
- * When loading transitions from true → false, the canvas becomes visible
- * and we need to create the chart for the first time.
- * When loading goes true → we destroy the chart (canvas is hidden).
+ * When loading flips false → canvas becomes visible via v-else.
+ * `nextTick` waits for Vue to flush the DOM so the canvas node exists
+ * before createChart() runs. This is more correct than `setTimeout(..., 0)`,
+ * which defers to a separate task rather than the post-flush microtask.
+ *
+ * When loading flips true → destroy immediately; the canvas is about to
+ * be removed from the DOM by v-else.
  */
-watch(() => props.loading, (isLoading) => {
-  if (!isLoading) {
-    // Use nextTick equivalent — wait one microtask for v-if to render the canvas.
-    // Guard: if loading flips false→true→false quickly, the setTimeout from the
-    // first transition can fire after the component unmounts (destroyChart already
-    // nulled chartInstance). Checking canvasRef.value ensures the DOM node still
-    // exists before attempting chart creation.
-    setTimeout(() => {
-      if (canvasRef.value) createChart()
-    }, 0)
-  } else {
+watch(() => props.loading, async (isLoading) => {
+  if (isLoading) {
     destroyChart()
+  } else {
+    await nextTick()
+    if (canvasRef.value) createChart()
   }
 })
 </script>
 
 <template>
-  <div
+  <!--
+    `<figure>` is the correct semantic wrapper for self-contained chart content.
+    `aria-label` surfaces the description to assistive technologies.
+    `aria-busy` signals the loading state to screen readers.
+  -->
+  <figure
     class="ch-chart"
     :style="{ height: `${height}px` }"
-    role="img"
-    :aria-label="loading ? 'Chart loading' : 'Chart'"
+:aria-label="label" :aria-busy="loading"
   >
-    <!-- Loading skeleton — shown while data is being fetched -->
-    <div v-if="loading" class="ch-chart__skeleton"></div>
+    <!-- Loading skeleton — full-size shimmer matching the chart's height -->
+    <div v-if="loading" class="ch-chart__skeleton" role="presentation"></div>
 
     <!--
-      The Chart.js canvas element.
-      `v-else` ensures it's only in the DOM when we're NOT loading —
-      this guarantees `canvasRef` is valid when `createChart()` runs.
+      Canvas is only rendered when NOT loading so `canvasRef` is always
+      valid by the time createChart() runs after nextTick in the watcher.
 
-      `width` and `height` attributes set the canvas's INTERNAL resolution.
-      CSS `width: 100%` and `height: 100%` then SCALE it to fill the container.
-      Both are needed — the attributes define pixel density, CSS defines display size.
+      `width`/`height` attributes set the canvas's internal resolution.
+      CSS `width: 100%` / `height: 100%` scale it to fill the container.
+      Both are needed: attributes control pixel density, CSS controls display size.
     -->
     <canvas
       v-else
@@ -481,11 +444,20 @@ watch(() => props.loading, (isLoading) => {
       :width="responsive ? undefined : 400"
       :height="height"
       :style="{
-        width:  responsive ? '100%'  : undefined,
+  width: responsive ? '100%' : undefined,
         height: `${height}px`,
       }"
     ></canvas>
-  </div>
+
+    <!--
+      Visually hidden caption — gives screen reader users a meaningful
+      description of the chart's content beyond a generic "image" role.
+      Hidden from sighted users via the sr-only pattern; does not affect layout.
+    -->
+    <figcaption v-if="label" class="ch-chart__caption">
+      {{ label }}
+    </figcaption>
+  </figure>
 </template>
 
 <style scoped>
@@ -493,6 +465,9 @@ watch(() => props.loading, (isLoading) => {
 .ch-chart {
   position: relative;
   width:    100%;
+  /* Reset <figure> browser default margin/padding */
+    margin: 0;
+    padding: 0;
 }
 
 /* ─── Canvas ──────────────────────────────────────────────────────────────── */
@@ -500,23 +475,48 @@ watch(() => props.loading, (isLoading) => {
   display: block;
 }
 
+/* ─── Visually hidden caption (screen-reader accessible) ─────────────────── */
+/*
+ * Standard sr-only pattern: element is in the DOM and read by screen readers
+ * but occupies no visible space and does not affect layout.
+ */
+.ch-chart__caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 /* ─── Loading skeleton ────────────────────────────────────────────────────── */
 /*
- * Full-size shimmer that exactly matches the chart's height,
- * so there's no layout shift when the real chart appears.
+ * Full-size shimmer that exactly matches the chart's height so there is
+ * no layout shift when the real chart appears.
  */
 .ch-chart__skeleton {
   width:         100%;
   height:        100%;
   border-radius: var(--ch-radius-sm);
-    /* subtle corners */
-  background:    linear-gradient(
+  background: linear-gradient(
     90deg,
     var(--ch-color-bg-muted)  0%,
     var(--ch-color-bg-subtle) 50%,
     var(--ch-color-bg-muted)  100%
   );
   background-size: 200% 100%;
-  animation:     ch-shimmer 1.4s var(--ch-ease-in-out) infinite;
+  animation: ch-shimmer 1.4s var(--ch-ease-in-out) infinite;
+  }
+  
+  @keyframes ch-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+  
+    100% {
+      background-position: -200% 0;
+    }
 }
 </style>

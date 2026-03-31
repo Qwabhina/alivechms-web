@@ -3,19 +3,20 @@
  * @component ChAccordion
  * @path /frontend/src/design-system/components/data/ChAccordion.vue
  * @description A vertically stacked component that displays collapsible content
- * sections. Only one section can be open at a time (exclusive mode) or multiple
- * sections can be open simultaneously.
+ * sections. Supports a single open item (exclusive mode, default) or multiple
+ * items open simultaneously.
  *
  * ─── Design decisions ────────────────────────────────────────────────────────
- * - Supports both controlled (v-model) and uncontrolled modes
- * - Smooth CSS transitions for expand/collapse animations
- * - Keyboard accessible — Enter/Space to toggle, Arrow keys to navigate
- * - Icon rotation indicates open/closed state
+ * - State is managed here and shared with ChAccordionItem via provide/inject,
+ *   rather than scoped slot props, so consumers don't need to wire anything up.
+ * - Supports both controlled (v-model) and uncontrolled modes.
  *
  * ─── Accessibility ───────────────────────────────────────────────────────────
- * - Uses `role="region"` for accordion panels
- * - Headers use button elements with `aria-expanded`
- * - `aria-controls` links headers to their panels
+ * - No role on the root — an accordion is not a named landmark.
+ * - `aria-multiselectable` is omitted: it is only valid on grid/listbox/
+ *   tablist/tree, not on generic accordion containers.
+ * - Individual panels carry `role="region"` and `aria-labelledby` per the
+ *   ARIA Authoring Practices accordion pattern.
  *
  * ─── Usage ───────────────────────────────────────────────────────────────────
  * @example Basic usage
@@ -46,21 +47,31 @@
  * </ChAccordion>
  */
 
-import { computed, ref, watch } from 'vue'
+import { computed, provide, ref, watch } from 'vue'
+import { ACCORDION_KEY } from '../../composables/useAccordion.ts'
+import type { AccordionValue } from '../../composables/useAccordion.ts'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  /** Currently open item value(s) — use v-model */
-  modelValue?: string | number | (string | number)[]
-  /** Allow multiple items to be open simultaneously. Default: false */
+  /**
+   * Currently open item value(s) for controlled mode.
+   * - Exclusive mode: `string | number` (or '' to close all)
+   * - Multiple mode:  `(string | number)[]`
+   */
+  modelValue?: AccordionValue | AccordionValue[]
+  /** Allow multiple items open simultaneously. Default: false */
   multiple?: boolean
   /** Custom CSS class for the accordion root */
   class?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  modelValue: () => '',
+  /**
+   * Default to an empty array so the type is always correct in multiple mode
+   * without needing a runtime branch. Exclusive mode normalises to '' internally.
+   */
+  modelValue: () => [],
   multiple: false,
   class: '',
 })
@@ -68,74 +79,100 @@ const props = withDefaults(defineProps<Props>(), {
 // ─── Emits ────────────────────────────────────────────────────────────────────
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string | number | (string | number)[]]
-  'item-open': [value: string | number]
-  'item-close': [value: string | number]
+  'update:modelValue': [value: AccordionValue | AccordionValue[]]
+  'item-open': [value: AccordionValue]
+  'item-close': [value: AccordionValue]
 }>()
 
 // ─── Local state ──────────────────────────────────────────────────────────────
 
-const openItems = ref<string | number | (string | number)[]>(props.modelValue)
-
-// ─── Methods ──────────────────────────────────────────────────────────────────
-
-function toggleItem(itemValue: string | number) {
-  if (props.multiple) {
-    // Multiple mode: toggle item in/out of array
-    const current = Array.isArray(openItems.value) ? openItems.value : []
-    const index = current.indexOf(itemValue)
-
-    if (index > -1) {
-      // Close this item
-      const newValue = current.filter(v => v !== itemValue)
-      openItems.value = newValue
-      emit('update:modelValue', newValue)
-      emit('item-close', itemValue)
-    } else {
-      // Open this item
-      const newValue = [...current, itemValue]
-      openItems.value = newValue
-      emit('update:modelValue', newValue)
-      emit('item-open', itemValue)
-    }
-  } else {
-    // Exclusive mode: only one item open at a time
-    if (openItems.value === itemValue) {
-      // Close if already open
-      openItems.value = ''
-      emit('update:modelValue', '')
-      emit('item-close', itemValue)
-    } else {
-      // Open this item (closes any other)
-      const prevValue = openItems.value
-      const prevItemValue = typeof prevValue === 'string' || typeof prevValue === 'number' ? prevValue : null
-      openItems.value = itemValue
-      emit('update:modelValue', itemValue)
-      if (prevItemValue) {
-        emit('item-close', prevItemValue)
-      }
-      emit('item-open', itemValue)
-    }
-  }
+/**
+ * Normalise the incoming modelValue so internal logic always works with
+ * a consistent type:
+ * - Multiple mode → always an array
+ * - Exclusive mode → always a single value ('' means nothing open)
+ */
+function normalise(value: AccordionValue | AccordionValue[]): AccordionValue | AccordionValue[] {
+  if (props.multiple) return Array.isArray(value) ? value : value !== '' ? [value] : []
+  return Array.isArray(value) ? (value[0] ?? '') : value
 }
 
-function isOpen(itemValue: string | number): boolean {
+const openItems = ref<AccordionValue | AccordionValue[]>(normalise(props.modelValue))
+
+// ─── State helpers ────────────────────────────────────────────────────────────
+
+function isOpen(itemValue: AccordionValue): boolean {
   if (props.multiple) {
     return Array.isArray(openItems.value) && openItems.value.includes(itemValue)
   }
   return openItems.value === itemValue
 }
 
-// ─── Watch ────────────────────────────────────────────────────────────────────
+function toggleItem(itemValue: AccordionValue): void {
+  if (props.multiple) {
+    const current = Array.isArray(openItems.value) ? openItems.value : []
+    const isCurrentlyOpen = current.includes(itemValue)
+    const next = isCurrentlyOpen
+      ? current.filter(v => v !== itemValue)
+      : [...current, itemValue]
 
-watch(() => props.modelValue, (newVal) => {
-  openItems.value = newVal
+    openItems.value = next
+    emit('update:modelValue', next)
+    if (isCurrentlyOpen) {
+      emit('item-close', itemValue)
+    } else {
+      emit('item-open', itemValue)
+    }
+  } else {
+    const isCurrentlyOpen = openItems.value === itemValue
+    const prev = openItems.value
+
+    openItems.value = isCurrentlyOpen ? '' : itemValue
+    emit('update:modelValue', openItems.value)
+
+    if (!isCurrentlyOpen) {
+      // Close whatever was previously open before opening the new one
+      if (prev !== '') emit('item-close', prev as AccordionValue)
+      emit('item-open', itemValue)
+    } else {
+      emit('item-close', itemValue)
+    }
+  }
+}
+
+// ─── Sync controlled value → local state ─────────────────────────────────────
+
+watch(
+  () => props.modelValue,
+  (newVal) => { openItems.value = normalise(newVal) },
+  /**
+   * deep: true is required so that mutations to an array modelValue
+   * (e.g. parent pushes a value into the array) are detected.
+   */
+  { deep: true },
+)
+
+// ─── Provide context ──────────────────────────────────────────────────────────
+
+/**
+ * ChAccordionItem injects this to call toggle() and check isOpen()
+ * without needing scoped slot wiring at the consumer level.
+ */
+provide(ACCORDION_KEY, {
+  isOpen,
+  toggle: toggleItem,
+  multiple: computed(() => props.multiple),
 })
 </script>
 
 <template>
-  <div :class="['ch-accordion', props.class]" role="region" :aria-multiselectable="props.multiple ? 'true' : 'false'">
-    <slot :open="openItems" :toggle="toggleItem" :is-open="isOpen"></slot>
+  <!--
+    No role attribute: an accordion is not a named landmark region.
+    aria-multiselectable is not valid on generic containers; it belongs
+    on grid/listbox/tablist/tree only.
+  -->
+  <div :class="['ch-accordion', props.class]">
+    <slot></slot>
   </div>
 </template>
 
@@ -145,7 +182,7 @@ watch(() => props.modelValue, (newVal) => {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--ch-color-border-strong);
-  border-radius: var(--ch-radius-lg);
+  border-radius: var(--ch-radius-md);
   overflow: hidden;
   background: var(--ch-color-surface);
 }

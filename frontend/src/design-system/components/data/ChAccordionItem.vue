@@ -6,7 +6,7 @@
  * clickable header and an expandable content panel.
  *
  * ─── Usage ───────────────────────────────────────────────────────────────────
- * @example
+ * @example Basic usage
  * <ChAccordion>
  *   <ChAccordionItem value="1" title="Getting Started">
  *     <p>Content goes here...</p>
@@ -33,12 +33,13 @@
  * </ChAccordionItem>
  */
 
-import { computed, ref } from 'vue'
+import { computed, inject } from 'vue'
+import { ACCORDION_KEY, defaultAccordionContext } from '../../composables/useAccordion.ts'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  /** Unique identifier for this item */
+  /** Unique identifier for this item — must match a value in the parent's state */
   value: string | number
   /** Title shown in the header (unless header slot is provided) */
   title?: string
@@ -57,23 +58,18 @@ const props = withDefaults(defineProps<Props>(), {
   class: '',
 })
 
-// ─── Emits ────────────────────────────────────────────────────────────────────
+// ─── Context ──────────────────────────────────────────────────────────────────
 
-const emit = defineEmits<{
-  toggle: [value: string | number]
-}>()
+/**
+ * Injected from the parent ChAccordion.
+ * Falls back to `defaultAccordionContext` (no-op toggle, always-false isOpen)
+ * when rendered outside a ChAccordion, avoiding an unsafe plain-object cast.
+ */
+const accordion = inject(ACCORDION_KEY, defaultAccordionContext)
 
-// ─── Injected state from parent ──────────────────────────────────────────────
+// ─── Derived state ────────────────────────────────────────────────────────────
 
-// These will be provided by the parent ChAccordion via slot props
-const isOpen = defineModel<boolean>('open', { default: false })
-
-// ─── Local state ──────────────────────────────────────────────────────────────
-
-const contentRef = ref<HTMLElement | null>(null)
-const isAnimating = ref(false)
-
-// ─── Computed ─────────────────────────────────────────────────────────────────
+const isOpen = computed(() => accordion.isOpen(props.value))
 
 const classes = computed(() => [
   'ch-accordion-item',
@@ -87,18 +83,39 @@ const classes = computed(() => [
 const panelId = computed(() => `accordion-panel-${props.value}`)
 const headerId = computed(() => `accordion-header-${props.value}`)
 
-// ─── Methods ──────────────────────────────────────────────────────────────────
+// ─── Handlers ─────────────────────────────────────────────────────────────────
 
 function handleToggle() {
   if (props.disabled) return
-  emit('toggle', props.value)
+  accordion.toggle(props.value)
 }
 
+/**
+ * Arrow key navigation: move focus between sibling accordion headers.
+ * Enter/Space are intentionally NOT handled here — <button> fires a click
+ * event natively on both keys, so a redundant keydown handler would double-fire.
+ */
 function handleKeydown(e: KeyboardEvent) {
   if (props.disabled) return
-  if (e.key === 'Enter' || e.key === ' ') {
+
+  const headers = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('.ch-accordion-item__header:not(:disabled)'),
+  )
+  const currentIndex = headers.indexOf(e.currentTarget as HTMLButtonElement)
+  if (currentIndex === -1) return
+
+  if (e.key === 'ArrowDown') {
     e.preventDefault()
-    handleToggle()
+    headers[(currentIndex + 1) % headers.length]?.focus()
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    headers[(currentIndex - 1 + headers.length) % headers.length]?.focus()
+  } else if (e.key === 'Home') {
+    e.preventDefault()
+    headers[0]?.focus()
+  } else if (e.key === 'End') {
+    e.preventDefault()
+    headers[headers.length - 1]?.focus()
   }
 }
 </script>
@@ -124,7 +141,7 @@ function handleKeydown(e: KeyboardEvent) {
         </slot>
       </div>
 
-      <!-- Trailing slot -->
+      <!-- Trailing slot (e.g. a badge or status indicator) -->
       <slot name="trailing"></slot>
 
       <!-- Chevron icon -->
@@ -147,18 +164,26 @@ function handleKeydown(e: KeyboardEvent) {
       </svg>
     </button>
 
-    <!-- Collapsible panel -->
+    <!--
+      Collapsible panel.
+
+      The CSS grid trick animates from `grid-template-rows: 0fr` to `1fr`
+      instead of `max-height: 0` → `max-height: 1000px`. This gives a
+      genuine ease-out curve over the actual content height rather than
+      interpolating over an arbitrarily large fixed value, which skews the
+      perceived duration and easing for short content.
+
+      The inner div requires `min-height: 0` to allow the row to collapse
+      to zero — without it, the content overflows the 0fr row.
+    -->
     <div
       :id="panelId"
       class="ch-accordion-item__panel"
+:class="{ 'ch-accordion-item__panel--open': isOpen }"
       :aria-labelledby="headerId"
       role="region"
     >
-      <div
-        ref="contentRef"
-        class="ch-accordion-item__content"
-        :class="{ 'ch-accordion-item__content--open': isOpen }"
-      >
+      <div class="ch-accordion-item__content">
         <slot></slot>
       </div>
     </div>
@@ -244,29 +269,38 @@ function handleKeydown(e: KeyboardEvent) {
   transform: rotate(180deg);
 }
 
-/* ─── Panel ───────────────────────────────────────────────────────────────── */
+/* ─── Panel (grid-based expand/collapse) ─────────────────────────────────── */
+/*
+  Animating grid-template-rows from 0fr to 1fr collapses/expands to the
+  exact natural height of the content — no fixed max-height guessing.
+  This produces an accurate ease curve regardless of content length.
+
+  overflow: hidden on the panel clips the content during animation.
+  The inner .ch-accordion-item__content needs min-height: 0 so the
+  grid row can actually collapse to zero height.
+*/
 .ch-accordion-item__panel {
+  display: grid;
+    grid-template-rows: 0fr;
   overflow: hidden;
+  transition: grid-template-rows var(--ch-duration-slower) var(--ch-ease-out);
 }
 
+.ch-accordion-item__panel--open {
+  grid-template-rows: 1fr;
+}
+
+/* ─── Content ─────────────────────────────────────────────────────────────── */
 .ch-accordion-item__content {
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  transition:
-    max-height var(--ch-duration-slower) var(--ch-ease-out),
-    opacity var(--ch-duration-normal) var(--ch-ease-out);
-}
-
-.ch-accordion-item__content--open {
-  max-height: 1000px;
-  opacity: 1;
-}
-
-.ch-accordion-item__content {
+  /*
+      min-height: 0 allows the parent grid row to collapse to 0fr.
+      Without this, content overflows even in the closed state.
+    */
+    min-height: 0;
   padding: 0 var(--ch-space-4) var(--ch-space-4);
   color: var(--ch-color-text);
   font-size: var(--ch-text-sm);
   line-height: var(--ch-leading-normal);
+  overflow: hidden;
 }
 </style>
