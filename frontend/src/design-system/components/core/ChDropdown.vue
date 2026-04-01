@@ -4,9 +4,19 @@
  * @path /frontend/src/design-system/components/core/ChDropdown.vue
  * @description A dropdown menu component for displaying a list of actions or
  * options. Supports icons, dividers, disabled items, and keyboard navigation.
+ *
+ * ─── Keyboard interaction ─────────────────────────────────────────────────────
+ * Follows the ARIA menu button pattern:
+ *   - ArrowDown / ArrowUp → move focus between enabled items (wraps around)
+ *   - Home / End          → jump to first / last enabled item
+ *   - Escape              → close the menu
+ *   - Enter / Space       → activate the focused item (handled in ChDropdownItem)
+ *
+ * When `searchable` is true, the search input is focused on open.
+ * When not searchable, the first enabled item is focused on open.
  */
 
-import { computed, ref, useSlots, watch } from 'vue'
+import { computed, nextTick, ref, useSlots, watch } from 'vue'
 import { Search, CircleHelp } from 'lucide-vue-next'
 import ChPopover, { type PopoverPlacement } from './ChPopover.vue'
 import ChInput from './ChInput.vue'
@@ -14,10 +24,8 @@ import ChDropdownItem from './ChDropdownItem.vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/** Visual variant for a dropdown item */
 export type DropdownItemVariant = 'default' | 'primary' | 'danger' | 'success' | 'warning'
 
-/** A dropdown item descriptor */
 export interface DropdownItem<T extends string | number | object = string> {
   /** Unique identifier — used as :key and emitted value */
   value: T
@@ -89,15 +97,17 @@ const slots = useSlots()
 
 /**
  * True when the consumer has provided custom slot content.
- * When true, we render the slot and skip the items array fallback so that
- * both never render at the same time.
+ * When true, we render the slot and skip the items array so both
+ * never render simultaneously.
  */
 const hasCustomContent = computed(() => !!slots.default)
 
-// ─── Local state ──────────────────────────────────────────────────────────────
+// ─── Refs ─────────────────────────────────────────────────────────────────────
 
 const isOpen = ref(props.open)
 const searchQuery = ref('')
+const itemsRef = ref<HTMLElement | null>(null)
+const searchRef = ref<InstanceType<typeof ChInput> | null>(null)
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
@@ -105,11 +115,10 @@ const filteredItems = computed(() => {
   if (!props.searchable || !searchQuery.value || searchQuery.value.length < props.searchMinChars) {
     return props.items
   }
-
   const query = searchQuery.value.toLowerCase()
   return props.items.filter(item => {
-    const searchable = item[props.searchKey] ?? item.label
-    return String(searchable).toLowerCase().includes(query)
+    const field = item[props.searchKey] ?? item.label
+    return String(field).toLowerCase().includes(query)
   })
 })
 
@@ -132,10 +141,85 @@ function handleOpenChange(newOpen: boolean) {
   if (!newOpen) searchQuery.value = ''
 }
 
+/**
+ * Returns all enabled menuitem elements inside the items container.
+ * Used by keyboard navigation to build the focusable item list.
+ * Filters out items with aria-disabled="true" so disabled items are skipped.
+ */
+function getFocusableItems(): HTMLElement[] {
+  if (!itemsRef.value) return []
+  return Array.from(
+    itemsRef.value.querySelectorAll<HTMLElement>(
+      '[role="menuitem"]:not([aria-disabled="true"])'
+    )
+  )
+}
+
+/**
+ * Keyboard navigation handler for the items container.
+ * Implements the ARIA menu keyboard interaction pattern:
+ *   ArrowDown → next item (wraps to first)
+ *   ArrowUp   → previous item (wraps to last)
+ *   Home      → first item
+ *   End       → last item
+ *   Escape    → close
+ */
+function handleMenuKeydown(e: KeyboardEvent) {
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End', 'Escape'].includes(e.key)) return
+  e.preventDefault()
+
+  if (e.key === 'Escape') {
+    handleOpenChange(false)
+    return
+  }
+
+  const items = getFocusableItems()
+  if (!items.length) return
+
+  const currentIndex = items.indexOf(document.activeElement as HTMLElement)
+
+  if (e.key === 'Home') {
+    items[0]?.focus()
+    return
+  }
+  if (e.key === 'End') {
+    items[items.length - 1]?.focus()
+    return
+  }
+
+  if (e.key === 'ArrowDown') {
+    // Wrap from last → first
+    items[currentIndex < items.length - 1 ? currentIndex + 1 : 0]?.focus()
+  }
+  if (e.key === 'ArrowUp') {
+    // Wrap from first → last
+    items[currentIndex > 0 ? currentIndex - 1 : items.length - 1]?.focus()
+  }
+}
+
 // ─── Watch ────────────────────────────────────────────────────────────────────
 
 watch(() => props.open, (newVal) => {
   isOpen.value = newVal
+})
+
+/**
+ * On open: focus the search input (if searchable) or the first enabled item.
+ * `nextTick` is required because the popover DOM isn't present yet
+ * in the same tick that `isOpen` becomes true.
+ */
+watch(isOpen, (newVal) => {
+  if (!newVal) return
+  nextTick(() => {
+    if (props.searchable) {
+      // ChInput exposes a native input ref — fall back to query if not available
+      const input = itemsRef.value?.closest('.ch-dropdown')
+        ?.querySelector<HTMLInputElement>('input')
+      input?.focus()
+    } else {
+      getFocusableItems()[0]?.focus()
+    }
+  })
 })
 </script>
 
@@ -149,25 +233,25 @@ watch(() => props.open, (newVal) => {
     <div class="ch-dropdown" :style="{ '--ch-dropdown-max-height': maxHeight }">
       <!-- Search input -->
       <div v-if="searchable" class="ch-dropdown__search">
-        <ChInput v-model="searchQuery" :placeholder="searchPlaceholder" size="sm" clearable>
+        <ChInput ref="searchRef" v-model="searchQuery" :placeholder="searchPlaceholder" size="sm" clearable>
           <template #prefix>
             <Search :size="14" :stroke-width="2" />
           </template>
         </ChInput>
       </div>
 
-      <!-- Items list -->
-      <div class="ch-dropdown__items" role="menu">
-        <!-- Empty state: only shown when using the items array (not custom slot) -->
+      <!--
+        Items list.
+        `@keydown` here handles arrow/home/end/escape navigation.
+        Individual Enter/Space activation is handled inside ChDropdownItem.
+      -->
+      <div ref="itemsRef" class="ch-dropdown__items" role="menu" @keydown="handleMenuKeydown">
+        <!-- Empty state — only shown when using the items array, not custom slot -->
         <div v-if="!hasItems" class="ch-dropdown__empty">
           <CircleHelp :size="24" :stroke-width="1.5" />
           <p>No results found</p>
         </div>
 
-        <!--
-          Custom slot content takes full control of the item list.
-          The items array fallback is skipped so both never render simultaneously.
-        -->
         <template v-if="hasCustomContent">
           <slot></slot>
         </template>
@@ -176,7 +260,6 @@ watch(() => props.open, (newVal) => {
           <ChDropdownItem v-for="item in filteredItems" :key="String(item.value)" :label="item.label"
             :description="item.description" :variant="item.variant" :disabled="item.disabled"
             @click="handleSelect(item)">
-            <!-- Forward the trailing slot down if the consumer needs it -->
             <template v-if="$slots['item-trailing']" #trailing>
               <slot name="item-trailing" :item="item"></slot>
             </template>
@@ -188,19 +271,16 @@ watch(() => props.open, (newVal) => {
 </template>
 
 <style scoped>
-/* ─── Dropdown container ──────────────────────────────────────────────────── */
 .ch-dropdown {
   display: flex;
   flex-direction: column;
 }
 
-/* ─── Search input ────────────────────────────────────────────────────────── */
 .ch-dropdown__search {
   padding: var(--ch-space-2) var(--ch-space-3);
   border-bottom: 1px solid var(--ch-color-border);
 }
 
-/* ─── Items list ──────────────────────────────────────────────────────────── */
 .ch-dropdown__items {
   display: flex;
   flex-direction: column;
@@ -209,7 +289,6 @@ watch(() => props.open, (newVal) => {
   padding: var(--ch-space-1) 0;
 }
 
-/* ─── Empty state ─────────────────────────────────────────────────────────── */
 .ch-dropdown__empty {
   display: flex;
   flex-direction: column;
