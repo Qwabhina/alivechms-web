@@ -23,11 +23,17 @@
  * - `danger`   → problematic/urgent ("Overdue", "Cancelled", "Blocked")
  * - `info`     → informational ("Draft", "Scheduled", "In Review")
  *
+ * ─── Shape guide ─────────────────────────────────────────────────────────────
+ * - `pill: true` (default) → fully rounded sides. Best for standalone status
+ *   labels and most general use — the softness reads as "informational".
+ * - `pill: false` → subtle square rounding. Better inside tight table cells
+ *   or alongside other rectilinear UI elements where pills feel out of place.
+ *
  * @example Status badge
  * <ChBadge variant="success" dot>Active</ChBadge>
  *
- * @example Role label
- * <ChBadge variant="default">Volunteer</ChBadge>
+ * @example Role label, square shape
+ * <ChBadge variant="default" :pill="false">Volunteer</ChBadge>
  *
  * @example Overdue payment
  * <ChBadge variant="danger" size="sm">Overdue</ChBadge>
@@ -44,7 +50,7 @@ import { computed } from 'vue'
 type Variant = 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info'
 
 /** Three sizes for use in different density contexts */
-type Size    = 'sm' | 'md' | 'lg'
+type Size = 'sm' | 'md' | 'lg'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface Props {
@@ -52,28 +58,31 @@ interface Props {
   variant?: Variant
 
   /** Badge size. Default: 'md' */
-  size?:    Size
+  size?: Size
 
   /**
    * When true, renders a small colored dot before the text.
    * Useful for status indicators (online/offline, active/inactive).
    * The dot color inherits from the variant's text color via `currentColor`.
    */
-  dot?:     boolean
+  dot?: boolean
 
   /**
-   * When true, uses `border-radius: full` (pill shape).
-   * When false, uses `border-radius: md` (slightly rounded rectangle).
-   * Default: true (pill is more common for badges).
+   * When true  → fully rounded pill shape (border-radius: 9999px). Default.
+   * When false → subtly rounded rectangle (border-radius: var(--ch-radius-md)).
+   *
+   * Pill is the default because it's the most recognizable "badge" shape
+   * and works well in most contexts. Use `false` in dense tables or alongside
+   * other rectilinear elements where the pill shape feels out of place.
    */
-  pill?:    boolean
+  pill?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   variant: 'default',
-  size:    'md',
-  dot:     false,
-  pill:    true,
+  size: 'md',
+  dot: false,
+  pill: true,
 })
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
@@ -87,8 +96,8 @@ const classes = computed(() => [
   `ch-badge--${props.variant}`, // controls color scheme
   `ch-badge--${props.size}`,    // controls padding and font size
   {
-    'ch-badge--dot':  props.dot,  // adds the dot span rendering logic in CSS
-    'ch-badge--pill': props.pill, // toggles between pill and rounded-rect shape
+    'ch-badge--pill': props.pill,  // pill: full border-radius
+    'ch-badge--dot': props.dot,   // dot: adds the leading status circle
   },
 ])
 </script>
@@ -109,13 +118,13 @@ const classes = computed(() => [
       The dot color is set to `currentColor` in CSS, so it automatically
       matches the variant's text color without needing extra tokens.
     -->
-    <span v-if="dot" class="ch-badge__dot" aria-hidden="true" ></span>
+    <span v-if="dot" class="ch-badge__dot" aria-hidden="true"></span>
 
     <!--
       The default slot holds the badge label text.
       e.g. <ChBadge>Active</ChBadge>
     -->
-    <slot ></slot>
+    <slot></slot>
 
   </span>
 </template>
@@ -123,28 +132,45 @@ const classes = computed(() => [
 <style scoped>
 /* ─── Base ────────────────────────────────────────────────────────────────── */
 .ch-badge {
-  display:     inline-flex; /* inline so it sits alongside text */
+  display: inline-flex;
+    /* inline so it sits alongside text */
   align-items: center;
-  gap:         var(--ch-space-1); /* 4px gap between dot and text */
+  gap: var(--ch-space-1);
+    /* 4px gap between dot and text */
 
-  font-family:  var(--ch-font-sans);
-  font-weight:  var(--ch-font-medium); /* 500 — slightly heavy for legibility at small size */
-  line-height:  1;                     /* no extra line height in a tight badge */
-  white-space:  nowrap;                /* never wrap badge text onto two lines */
+  font-family: var(--ch-font-sans);
+    font-weight: var(--ch-font-medium);
+    /* 500 — slightly heavy for legibility at small size */
+    line-height: 1;
+    /* no extra line height in a tight badge */
+    white-space: nowrap;
+    /* never wrap badge text onto two lines */
 
   /*
    * A transparent border is always present (even when not visually shown).
    * This prevents a 1px layout shift if a bordered variant is toggled dynamically.
    */
-  border:        1px solid transparent;
-  border-radius: var(--ch-radius-sm);
-    /* subtle rounding */
+  border: 1px solid transparent;
+  
+    /*
+     * Default shape: subtle rounding for a clean, structured look.
+     * This is the `pill: false` shape — a slightly rounded rectangle.
+     * The pill shape is applied additively via `.ch-badge--pill` below.
+     */
+    border-radius: var(--ch-radius-md);
+    /* e.g. 6px */
 }
 
-/* ─── Pill Shape (Now Small Radius) ───────────────────────────────────────── */
-/* Previously fully rounded sides, now a subtle 2px rounding to keep the sharp aesthetic */
+/* ─── Pill shape ──────────────────────────────────────────────────────────── */
+/*
+ * Applied when `pill` prop is true (the default).
+ * Overrides the base border-radius to produce fully rounded ends.
+ * The modifier is additive — `pill: false` simply omits this class,
+ * falling back to the base `border-radius: var(--ch-radius-md)`.
+ */
 .ch-badge--pill {
-  border-radius: var(--ch-radius-sm); /* 2px */
+  border-radius: var(--ch-radius-full);
+    /* 9999px — true pill */
 }
 
 /* ─── Sizes ───────────────────────────────────────────────────────────────── */
@@ -152,24 +178,26 @@ const classes = computed(() => [
  * Badges are tiny elements — their sizes are intentionally compact.
  * Font sizes go below `text-xs` (12px) for the `sm` variant to fit
  * in very dense contexts (table cells, list items, chips).
- *
- * Padding uses a non-token `0.1875rem` for sm/md because the gap between
- * the standard token steps is too large for these small elements.
  */
-
 .ch-badge--sm {
-  font-size: 0.6875rem;          /* 11px — smaller than text-xs */
-  padding:   0.125rem 0.375rem;  /* 2px 6px */
+  font-size: 0.6875rem;
+    /* 11px — smaller than text-xs */
+    padding: 0.125rem 0.375rem;
+    /* 2px 6px */
 }
 
 .ch-badge--md {
-  font-size: var(--ch-text-xs);  /* 12px */
-  padding:   0.1875rem 0.5rem;   /* 3px 8px */
+  font-size: var(--ch-text-xs);
+    /* 12px */
+    padding: 0.1875rem 0.5rem;
+    /* 3px 8px */
 }
 
 .ch-badge--lg {
-  font-size: var(--ch-text-sm);              /* 14px */
-  padding:   var(--ch-space-1) var(--ch-space-2_5); /* 4px 10px */
+  font-size: var(--ch-text-sm);
+    /* 14px */
+    padding: var(--ch-space-1) var(--ch-space-2_5);
+    /* 4px 10px */
 }
 
 /* ─── Variants ────────────────────────────────────────────────────────────── */
@@ -187,52 +215,54 @@ const classes = computed(() => [
 
 /* DEFAULT — neutral gray. For categories, labels with no special status. */
 .ch-badge--default {
-  background-color: var(--ch-color-bg-muted);  /* light gray */
-  border-color:     var(--ch-color-border);    /* visible edge for definition */
-  color:            var(--ch-color-text-muted);
+  background-color: var(--ch-color-bg-muted);
+    border-color: var(--ch-color-border);
+    /* visible edge for definition */
+    color: var(--ch-color-text-muted);
 }
 
 /* PRIMARY — brand-colored. For highlighted or selected states. */
 .ch-badge--primary {
-  background-color: var(--ch-color-primary-muted); /* light brand tint */
-  border-color:     var(--ch-color-primary-muted);
-  color:            var(--ch-color-primary);        /* brand text */
+  background-color: var(--ch-color-primary-muted);
+    border-color: var(--ch-color-primary-muted);
+    color: var(--ch-color-primary);
 }
 
 /* SUCCESS — green. For completed, active, confirmed states. */
 .ch-badge--success {
   background-color: var(--ch-color-success-bg); /* green-50 */
-  color:            var(--ch-color-success-fg); /* green-700 */
+  color: var(--ch-color-success-fg);
+    /* green-700 */
 }
 
 /* WARNING — amber. For pending, due-soon, needs-attention states. */
 .ch-badge--warning {
   background-color: var(--ch-color-warning-bg);
-  color:            var(--ch-color-warning-fg);
+  color: var(--ch-color-warning-fg);
 }
 
 /* DANGER — red. For overdue, failed, cancelled, blocked states. */
 .ch-badge--danger {
   background-color: var(--ch-color-danger-bg);
-  color:            var(--ch-color-danger-fg);
+  color: var(--ch-color-danger-fg);
 }
 
 /* INFO — blue. For draft, scheduled, in-progress states. */
 .ch-badge--info {
   background-color: var(--ch-color-info-bg);
-  color:            var(--ch-color-info-fg);
+  color: var(--ch-color-info-fg);
 }
 
 /* ─── Status Dot ──────────────────────────────────────────────────────────── */
 .ch-badge__dot {
-  width:        6px;
-  height:       6px;
-  border-radius: 50%; /* always circular */
+  width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    /* always circular, regardless of badge shape */
 
   /*
-   * `currentColor` inherits the text color of the variant.
-   * So success badge dot = success-700 green.
-   * This means we only need ONE dot style for ALL variants — no per-variant overrides.
+  * `currentColor` inherits the text color of the variant automatically. * success badge dot=success-fg green,
+    danger badge dot=danger-fg red. * One rule covers all variants — no per-variant overrides needed.
    */
   background-color: currentColor;
 

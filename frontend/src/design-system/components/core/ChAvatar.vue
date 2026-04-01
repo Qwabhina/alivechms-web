@@ -23,11 +23,11 @@
  * - Attendance lists and check-in screens
  * - Message threads / group chats within the system
  *
- * @example With photo
+ * @example With photo, circular (default)
  * <ChAvatar src="/uploads/john.jpg" name="John Addo" size="md" />
  *
- * @example Initials only (no photo available)
- * <ChAvatar name="Grace Mensah" size="lg" />
+ * @example Initials only, square shape
+ * <ChAvatar name="Grace Mensah" size="lg" :circle="false" />
  *
  * @example With online status indicator
  * <ChAvatar src="/uploads/sarah.jpg" name="Sarah" size="md" status="online" />
@@ -78,16 +78,18 @@ interface Props {
   status?: Status
 
   /**
-   * When true → fully circular (border-radius: 9999px)
-   * When false → slightly rounded square (border-radius: xl = 12px)
-   * Default: true. Use false for "avatar" in lists where circular feels disconnected.
+   * When true  → fully circular (border-radius: 9999px). Default.
+   * When false → slightly rounded square (border-radius: var(--ch-radius-xl)).
+   *
+   * Use `false` in dense list contexts (member tables, attendance rows) where
+   * a square avatar reads better as a structured data element than a circle.
    */
-  rounded?: boolean
+  circle?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'md',
-  rounded: true,
+  circle: true,
 })
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -125,7 +127,6 @@ const initials = computed(() => {
 
   if (parts.length === 1) {
     // Single-word name → first character only (e.g. "Kwame" → "K")
-    // Use optional chaining to handle empty string case
     return parts[0]?.[0]?.toUpperCase() ?? '?'
   }
 
@@ -144,12 +145,12 @@ const showImage = computed(() => !!props.src && !imgError.value)
 
 /**
  * Root element class list.
- * The `rounded` modifier switches between circular and square-ish shapes.
+ * `ch-avatar--circle` switches the shape from a rounded square to a full circle.
  */
 const avatarClasses = computed(() => [
   'ch-avatar',
   `ch-avatar--${props.size}`,
-  { 'ch-avatar--rounded': props.rounded },
+  { 'ch-avatar--circle': props.circle },
 ])
 
 /**
@@ -203,85 +204,104 @@ const ariaLabel = computed(() => props.alt ?? props.name ?? 'Avatar')
 /* ─── Base ────────────────────────────────────────────────────────────────── */
 .ch-avatar {
   position: relative;
-  /* needed for absolute-positioned status dot */
+    /* needed for absolute-positioned status dot */
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  /* never compress in a flex layout */
+    /* never compress in a flex layout */
 
   /* Default background for initials-only display — brand-tinted */
   background-color: var(--ch-color-primary-muted);
-  /* primary-100 */
-  color: var(--ch-color-primary);
-  /* primary-600 */
+    /* primary-100 */
+    color: var(--ch-color-primary);
+    /* primary-600 */
 
   font-family: var(--ch-font-sans);
   font-weight: var(--ch-font-semibold);
-  /* initials should be bold enough to read */
-  overflow: hidden;
-  /* clip image to the border-radius */
-  border-radius: var(--ch-radius-sm);
-  /* square by default */
-  user-select: none;
-  /* can't accidentally select the initials text */
+    /* initials should be bold enough to read */
+    overflow: hidden;
+    /* clip image to the border-radius */
+    user-select: none;
+    /* can't accidentally select the initials text */
+  
+    /* Default shape: a softly rounded square */
+    border-radius: var(--ch-radius-xl);
 }
 
-/* Rounded mode: slightly softer square */
-.ch-avatar--rounded {
-  /* border-radius: var(--ch-radius-sm); */
-    border-radius: var(--ch-radius-full);
+/* ─── Circle modifier ─────────────────────────────────────────────────────── */
+/*
+ * Applied when `circle` prop is true (the default).
+ * Makes the avatar a perfect circle — the canonical avatar shape for
+ * profile photos, "current user" displays, and comment authors.
+ *
+ * Not the default in CSS because "rounded square" is the better
+ * fallback for unknown/new contexts; circle is explicitly opted in via prop.
+ */
+.ch-avatar--circle {
+  border-radius: var(--ch-radius-full);
+  /* 9999px */
+}
+
+/*
+ * Status dot shape mirrors the avatar shape: circle avatars get a
+ * circular dot; square avatars get a square dot. This is achieved by
+ * inheriting border-radius from the parent via the sibling selector.
+ *
+ * When the avatar IS a circle, the dot should also be a circle.
+ * When the avatar is a square, the dot gets a small square radius.
+ */
+.ch-avatar--circle .ch-avatar__status {
+  border-radius: var(--ch-radius-full);
 }
 
 /* ─── Sizes ───────────────────────────────────────────────────────────────── */
 /*
  * Each size sets both `width` and `height` explicitly (square aspect ratio)
- * and a `font-size` for the initials text that's proportional to the avatar size.
- * There's no token for these specific font sizes — they're purpose-fit values.
+ * and a `font-size` for the initials text proportional to the avatar size.
  */
 .ch-avatar--xs {
   width: 24px;
   height: 24px;
   font-size: 0.625rem;
+    /* 10px */
 }
 
-/* 10px */
 .ch-avatar--sm {
   width: 32px;
   height: 32px;
   font-size: var(--ch-text-xs);
+    /* 12px */
 }
 
-/* 12px */
 .ch-avatar--md {
   width: 40px;
   height: 40px;
   font-size: var(--ch-text-sm);
+    /* 14px */
 }
 
-/* 14px */
 .ch-avatar--lg {
   width: 48px;
   height: 48px;
   font-size: var(--ch-text-base);
+    /* 16px */
 }
 
-/* 16px */
 .ch-avatar--xl {
   width: 64px;
   height: 64px;
   font-size: var(--ch-text-xl);
+    /* 20px */
 }
-
-/* 20px */
 
 /* ─── Profile Image ───────────────────────────────────────────────────────── */
 .ch-avatar__img {
   width: 100%;
-  /* fill the avatar container completely */
+    /* fill the avatar container completely */
   height: 100%;
   object-fit: cover;
-  /* crop the image to fill the square without distortion */
+    /* crop to fill the square without distortion */
 }
 
 /* ─── Status Dot ──────────────────────────────────────────────────────────── */
@@ -300,13 +320,17 @@ const ariaLabel = computed(() => props.alt ?? props.name ?? 'Avatar')
   min-width: 7px;
   min-height: 7px;
 
+  /*
+     * Default shape: small rounded square, to match the default square avatar.
+     * Overridden to `border-radius: full` when inside `.ch-avatar--circle`
+     * via the sibling rule above.
+     */
   border-radius: var(--ch-radius-sm);
-  /* sharp square */
 
   /*
    * A white border separates the dot from the avatar image,
    * making it readable against any avatar content.
-   * Uses `var(--ch-color-bg)` so it blends with whatever surface the avatar sits on.
+  * Uses `var(--ch-color-bg)` so it blends with the surrounding surface.
    */
   border: 2px solid var(--ch-color-bg);
 }

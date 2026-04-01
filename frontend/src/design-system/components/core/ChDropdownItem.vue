@@ -5,7 +5,14 @@
  * @description A single item within a ChDropdown menu. Supports icons,
  * descriptions, disabled state, and visual variants.
  *
- * ─── Usage ───────────────────────────────────────────────────────────────────
+ * ─── Keyboard interaction ─────────────────────────────────────────────────────
+ * Items receive `tabindex="-1"` so they can be focused programmatically by
+ * ChDropdown's arrow-key navigation. When focused, Enter and Space activate
+ * the item (matching native button behavior).
+ *
+ * Tab is intentionally NOT used for menu navigation — the ARIA menu pattern
+ * uses arrow keys for item focus and Tab to exit the menu entirely.
+ *
  * @example Basic
  * <ChDropdownItem label="Edit" @click="handleEdit" />
  *
@@ -42,7 +49,7 @@ interface Props {
   /**
    * Legacy SVG path string (the `d` attribute).
    * Prefer the `#icon` slot for component-based icons (e.g. Lucide).
-   * @deprecated use `#icon` slot instead
+   * @deprecated Use the `#icon` slot instead.
    */
   iconPath?: string
   /** Visual variant for emphasis. Default: 'default' */
@@ -61,7 +68,7 @@ const props = withDefaults(defineProps<Props>(), {
 // ─── Emits ────────────────────────────────────────────────────────────────────
 
 const emit = defineEmits<{
-  click: [event: MouseEvent]
+  click: [event: MouseEvent | KeyboardEvent]
 }>()
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
@@ -71,14 +78,32 @@ const classes = computed(() => [
   `ch-dropdown-item--${props.variant}`,
   { 'ch-dropdown-item--disabled': props.disabled },
 ])
+
+// ─── Handlers ─────────────────────────────────────────────────────────────────
+
+function handleClick(e: MouseEvent) {
+  if (!props.disabled) emit('click', e)
+}
+
+/**
+ * Activates the item on Enter or Space — required by the ARIA menuitem pattern.
+ * Space default (page scroll) is suppressed via `e.preventDefault()`.
+ */
+function handleKeydown(e: KeyboardEvent) {
+  if (props.disabled) return
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault()
+    emit('click', e)
+  }
+}
 </script>
 
 <template>
   <div
     :class="classes"
     role="menuitem"
-    :aria-disabled="disabled ? 'true' : 'false'"
-    @click="!disabled && emit('click', $event)"
+:tabindex="disabled ? undefined : -1"
+    :aria-disabled="disabled ? true : undefined" @click="handleClick" @keydown="handleKeydown"
   >
     <!-- Icon slot: accepts any component (Lucide, custom SVG, etc.) -->
     <span v-if="$slots.icon" class="ch-dropdown-item__icon" :class="`ch-dropdown-item__icon--${variant}`">
@@ -121,7 +146,15 @@ aria-hidden="true"
   padding: var(--ch-space-2) var(--ch-space-3);
   margin: 0 var(--ch-space-1);
   border-radius: var(--ch-radius-md);
+/*
+   * Base text color set here so variant hover colors cascade correctly
+   * to child elements (label, icon). Child elements use `color: inherit`
+   * rather than explicit token values, so this one declaration drives all of them.
+   */
+  color: var(--ch-color-text);
   cursor: pointer;
+  outline: none;
+    /* focus ring handled by :focus-visible below */
   transition:
     background-color var(--ch-duration-fast) var(--ch-ease-out),
     color var(--ch-duration-fast) var(--ch-ease-out);
@@ -131,6 +164,13 @@ aria-hidden="true"
   background-color: var(--ch-color-bg-muted);
 }
 
+/*
+ * Focus ring for keyboard navigation (arrow keys via ChDropdown).
+ * Uses inset so it doesn't affect layout or get clipped by overflow:hidden.
+ */
+.ch-dropdown-item:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ch-color-border-focus);
+}
 .ch-dropdown-item--disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -139,7 +179,7 @@ aria-hidden="true"
 /* ─── Icon ────────────────────────────────────────────────────────────────── */
 .ch-dropdown-item__icon {
   display: flex;
-    align-items: center;
+  align-items: center;
     justify-content: center;
   flex-shrink: 0;
   color: var(--ch-color-text-muted);
@@ -173,7 +213,12 @@ aria-hidden="true"
 .ch-dropdown-item__label {
   font-size: var(--ch-text-sm);
   font-weight: var(--ch-font-medium);
-  color: var(--ch-color-text);
+  /*
+     * `inherit` rather than a fixed token — this lets variant hover colors
+     * (set on the parent .ch-dropdown-item) flow through to the label text.
+     * Without inherit, an explicit color here would block the cascade.
+     */
+    color: inherit;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -188,6 +233,11 @@ aria-hidden="true"
 }
 
 /* ─── Variant hover styles ────────────────────────────────────────────────── */
+/*
+ * Setting `color` on the item itself is sufficient — label inherits it.
+ * Icon colors are explicitly set above and don't change on hover;
+ * the icon already matches its variant color at rest.
+ */
 .ch-dropdown-item--danger:hover:not(.ch-dropdown-item--disabled) {
   background-color: var(--ch-color-danger-bg);
   color: var(--ch-color-danger-fg);
