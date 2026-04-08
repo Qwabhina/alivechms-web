@@ -31,7 +31,12 @@
  */
 
 import { ref, computed, watch } from 'vue'
-import type { ExportFormat, PaperSize, Orientation, ExportColumn } from '../../composables/useTableExport'
+import type {
+  ExportFormat,
+  PaperSize,
+  Orientation,
+  ExportColumn,
+} from '../../composables/useTableExport'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -66,42 +71,42 @@ const FORMAT_OPTIONS: {
   id: ExportFormat
   label: string
   description: string
-  icon: string  // SVG path data
-  ext: string  // file extension shown in UI
+  icon: string // SVG path data
+  ext: string // file extension shown in UI
 }[] = [
-    {
-      id: 'csv',
-      label: 'CSV',
-      ext: '.csv',
-      description: 'Plain text, opens in any spreadsheet',
-      // Table/grid icon
-      icon: 'M3 5h18M3 10h18M3 15h18M8 5v15M13 5v15',
-    },
-    {
-      id: 'excel',
-      label: 'Excel',
-      ext: '.xlsx',
-      description: 'Microsoft Excel workbook with formatting',
-      // Excel/sheet icon
-      icon: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1v5h5M8 13l2 2 4-4',
-    },
-    {
-      id: 'pdf',
-      label: 'PDF',
-      ext: '.pdf',
-      description: 'Portable document, great for sharing',
-      // PDF/document icon
-      icon: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1v5h5m-5 5H8m8 4H8m2-8H8',
-    },
-    {
-      id: 'print',
-      label: 'Print',
-      ext: '',
-      description: 'Send directly to a printer',
-      // Printer icon
-      icon: 'M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2m-10 0h8v5H6v-5z',
-    },
-  ]
+  {
+    id: 'csv',
+    label: 'CSV',
+    ext: '.csv',
+    description: 'Plain text, opens in any spreadsheet',
+    // Table/grid icon
+    icon: 'M3 5h18M3 10h18M3 15h18M8 5v15M13 5v15',
+  },
+  {
+    id: 'excel',
+    label: 'Excel',
+    ext: '.xlsx',
+    description: 'Microsoft Excel workbook with formatting',
+    // Excel/sheet icon
+    icon: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1v5h5M8 13l2 2 4-4',
+  },
+  {
+    id: 'pdf',
+    label: 'PDF',
+    ext: '.pdf',
+    description: 'Portable document, great for sharing',
+    // PDF/document icon
+    icon: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1v5h5m-5 5H8m8 4H8m2-8H8',
+  },
+  {
+    id: 'print',
+    label: 'Print',
+    ext: '',
+    description: 'Send directly to a printer',
+    // Printer icon
+    icon: 'M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2m-10 0h8v5H6v-5z',
+  },
+]
 
 const PAPER_SIZES: { id: PaperSize; label: string }[] = [
   { id: 'a4', label: 'A4' },
@@ -190,33 +195,34 @@ const orientation = ref<Orientation>('portrait')
  * When the dialog opens, reset all fields to sensible defaults.
  * This ensures a clean state each time it's opened.
  */
-watch(() => props.open, (isOpen) => {
-  if (isOpen) {
-    // Select all columns by default
-    selectedColumns.value = new Set(props.columns.map(c => c.key))
-    // Pre-fill title from table title prop
-    title.value = props.tableTitle ?? ''
-    filename.value = props.tableTitle
-      ? props.tableTitle.toLowerCase().replace(/\s+/g, '-')
-      : 'export'
-    subtitle.value = ''
-    scope.value = 'all'
-    selectedFormat.value = 'csv'
-    paperSize.value = 'a4'
-    orientation.value = 'portrait'
-  }
-})
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (isOpen) {
+      // Select all columns by default
+      selectedColumns.value = new Set(props.columns.map((c) => c.key))
+      // Pre-fill title from table title prop
+      title.value = props.tableTitle ?? ''
+      filename.value = props.tableTitle
+        ? props.tableTitle.toLowerCase().replace(/\s+/g, '-')
+        : 'export'
+      subtitle.value = ''
+      scope.value = 'all'
+      selectedFormat.value = 'csv'
+      paperSize.value = 'a4'
+      orientation.value = 'portrait'
+    }
+  },
+)
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
 /** True when the table spans multiple pages (scope selector is relevant) */
-const isMultiPage = computed(() =>
-  !!props.totalRows && props.totalRows > props.currentPageRows
-)
+const isMultiPage = computed(() => !!props.totalRows && props.totalRows > props.currentPageRows)
 
 /** True when PDF or Print is selected (shows page settings section) */
-const showPageSettings = computed(() =>
-  selectedFormat.value === 'pdf' || selectedFormat.value === 'print'
+const showPageSettings = computed(
+  () => selectedFormat.value === 'pdf' || selectedFormat.value === 'print',
 )
 
 /** True when Print is selected (hides the filename field) */
@@ -224,21 +230,20 @@ const showFilename = computed(() => selectedFormat.value !== 'print')
 
 /** Number of rows that will be exported based on scope selection */
 const exportRowCount = computed(() =>
-  scope.value === 'all' ? (props.totalRows || props.currentPageRows) : props.currentPageRows
+  scope.value === 'all' ? props.totalRows || props.currentPageRows : props.currentPageRows,
 )
 
 /** Number of selected columns */
 const selectedColumnCount = computed(() => selectedColumns.value.size)
 
 /** Whether the confirm button should be enabled */
-const canExport = computed(() =>
-  selectedColumnCount.value > 0 && (showFilename.value ? filename.value.trim().length > 0 : true)
+const canExport = computed(
+  () =>
+    selectedColumnCount.value > 0 && (showFilename.value ? filename.value.trim().length > 0 : true),
 )
 
 /** Label for the confirm button */
-const confirmLabel = computed(() =>
-  selectedFormat.value === 'print' ? 'Print' : 'Export'
-)
+const confirmLabel = computed(() => (selectedFormat.value === 'print' ? 'Print' : 'Export'))
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -264,7 +269,7 @@ function toggleAllColumns() {
     // Deselect all except the first (must have at least one)
     selectedColumns.value = new Set([props.columns[0]?.key].filter((k): k is string => !!k))
   } else {
-    selectedColumns.value = new Set(props.columns.map(c => c.key))
+    selectedColumns.value = new Set(props.columns.map((c) => c.key))
   }
 }
 
@@ -279,8 +284,8 @@ function confirm() {
   // Build the ordered column list from the original columns array order
   // (preserving the display order, filtered to selected keys)
   const orderedColumns = props.columns
-    .filter(col => selectedColumns.value.has(col.key))
-    .map(col => ({ key: col.key, label: col.label }))
+    .filter((col) => selectedColumns.value.has(col.key))
+    .map((col) => ({ key: col.key, label: col.label }))
 
   emit('export', {
     format: selectedFormat.value,
@@ -306,56 +311,84 @@ function onBackdropClick(e: MouseEvent) {
   <!-- Backdrop overlay — covers the entire screen behind the dialog -->
   <Teleport to="body">
     <Transition name="ch-dialog-fade">
-      <div v-if="open" class="ch-export-backdrop" @click="onBackdropClick" aria-modal="true" role="dialog"
-        aria-labelledby="export-dialog-title">
-
+      <div
+        v-if="open"
+        class="ch-export-backdrop"
+        @click="onBackdropClick"
+        aria-modal="true"
+        role="dialog"
+        aria-labelledby="export-dialog-title"
+      >
         <!-- Dialog panel -->
         <Transition name="ch-dialog-scale">
           <div v-if="open" class="ch-export-dialog">
-
             <!-- ── Header ── -->
             <div class="ch-export-dialog__header">
               <div>
-                <h2 id="export-dialog-title" class="ch-export-dialog__title">
-                  Export / Print
-                </h2>
-                <p class="ch-export-dialog__subtitle">
-                  Configure your export settings below
-                </p>
+                <h2 id="export-dialog-title" class="ch-export-dialog__title">Export / Print</h2>
+                <p class="ch-export-dialog__subtitle">Configure your export settings below</p>
               </div>
               <!-- Close button -->
               <button class="ch-export-dialog__close" @click="close" aria-label="Close dialog">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                  <path
+                    d="M15 5L5 15M5 5l10 10"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
                 </svg>
               </button>
             </div>
 
             <!-- ── Scrollable body ── -->
             <div class="ch-export-dialog__body">
-
               <!-- ── Section 1: Format ── -->
               <section class="ch-export-section">
                 <h3 class="ch-export-section__label">Format</h3>
                 <div class="ch-export-format-grid">
-                  <button v-for="fmt in FORMAT_OPTIONS" :key="fmt.id" type="button" class="ch-export-format-card"
+                  <button
+                    v-for="fmt in FORMAT_OPTIONS"
+                    :key="fmt.id"
+                    type="button"
+                    class="ch-export-format-card"
                     :class="{ 'ch-export-format-card--active': selectedFormat === fmt.id }"
-                    @click="selectedFormat = fmt.id" :aria-pressed="selectedFormat === fmt.id">
+                    @click="selectedFormat = fmt.id"
+                    :aria-pressed="selectedFormat === fmt.id"
+                  >
                     <!-- Format icon -->
-                    <svg class="ch-export-format-card__icon" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-                      aria-hidden="true">
+                    <svg
+                      class="ch-export-format-card__icon"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
                       <path :d="fmt.icon" />
                     </svg>
                     <span class="ch-export-format-card__name">{{ fmt.label }}</span>
                     <span v-if="fmt.ext" class="ch-export-format-card__ext">{{ fmt.ext }}</span>
                     <span class="ch-export-format-card__desc">{{ fmt.description }}</span>
                     <!-- Active checkmark badge -->
-                    <span v-if="selectedFormat === fmt.id" class="ch-export-format-card__check" aria-hidden="true">
+                    <span
+                      v-if="selectedFormat === fmt.id"
+                      class="ch-export-format-card__check"
+                      aria-hidden="true"
+                    >
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                         <circle cx="7" cy="7" r="7" fill="var(--ch-color-primary)" />
-                        <path d="M4 7l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round"
-                          stroke-linejoin="round" />
+                        <path
+                          d="M4 7l2 2 4-4"
+                          stroke="white"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
                       </svg>
                     </span>
                   </button>
@@ -372,11 +405,18 @@ function onBackdropClick(e: MouseEvent) {
                 </div>
 
                 <div class="ch-export-columns-grid">
-                  <label v-for="col in columns" :key="col.key" class="ch-export-col-checkbox"
-                    :class="{ 'ch-export-col-checkbox--checked': selectedColumns.has(col.key) }">
-                    <input type="checkbox" :checked="selectedColumns.has(col.key)"
+                  <label
+                    v-for="col in columns"
+                    :key="col.key"
+                    class="ch-export-col-checkbox"
+                    :class="{ 'ch-export-col-checkbox--checked': selectedColumns.has(col.key) }"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="selectedColumns.has(col.key)"
                       :disabled="selectedColumns.has(col.key) && selectedColumns.size === 1"
-                      @change="toggleColumn(col.key)" />
+                      @change="toggleColumn(col.key)"
+                    />
                     <span class="ch-export-col-checkbox__label">{{ col.label }}</span>
                   </label>
                 </div>
@@ -386,15 +426,23 @@ function onBackdropClick(e: MouseEvent) {
               <section v-if="isMultiPage" class="ch-export-section">
                 <h3 class="ch-export-section__label">Data Scope</h3>
                 <div class="ch-export-scope-options">
-                  <label class="ch-export-radio" :class="{ 'ch-export-radio--active': scope === 'all' }">
+                  <label
+                    class="ch-export-radio"
+                    :class="{ 'ch-export-radio--active': scope === 'all' }"
+                  >
                     <input type="radio" v-model="scope" value="all" />
                     <div class="ch-export-radio__content">
                       <span class="ch-export-radio__title">All data</span>
-                      <span class="ch-export-radio__hint">{{ totalRows?.toLocaleString() }} total rows</span>
+                      <span class="ch-export-radio__hint"
+                        >{{ totalRows?.toLocaleString() }} total rows</span
+                      >
                     </div>
                   </label>
 
-                  <label class="ch-export-radio" :class="{ 'ch-export-radio--active': scope === 'page' }">
+                  <label
+                    class="ch-export-radio"
+                    :class="{ 'ch-export-radio--active': scope === 'page' }"
+                  >
                     <input type="radio" v-model="scope" value="page" />
                     <div class="ch-export-radio__content">
                       <span class="ch-export-radio__title">Current page only</span>
@@ -408,10 +456,15 @@ function onBackdropClick(e: MouseEvent) {
               <section v-if="showFilename" class="ch-export-section">
                 <h3 class="ch-export-section__label">Filename</h3>
                 <div class="ch-export-filename-row">
-                  <input v-model="filename" type="text" class="ch-export-input" placeholder="e.g. members-report"
-                    aria-label="Export filename" />
+                  <input
+                    v-model="filename"
+                    type="text"
+                    class="ch-export-input"
+                    placeholder="e.g. members-report"
+                    aria-label="Export filename"
+                  />
                   <span class="ch-export-filename-ext">
-                    {{FORMAT_OPTIONS.find(f => f.id === selectedFormat)?.ext}}
+                    {{ FORMAT_OPTIONS.find((f) => f.id === selectedFormat)?.ext }}
                   </span>
                 </div>
               </section>
@@ -423,8 +476,13 @@ function onBackdropClick(e: MouseEvent) {
                 <!-- Title -->
                 <div class="ch-export-field">
                   <label class="ch-export-field__label" for="export-title">Title</label>
-                  <input id="export-title" v-model="title" type="text" class="ch-export-input"
-                    placeholder="e.g. Member Directory" />
+                  <input
+                    id="export-title"
+                    v-model="title"
+                    type="text"
+                    class="ch-export-input"
+                    placeholder="e.g. Member Directory"
+                  />
                 </div>
 
                 <!-- Subtitle -->
@@ -433,8 +491,13 @@ function onBackdropClick(e: MouseEvent) {
                     Subtitle
                     <span class="ch-export-field__optional">(optional)</span>
                   </label>
-                  <input id="export-subtitle" v-model="subtitle" type="text" class="ch-export-input"
-                    placeholder="e.g. Grace Community Church · July 2025" />
+                  <input
+                    id="export-subtitle"
+                    v-model="subtitle"
+                    type="text"
+                    class="ch-export-input"
+                    placeholder="e.g. Grace Community Church · July 2025"
+                  />
                 </div>
 
                 <!-- Paper size + orientation in a row -->
@@ -453,38 +516,124 @@ function onBackdropClick(e: MouseEvent) {
                   <div class="ch-export-field">
                     <label class="ch-export-field__label">Orientation</label>
                     <div class="ch-export-orientation">
-                      <label class="ch-export-orientation__opt"
-                        :class="{ 'ch-export-orientation__opt--active': orientation === 'portrait' }">
+                      <label
+                        class="ch-export-orientation__opt"
+                        :class="{
+                          'ch-export-orientation__opt--active': orientation === 'portrait',
+                        }"
+                      >
                         <input type="radio" v-model="orientation" value="portrait" />
                         <!-- Portrait icon -->
-                        <svg width="20" height="28" viewBox="0 0 20 28" fill="none" aria-hidden="true">
-                          <rect x="1" y="1" width="18" height="26" rx="2"
-                            :stroke="orientation === 'portrait' ? 'var(--ch-color-primary)' : 'var(--ch-color-border-strong)'"
-                            :fill="orientation === 'portrait' ? 'var(--ch-color-primary-subtle)' : 'var(--ch-color-bg-subtle)'"
-                            stroke-width="1.5" />
-                          <line x1="4" y1="8" x2="16" y2="8" stroke="var(--ch-color-border-strong)" stroke-width="1" />
-                          <line x1="4" y1="12" x2="16" y2="12" stroke="var(--ch-color-border-strong)"
-                            stroke-width="1" />
-                          <line x1="4" y1="16" x2="12" y2="16" stroke="var(--ch-color-border-strong)"
-                            stroke-width="1" />
+                        <svg
+                          width="20"
+                          height="28"
+                          viewBox="0 0 20 28"
+                          fill="none"
+                          aria-hidden="true"
+                        >
+                          <rect
+                            x="1"
+                            y="1"
+                            width="18"
+                            height="26"
+                            rx="2"
+                            :stroke="
+                              orientation === 'portrait'
+                                ? 'var(--ch-color-primary)'
+                                : 'var(--ch-color-border-strong)'
+                            "
+                            :fill="
+                              orientation === 'portrait'
+                                ? 'var(--ch-color-primary-subtle)'
+                                : 'var(--ch-color-bg-subtle)'
+                            "
+                            stroke-width="1.5"
+                          />
+                          <line
+                            x1="4"
+                            y1="8"
+                            x2="16"
+                            y2="8"
+                            stroke="var(--ch-color-border-strong)"
+                            stroke-width="1"
+                          />
+                          <line
+                            x1="4"
+                            y1="12"
+                            x2="16"
+                            y2="12"
+                            stroke="var(--ch-color-border-strong)"
+                            stroke-width="1"
+                          />
+                          <line
+                            x1="4"
+                            y1="16"
+                            x2="12"
+                            y2="16"
+                            stroke="var(--ch-color-border-strong)"
+                            stroke-width="1"
+                          />
                         </svg>
                         <span>Portrait</span>
                       </label>
 
-                      <label class="ch-export-orientation__opt"
-                        :class="{ 'ch-export-orientation__opt--active': orientation === 'landscape' }">
+                      <label
+                        class="ch-export-orientation__opt"
+                        :class="{
+                          'ch-export-orientation__opt--active': orientation === 'landscape',
+                        }"
+                      >
                         <input type="radio" v-model="orientation" value="landscape" />
                         <!-- Landscape icon (rotated rectangle) -->
-                        <svg width="28" height="20" viewBox="0 0 28 20" fill="none" aria-hidden="true">
-                          <rect x="1" y="1" width="26" height="18" rx="2"
-                            :stroke="orientation === 'landscape' ? 'var(--ch-color-primary)' : 'var(--ch-color-border-strong)'"
-                            :fill="orientation === 'landscape' ? 'var(--ch-color-primary-subtle)' : 'var(--ch-color-bg-subtle)'"
-                            stroke-width="1.5" />
-                          <line x1="4" y1="6" x2="24" y2="6" stroke="var(--ch-color-border-strong)" stroke-width="1" />
-                          <line x1="4" y1="10" x2="24" y2="10" stroke="var(--ch-color-border-strong)"
-                            stroke-width="1" />
-                          <line x1="4" y1="14" x2="16" y2="14" stroke="var(--ch-color-border-strong)"
-                            stroke-width="1" />
+                        <svg
+                          width="28"
+                          height="20"
+                          viewBox="0 0 28 20"
+                          fill="none"
+                          aria-hidden="true"
+                        >
+                          <rect
+                            x="1"
+                            y="1"
+                            width="26"
+                            height="18"
+                            rx="2"
+                            :stroke="
+                              orientation === 'landscape'
+                                ? 'var(--ch-color-primary)'
+                                : 'var(--ch-color-border-strong)'
+                            "
+                            :fill="
+                              orientation === 'landscape'
+                                ? 'var(--ch-color-primary-subtle)'
+                                : 'var(--ch-color-bg-subtle)'
+                            "
+                            stroke-width="1.5"
+                          />
+                          <line
+                            x1="4"
+                            y1="6"
+                            x2="24"
+                            y2="6"
+                            stroke="var(--ch-color-border-strong)"
+                            stroke-width="1"
+                          />
+                          <line
+                            x1="4"
+                            y1="10"
+                            x2="24"
+                            y2="10"
+                            stroke="var(--ch-color-border-strong)"
+                            stroke-width="1"
+                          />
+                          <line
+                            x1="4"
+                            y1="14"
+                            x2="16"
+                            y2="14"
+                            stroke="var(--ch-color-border-strong)"
+                            stroke-width="1"
+                          />
                         </svg>
                         <span>Landscape</span>
                       </label>
@@ -492,20 +641,32 @@ function onBackdropClick(e: MouseEvent) {
                   </div>
                 </div>
               </section>
-
-            </div><!-- end body -->
+            </div>
+            <!-- end body -->
 
             <!-- ── Footer: summary + actions ── -->
             <div class="ch-export-dialog__footer">
               <!-- Summary pill -->
               <div class="ch-export-summary">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                  <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2" />
-                  <path d="M4 4h6M4 7h6M4 10h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+                  <rect
+                    x="1"
+                    y="1"
+                    width="12"
+                    height="12"
+                    rx="2"
+                    stroke="currentColor"
+                    stroke-width="1.2"
+                  />
+                  <path
+                    d="M4 4h6M4 7h6M4 10h4"
+                    stroke="currentColor"
+                    stroke-width="1.2"
+                    stroke-linecap="round"
+                  />
                 </svg>
                 <span>
-                  {{ exportRowCount.toLocaleString() }} rows
-                  &times;
+                  {{ exportRowCount.toLocaleString() }} rows &times;
                   {{ selectedColumnCount }} column{{ selectedColumnCount !== 1 ? 's' : '' }}
                 </span>
               </div>
@@ -515,21 +676,37 @@ function onBackdropClick(e: MouseEvent) {
                 <button type="button" class="ch-export-btn ch-export-btn--ghost" @click="close">
                   Cancel
                 </button>
-                <button type="button" class="ch-export-btn ch-export-btn--primary" :disabled="!canExport"
-                  @click="confirm">
+                <button
+                  type="button"
+                  class="ch-export-btn ch-export-btn--primary"
+                  :disabled="!canExport"
+                  @click="confirm"
+                >
                   <!-- Format icon in the button -->
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path v-if="selectedFormat !== 'print'"
-                      d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-                    <path v-else
-                      d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2m-10 0h8v5H6v-5z" />
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path
+                      v-if="selectedFormat !== 'print'"
+                      d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"
+                    />
+                    <path
+                      v-else
+                      d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2m-10 0h8v5H6v-5z"
+                    />
                   </svg>
                   {{ confirmLabel }}
                 </button>
               </div>
             </div>
-
           </div>
         </Transition>
       </div>
@@ -543,7 +720,7 @@ function onBackdropClick(e: MouseEvent) {
   position: fixed;
   inset: 0;
   /* top:0 right:0 bottom:0 left:0 — covers viewport */
-  background: rgb(0 0 0 / 0.45);
+  background: var(--ch-color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -747,7 +924,7 @@ function onBackdropClick(e: MouseEvent) {
   background-color: var(--ch-color-primary-subtle);
 }
 
-.ch-export-col-checkbox input[type="checkbox"] {
+.ch-export-col-checkbox input[type='checkbox'] {
   accent-color: var(--ch-color-primary);
   flex-shrink: 0;
   width: 14px;
@@ -784,7 +961,7 @@ function onBackdropClick(e: MouseEvent) {
     background-color var(--ch-duration-fast) var(--ch-ease-out);
 }
 
-.ch-export-radio input[type="radio"] {
+.ch-export-radio input[type='radio'] {
   accent-color: var(--ch-color-primary);
   flex-shrink: 0;
 }
@@ -854,7 +1031,7 @@ function onBackdropClick(e: MouseEvent) {
   gap: var(--ch-space-1_5);
 }
 
-.ch-export-field+.ch-export-field {
+.ch-export-field + .ch-export-field {
   margin-top: var(--ch-space-3);
 }
 
@@ -1002,7 +1179,7 @@ function onBackdropClick(e: MouseEvent) {
 .ch-export-btn--primary {
   background: var(--ch-color-primary);
   border-color: var(--ch-color-primary);
-  color: white;
+  color: var(--ch-color-primary-fg);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
 }
 
@@ -1039,12 +1216,14 @@ function onBackdropClick(e: MouseEvent) {
 }
 
 .ch-dialog-scale-enter-active {
-  transition: opacity var(--ch-duration-normal) var(--ch-ease-out),
+  transition:
+    opacity var(--ch-duration-normal) var(--ch-ease-out),
     transform var(--ch-duration-normal) var(--ch-ease-spring);
 }
 
 .ch-dialog-scale-leave-active {
-  transition: opacity var(--ch-duration-fast) var(--ch-ease-in),
+  transition:
+    opacity var(--ch-duration-fast) var(--ch-ease-in),
     transform var(--ch-duration-fast) var(--ch-ease-in);
 }
 

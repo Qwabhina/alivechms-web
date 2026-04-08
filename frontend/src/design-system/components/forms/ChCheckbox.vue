@@ -26,24 +26,24 @@ import { computed, ref, watch } from 'vue'
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  modelValue?:    boolean | unknown[]
+  modelValue?: boolean | unknown[]
   /** The value added to / removed from the array when used in group mode */
-  value?:         unknown
-  label?:         string
+  value?: unknown
+  label?: string
   /** Hint text displayed below the label */
-  hint?:          string
-  disabled?:      boolean
+  hint?: string
+  disabled?: boolean
   indeterminate?: boolean
   /** Error state — pass `true` for visual-only error, or a string to show a message */
-  error?:         string | boolean
-  id?:            string
-  name?:          string
-  size?:          'sm' | 'md' | 'lg'
+  error?: string | boolean
+  id?: string
+  name?: string
+  size?: 'sm' | 'md' | 'lg'
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  size:          'md',
-  disabled:      false,
+  size: 'md',
+  disabled: false,
   indeterminate: false,
 })
 
@@ -87,7 +87,7 @@ const hasError = computed(() => !!props.error)
 
 /** Render the error message string only when error is a non-empty string */
 const errorMessage = computed(() =>
-  typeof props.error === 'string' && props.error.length > 0 ? props.error : null
+  typeof props.error === 'string' && props.error.length > 0 ? props.error : null,
 )
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ function onChange(event: Event) {
   if (Array.isArray(props.modelValue)) {
     const next = checked
       ? [...props.modelValue, props.value]
-      : props.modelValue.filter(v => v !== props.value)
+      : props.modelValue.filter((v) => v !== props.value)
     emit('update:modelValue', next)
     emit('change', next)
   } else {
@@ -110,18 +110,27 @@ function onChange(event: Event) {
 
 <template>
   <div class="ch-checkbox-wrapper" :class="`ch-checkbox-wrapper--${size}`">
-    <label class="ch-checkbox" :class="[
-      `ch-checkbox--${size}`,
-      { 'ch-checkbox--disabled': disabled },
-      { 'ch-checkbox--error': hasError },
-    ]">
+    <label
+      class="ch-checkbox"
+      :class="[
+        `ch-checkbox--${size}`,
+        { 'ch-checkbox--disabled': disabled },
+        { 'ch-checkbox--error': hasError },
+      ]"
+    >
       <!-- Native checkbox — visually hidden but present in the a11y tree -->
       <input
-ref="inputRef"
-type="checkbox" class="ch-checkbox__input" :id="id" :name="name" :checked="isChecked"
+        ref="inputRef"
+        type="checkbox"
+        class="ch-checkbox__input"
+        :id="id"
+        :name="name"
+        :checked="isChecked"
         :disabled="disabled"
-:aria-invalid="hasError ? 'true' : undefined"
-        :aria-describedby="errorMessage ? `${id}-error` : undefined" @change="onChange" />
+        :aria-invalid="hasError ? 'true' : undefined"
+        :aria-describedby="errorMessage ? `${id}-error` : undefined"
+        @change="onChange"
+      />
 
       <!--
         Custom visual box.
@@ -131,14 +140,31 @@ type="checkbox" class="ch-checkbox__input" :id="id" :name="name" :checked="isChe
       -->
       <span class="ch-checkbox__box" aria-hidden="true">
         <!-- Checkmark -->
-        <svg v-if="isChecked && !indeterminate" class="ch-checkbox__icon" width="10" height="10" viewBox="0 0 10 10"
-          fill="none">
-          <path d="M2 5l2.5 2.5L8 3" stroke="currentColor" stroke-width="1.6"
-stroke-linecap="round"
-            stroke-linejoin="round" />
+        <svg
+          v-if="isChecked && !indeterminate"
+          class="ch-checkbox__icon"
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+        >
+          <path
+            d="M2 5l2.5 2.5L8 3"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
         </svg>
         <!-- Dash (indeterminate) -->
-        <svg v-else-if="indeterminate" class="ch-checkbox__icon" width="10" height="10" viewBox="0 0 10 10" fill="none">
+        <svg
+          v-else-if="indeterminate"
+          class="ch-checkbox__icon"
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+        >
           <path d="M2.5 5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
         </svg>
       </span>
@@ -153,7 +179,12 @@ stroke-linecap="round"
     </label>
 
     <!-- Error message (only rendered when error is a non-empty string) -->
-    <p v-if="errorMessage" :id="id ? `${id}-error` : undefined" class="ch-checkbox__error" role="alert">
+    <p
+      v-if="errorMessage"
+      :id="id ? `${id}-error` : undefined"
+      class="ch-checkbox__error"
+      role="alert"
+    >
       {{ errorMessage }}
     </p>
   </div>
@@ -168,49 +199,61 @@ stroke-linecap="round"
 }
 /* ─── Root label ──────────────────────────────────────────────────────────── */
 .ch-checkbox {
-  display:     inline-flex;
+  display: inline-flex;
   align-items: flex-start;
-  gap:         var(--ch-space-2_5);
-  cursor:      pointer;
+  gap: var(--ch-space-2_5);
+  cursor: pointer;
   user-select: none;
 }
 
-.ch-checkbox--disabled { cursor: not-allowed; opacity: 0.5; }
+.ch-checkbox--disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 
 /* ─── Hide native input (keep in a11y tree) ───────────────────────────────── */
 .ch-checkbox__input {
-  position:  absolute;
-  opacity:   0;
-  width:     0;
-  height:    0;
-  margin:    0;
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
   pointer-events: none;
 }
 
 /* ─── Custom box ──────────────────────────────────────────────────────────── */
 .ch-checkbox__box {
   flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--ch-radius-sm);
-    border: 1.5px solid var(--ch-color-border-strong);
-    background: var(--ch-color-surface);
-    color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ch-radius-sm);
+  border: 1.5px solid var(--ch-color-border-strong);
+  background: var(--ch-color-surface);
+  color: var(--ch-color-primary-fg);
   transition:
     background-color var(--ch-duration-fast) var(--ch-ease-out),
-    border-color     var(--ch-duration-fast) var(--ch-ease-out),
-    box-shadow       var(--ch-duration-fast) var(--ch-ease-out);
+    border-color var(--ch-duration-fast) var(--ch-ease-out),
+    box-shadow var(--ch-duration-fast) var(--ch-ease-out);
 }
 
-.ch-checkbox--sm .ch-checkbox__box { width: 14px; height: 14px; }
-.ch-checkbox--md .ch-checkbox__box { width: 16px; height: 16px; }
-.ch-checkbox--lg .ch-checkbox__box { width: 20px; height: 20px; }
+.ch-checkbox--sm .ch-checkbox__box {
+  width: 14px;
+  height: 14px;
+}
+.ch-checkbox--md .ch-checkbox__box {
+  width: 16px;
+  height: 16px;
+}
+.ch-checkbox--lg .ch-checkbox__box {
+  width: 20px;
+  height: 20px;
+}
 
 /* Checked / indeterminate — fill with primary color */
-.ch-checkbox__input:checked+.ch-checkbox__box,
+.ch-checkbox__input:checked + .ch-checkbox__box,
 .ch-checkbox__input:indeterminate + .ch-checkbox__box {
-  background:   var(--ch-color-primary);
+  background: var(--ch-color-primary);
   border-color: var(--ch-color-primary);
 }
 
@@ -227,33 +270,37 @@ stroke-linecap="round"
 
 /* ─── Label + hint ────────────────────────────────────────────────────────── */
 .ch-checkbox__content {
-  display:        flex;
+  display: flex;
   flex-direction: column;
   gap: var(--ch-space-0_5);
-  padding-top:    1px;
+  padding-top: 1px;
 }
 
-.ch-checkbox--sm .ch-checkbox__content { padding-top: 0; }
-.ch-checkbox--lg .ch-checkbox__content { padding-top: 2px; }
+.ch-checkbox--sm .ch-checkbox__content {
+  padding-top: 0;
+}
+.ch-checkbox--lg .ch-checkbox__content {
+  padding-top: 2px;
+}
 
 .ch-checkbox__label {
-  font-size:   var(--ch-text-sm);
+  font-size: var(--ch-text-sm);
   font-weight: var(--ch-font-medium);
-  color:       var(--ch-color-text);
+  color: var(--ch-color-text);
   line-height: var(--ch-leading-snug);
 }
 
 .ch-checkbox__hint {
   font-size: var(--ch-text-xs);
-    color: var(--ch-color-text-subtle);
-    line-height: var(--ch-leading-normal);
-  }
-  
-  /* ─── Error message ───────────────────────────────────────────────────────── */
-  .ch-checkbox__error {
-    margin: 0;
-  font-size:  var(--ch-text-xs);
+  color: var(--ch-color-text-subtle);
+  line-height: var(--ch-leading-normal);
+}
+
+/* ─── Error message ───────────────────────────────────────────────────────── */
+.ch-checkbox__error {
+  margin: 0;
+  font-size: var(--ch-text-xs);
   color: var(--ch-color-danger);
-  line-height:var(--ch-leading-normal);
+  line-height: var(--ch-leading-normal);
 }
 </style>

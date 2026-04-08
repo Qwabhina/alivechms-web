@@ -164,8 +164,14 @@ function handleClick(e: MouseEvent) {
 
     `aria-busy` — signals an in-progress operation to screen readers.
   -->
-  <button :class="classes" :type="type" :disabled="isNativeDisabled" :aria-disabled="isAriaDisabled"
-    :aria-busy="loading" @click="handleClick">
+  <button
+    :class="classes"
+    :type="type"
+    :disabled="isNativeDisabled"
+    :aria-disabled="isAriaDisabled"
+    :aria-busy="loading"
+    @click="handleClick"
+  >
     <!--
       Loading spinner.
       `aria-hidden="true"` — decorative; `aria-busy` on the button handles AT.
@@ -189,7 +195,10 @@ function handleClick(e: MouseEvent) {
     </span>
 
     <!-- Trailing icon slot — not shown during loading or in icon-only mode. -->
-    <span v-if="$slots.trailingIcon && !loading && !iconOnly" class="ch-btn__icon ch-btn__icon--trailing">
+    <span
+      v-if="$slots.trailingIcon && !loading && !iconOnly"
+      class="ch-btn__icon ch-btn__icon--trailing"
+    >
       <slot name="trailingIcon"></slot>
     </span>
   </button>
@@ -202,7 +211,7 @@ function handleClick(e: MouseEvent) {
   align-items: center;
   justify-content: center;
   gap: var(--ch-space-2);
-    /* 8px between icon and label */
+  /* 8px between icon and label */
 
   /*
      * Transparent border always present — prevents 1px layout shift when
@@ -223,10 +232,10 @@ function handleClick(e: MouseEvent) {
   transition:
     background-color var(--ch-duration-fast) var(--ch-ease-out),
     border-color var(--ch-duration-fast) var(--ch-ease-out),
-      color var(--ch-duration-fast) var(--ch-ease-out),
-      box-shadow var(--ch-duration-fast) var(--ch-ease-out),
-      transform var(--ch-duration-fast) var(--ch-ease-out),
-      opacity var(--ch-duration-fast) var(--ch-ease-out);
+    color var(--ch-duration-fast) var(--ch-ease-out),
+    box-shadow var(--ch-duration-fast) var(--ch-ease-out),
+    transform var(--ch-duration-fast) var(--ch-ease-out),
+    opacity var(--ch-duration-fast) var(--ch-ease-out);
 }
 
 /*
@@ -247,18 +256,18 @@ function handleClick(e: MouseEvent) {
   opacity: 0.5;
   transform: none;
   pointer-events: none;
-  }
-  
-  /*
+}
+
+/*
    * Loading uses aria-disabled (not native :disabled) so cursor: wait
    * can show. pointer-events: none prevents interaction since the native
    * disabled attribute isn't set.
    */
-  .ch-btn--loading {
-    cursor: wait;
-    pointer-events: none;
-    opacity: 0.8;
-    /* slightly less dim than disabled — the action IS happening */
+.ch-btn--loading {
+  cursor: wait;
+  pointer-events: none;
+  opacity: 0.8;
+  /* slightly less dim than disabled — the action IS happening */
 }
 
 .ch-btn--full-width {
@@ -268,27 +277,27 @@ function handleClick(e: MouseEvent) {
 /* ─── Sizes ───────────────────────────────────────────────────────────────── */
 .ch-btn--sm {
   font-size: var(--ch-text-xs);
-    /* 12px */
-    padding: var(--ch-space-1_5) var(--ch-space-3);
-    /* 6px 12px */
+  /* 12px */
+  padding: var(--ch-space-1_5) var(--ch-space-3);
+  /* 6px 12px */
   min-height: 28px;
 }
 
 .ch-btn--md {
   font-size: var(--ch-text-sm);
-    /* 14px */
-    padding: var(--ch-space-2) var(--ch-space-4);
-    /* 8px 16px */
+  /* 14px */
+  padding: var(--ch-space-2) var(--ch-space-4);
+  /* 8px 16px */
   min-height: 36px;
 }
 
 .ch-btn--lg {
   font-size: var(--ch-text-base);
-    /* 16px */
-    padding: var(--ch-space-2_5) var(--ch-space-6);
-    /* 10px 24px */
-    min-height: 44px;
-    /* ★ meets WCAG touch target recommendation */
+  /* 16px */
+  padding: var(--ch-space-2_5) var(--ch-space-6);
+  /* 10px 24px */
+  min-height: 44px;
+  /* ★ meets WCAG touch target recommendation */
 }
 
 /* Icon-only: equal padding on all sides makes the button a perfect square */
@@ -317,7 +326,7 @@ function handleClick(e: MouseEvent) {
 .ch-btn--primary {
   background-color: var(--ch-color-primary);
   border-color: var(--ch-color-primary-dark);
-    /* brand-tinted edge, not generic gray */
+  /* brand-tinted edge, not generic gray */
   color: var(--ch-color-primary-fg);
   box-shadow: var(--ch-shadow-sm);
 }
@@ -408,9 +417,9 @@ function handleClick(e: MouseEvent) {
 .ch-btn--danger {
   background-color: var(--ch-color-danger);
   border-color: var(--ch-color-danger-dark);
-    /* danger-tinted edge */
-    color: var(--ch-color-danger-fg);
-    /* token, not hardcoded #fff */
+  /* danger-tinted edge */
+  color: var(--ch-color-text-inverse);
+  /* white text on filled danger button */
   box-shadow: var(--ch-shadow-sm);
 }
 
@@ -446,13 +455,13 @@ function handleClick(e: MouseEvent) {
   height: 1em;
   border: 2px solid currentColor;
   border-top-color: transparent;
-    /* the "gap" in the ring */
+  /* the "gap" in the ring */
   border-radius: 50%;
   flex-shrink: 0;
   animation: ch-btn-spin var(--ch-duration-slower, 700ms) linear infinite;
-  }
-  
-  /*
+}
+
+/*
    * @keyframes defined here (in the component) so ChButton is self-contained.
    * Without this definition the spinner renders but never rotates — it is
    * a silent failure with no console error.
@@ -462,10 +471,10 @@ function handleClick(e: MouseEvent) {
    * Using a prefixed name (`ch-btn-spin` rather than `spin`) avoids
    * collisions with other components that might define their own `spin`.
    */
-  @keyframes ch-btn-spin {
-    to {
-      transform: rotate(360deg);
-    }
+@keyframes ch-btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ─── Icon Slots ──────────────────────────────────────────────────────────── */

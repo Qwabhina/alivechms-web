@@ -31,23 +31,23 @@
  */
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Size    = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+type Size = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 type Variant = 'primary' | 'white' | 'muted' | 'success' | 'danger'
 
 interface Props {
-  size?:    Size
+  size?: Size
   variant?: Variant
   /**
    * Accessible label announced to screen readers.
    * If omitted, falls back to "Loading…"
    */
-  label?:   string
+  label?: string
 }
 
 withDefaults(defineProps<Props>(), {
-  size:    'md',
+  size: 'md',
   variant: 'primary',
-  label:   'Loading…',
+  label: 'Loading…',
 })
 
 // ─── Size map ─────────────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ const STROKE_MAP: Record<Size, number> = {
 <style scoped>
 /* ─── Base ────────────────────────────────────────────────────────────────── */
 .ch-spinner {
-  display:     inline-flex;
+  display: inline-flex;
   align-items: center;
   flex-shrink: 0;
   line-height: 1;
@@ -145,9 +145,19 @@ const STROKE_MAP: Record<Size, number> = {
 /* Sizes are handled via the SVG's width/height attrs — no extra CSS needed */
 
 /* ─── Variants ────────────────────────────────────────────────────────────── */
-.ch-spinner--primary { color: var(--ch-color-primary); }
-.ch-spinner--white   { color: #ffffff; }
-.ch-spinner--muted   { color: var(--ch-color-text-subtle); }
-.ch-spinner--success { color: var(--ch-color-success); }
-.ch-spinner--danger  { color: var(--ch-color-danger); }
+.ch-spinner--primary {
+  color: var(--ch-color-primary);
+}
+.ch-spinner--white {
+  color: var(--ch-color-text-inverse);
+}
+.ch-spinner--muted {
+  color: var(--ch-color-text-subtle);
+}
+.ch-spinner--success {
+  color: var(--ch-color-success);
+}
+.ch-spinner--danger {
+  color: var(--ch-color-danger);
+}
 </style>

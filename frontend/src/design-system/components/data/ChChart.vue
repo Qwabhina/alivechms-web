@@ -63,13 +63,7 @@
  * />
  */
 
-import {
-  ref,
-  watch,
-  onMounted,
-  onUnmounted,
-  nextTick,
-} from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 
 import {
   Chart,
@@ -133,8 +127,8 @@ function getDefaultPalette(): string[] {
     cssVar('--ch-color-warning'),
     cssVar('--ch-color-danger'),
     cssVar('--ch-color-primary-hover'),
-    '#8b5cf6',
-    '#ec4899',
+    cssVar('--ch-color-chart-7'),
+    cssVar('--ch-color-chart-8'),
   ]
 }
 
@@ -181,9 +175,9 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  height:     300,
+  height: 300,
   label: 'Chart',
-  loading:    false,
+  loading: false,
   responsive: true,
 })
 
@@ -206,7 +200,7 @@ function buildDefaultOptions(): ChartOptions {
   const fontSize = 12
 
   return {
-    responsive:          props.responsive,
+    responsive: props.responsive,
     maintainAspectRatio: !props.responsive,
 
     plugins: {
@@ -222,13 +216,13 @@ function buildDefaultOptions(): ChartOptions {
       tooltip: {
         backgroundColor: cssVar('--ch-color-surface'),
         titleColor: cssVar('--ch-color-text'),
-        bodyColor:       textColor,
-        borderColor:     gridColor,
-        borderWidth:     1,
-        padding:         10,
+        bodyColor: textColor,
+        borderColor: gridColor,
+        borderWidth: 1,
+        padding: 10,
         cornerRadius: 4,
-        titleFont:       { family: fontFamily, size: fontSize, weight: 'bold' },
-        bodyFont:        { family: fontFamily, size: fontSize },
+        titleFont: { family: fontFamily, size: fontSize, weight: 'bold' },
+        bodyFont: { family: fontFamily, size: fontSize },
       },
     },
 
@@ -308,8 +302,8 @@ function applyDatasetColors(chartData: ChartData): ChartData {
       const sliceCount = (dataset.data ?? []).length
       return {
         ...dataset,
-        backgroundColor: dataset.backgroundColor
-          ?? palette.slice(0, sliceCount).map(c => `${c}dd`),
+        backgroundColor:
+          dataset.backgroundColor ?? palette.slice(0, sliceCount).map((c) => `${c}dd`),
         borderColor: (dataset as ChartDataset<'doughnut'>).borderColor ?? '#fff',
         borderWidth: (dataset as ChartDataset<'doughnut'>).borderWidth ?? 2,
       }
@@ -359,15 +353,15 @@ function mergedOptions(): ChartOptions {
 function createChart(): void {
   if (!canvasRef.value) return
   chartInstance = new Chart(canvasRef.value, {
-    type:    props.type,
-    data:    applyDatasetColors(props.data),
+    type: props.type,
+    data: applyDatasetColors(props.data),
     options: mergedOptions(),
   })
 }
 
 function updateChart(): void {
   if (!chartInstance) return
-  chartInstance.data    = applyDatasetColors(props.data)
+  chartInstance.data = applyDatasetColors(props.data)
   chartInstance.options = mergedOptions()
   chartInstance.update()
 }
@@ -393,8 +387,16 @@ onUnmounted(() => {
 
 // ─── Watchers ─────────────────────────────────────────────────────────────────
 
-watch(() => props.data, () => updateChart(), { deep: true })
-watch(() => props.options, () => updateChart(), { deep: true })
+watch(
+  () => props.data,
+  () => updateChart(),
+  { deep: true },
+)
+watch(
+  () => props.options,
+  () => updateChart(),
+  { deep: true },
+)
 
 /**
  * When loading flips false → canvas becomes visible via v-else.
@@ -405,14 +407,17 @@ watch(() => props.options, () => updateChart(), { deep: true })
  * When loading flips true → destroy immediately; the canvas is about to
  * be removed from the DOM by v-else.
  */
-watch(() => props.loading, async (isLoading) => {
-  if (isLoading) {
-    destroyChart()
-  } else {
-    await nextTick()
-    if (canvasRef.value) createChart()
-  }
-})
+watch(
+  () => props.loading,
+  async (isLoading) => {
+    if (isLoading) {
+      destroyChart()
+    } else {
+      await nextTick()
+      if (canvasRef.value) createChart()
+    }
+  },
+)
 </script>
 
 <template>
@@ -424,7 +429,8 @@ watch(() => props.loading, async (isLoading) => {
   <figure
     class="ch-chart"
     :style="{ height: `${height}px` }"
-:aria-label="label" :aria-busy="loading"
+    :aria-label="label"
+    :aria-busy="loading"
   >
     <!-- Loading skeleton — full-size shimmer matching the chart's height -->
     <div v-if="loading" class="ch-chart__skeleton" role="presentation"></div>
@@ -444,7 +450,7 @@ watch(() => props.loading, async (isLoading) => {
       :width="responsive ? undefined : 400"
       :height="height"
       :style="{
-  width: responsive ? '100%' : undefined,
+        width: responsive ? '100%' : undefined,
         height: `${height}px`,
       }"
     ></canvas>
@@ -464,10 +470,10 @@ watch(() => props.loading, async (isLoading) => {
 /* ─── Root container ──────────────────────────────────────────────────────── */
 .ch-chart {
   position: relative;
-  width:    100%;
+  width: 100%;
   /* Reset <figure> browser default margin/padding */
-    margin: 0;
-    padding: 0;
+  margin: 0;
+  padding: 0;
 }
 
 /* ─── Canvas ──────────────────────────────────────────────────────────────── */
@@ -497,26 +503,26 @@ watch(() => props.loading, async (isLoading) => {
  * no layout shift when the real chart appears.
  */
 .ch-chart__skeleton {
-  width:         100%;
-  height:        100%;
+  width: 100%;
+  height: 100%;
   border-radius: var(--ch-radius-sm);
   background: linear-gradient(
     90deg,
-    var(--ch-color-bg-muted)  0%,
+    var(--ch-color-bg-muted) 0%,
     var(--ch-color-bg-subtle) 50%,
-    var(--ch-color-bg-muted)  100%
+    var(--ch-color-bg-muted) 100%
   );
   background-size: 200% 100%;
   animation: ch-shimmer 1.4s var(--ch-ease-in-out) infinite;
+}
+
+@keyframes ch-shimmer {
+  0% {
+    background-position: 200% 0;
   }
-  
-  @keyframes ch-shimmer {
-    0% {
-      background-position: 200% 0;
-    }
-  
-    100% {
-      background-position: -200% 0;
-    }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 </style>

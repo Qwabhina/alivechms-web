@@ -148,7 +148,7 @@ const recentCommands = ref<Command[]>([])
 /** All commands as a flat list, with group name stamped onto each item */
 const allCommands = computed<Command[]>(() => {
   if (props.groups.length > 0) {
-    return props.groups.flatMap(g => g.commands.map(c => ({ ...c, group: g.title })))
+    return props.groups.flatMap((g) => g.commands.map((c) => ({ ...c, group: g.title })))
   }
   return props.commands
 })
@@ -158,14 +158,14 @@ const filteredCommands = computed<Command[]>(() => {
   let commands = allCommands.value
 
   if (props.showRecent && recentCommands.value.length > 0 && !searchQuery.value) {
-    const recentIds = new Set(recentCommands.value.map(c => c.id))
-    commands = [...recentCommands.value, ...commands.filter(c => !recentIds.has(c.id))]
+    const recentIds = new Set(recentCommands.value.map((c) => c.id))
+    commands = [...recentCommands.value, ...commands.filter((c) => !recentIds.has(c.id))]
   }
 
   if (!searchQuery.value) return commands
 
   const query = searchQuery.value.toLowerCase()
-  return commands.filter(cmd => {
+  return commands.filter((cmd) => {
     if (cmd.label.toLowerCase().includes(query)) return true
     if ((cmd.description ?? '').toLowerCase().includes(query)) return true
     if ((cmd.keywords ?? []).join(' ').toLowerCase().includes(query)) return true
@@ -198,11 +198,9 @@ const groupedResults = computed<CommandGroup[]>(() => {
   }
 
   // Pre-seed the Map with original group order so insertion order is preserved
-  const grouped = new Map<string, Command[]>(
-    props.groups.map(g => [g.title, []])
-  )
+  const grouped = new Map<string, Command[]>(props.groups.map((g) => [g.title, []]))
 
-  filteredCommands.value.forEach(cmd => {
+  filteredCommands.value.forEach((cmd) => {
     const key = cmd.group ?? 'Other'
     if (!grouped.has(key)) grouped.set(key, [])
     grouped.get(key)!.push(cmd)
@@ -230,7 +228,7 @@ function selectCommand(command: Command) {
   if (props.showRecent) {
     recentCommands.value = [
       command,
-      ...recentCommands.value.filter(c => c.id !== command.id),
+      ...recentCommands.value.filter((c) => c.id !== command.id),
     ].slice(0, props.maxRecent)
   }
 
@@ -242,9 +240,14 @@ async function navigate(direction: 'up' | 'down') {
   const max = filteredCommands.value.length - 1
   if (max < 0) return
 
-  selectedIndex.value = direction === 'down'
-    ? (selectedIndex.value >= max ? 0 : selectedIndex.value + 1)
-    : (selectedIndex.value <= 0 ? max : selectedIndex.value - 1)
+  selectedIndex.value =
+    direction === 'down'
+      ? selectedIndex.value >= max
+        ? 0
+        : selectedIndex.value + 1
+      : selectedIndex.value <= 0
+        ? max
+        : selectedIndex.value - 1
 
   // Scroll selected item into view after Vue updates the DOM
   await nextTick()
@@ -287,9 +290,12 @@ watch(isOpen, async (val) => {
 })
 
 /** Sync external v-model:open */
-watch(() => props.open, (val) => {
-  isOpen.value = val
-})
+watch(
+  () => props.open,
+  (val) => {
+    isOpen.value = val
+  },
+)
 
 // ─── Keyboard shortcuts ───────────────────────────────────────────────────────
 
@@ -337,7 +343,11 @@ onUnmounted(() => document.removeEventListener('keydown', handleGlobalKeydown))
   <div :class="['ch-command-palette', paletteClass]">
     <!-- Trigger — slot or default search button -->
     <slot name="trigger">
-      <button class="ch-command-palette__trigger" aria-label="Open command palette" @click="showPalette">
+      <button
+        class="ch-command-palette__trigger"
+        aria-label="Open command palette"
+        @click="showPalette"
+      >
         <Search :size="16" :stroke-width="2" />
         <span>Search...</span>
         <kbd v-if="enableShortcut" class="ch-command-palette__shortcut">⌘ K</kbd>
@@ -351,9 +361,19 @@ onUnmounted(() => document.removeEventListener('keydown', handleGlobalKeydown))
     -->
     <Teleport to="body">
       <Transition name="ch-command-palette">
-        <div v-if="isOpen" class="ch-command-palette__overlay" aria-hidden="false" @click.self="close">
-          <div class="ch-command-palette__dialog" :style="{ '--ch-command-min-width': minWidth }" role="dialog"
-            aria-modal="true" aria-label="Command palette">
+        <div
+          v-if="isOpen"
+          class="ch-command-palette__overlay"
+          aria-hidden="false"
+          @click.self="close"
+        >
+          <div
+            class="ch-command-palette__dialog"
+            :style="{ '--ch-command-min-width': minWidth }"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Command palette"
+          >
             <!-- Search input -->
             <div ref="searchContainerRef" class="ch-command-palette__search">
               <ChInput v-model="searchQuery" :placeholder="placeholder" size="md" clearable>
@@ -364,8 +384,13 @@ onUnmounted(() => document.removeEventListener('keydown', handleGlobalKeydown))
             </div>
 
             <!-- Results -->
-            <div ref="commandListRef" class="ch-command-palette__results"
-              :style="{ '--ch-command-max-height': maxHeight }" role="listbox" aria-label="Commands">
+            <div
+              ref="commandListRef"
+              class="ch-command-palette__results"
+              :style="{ '--ch-command-max-height': maxHeight }"
+              role="listbox"
+              aria-label="Commands"
+            >
               <!-- Empty state -->
               <div v-if="!hasCommands" class="ch-command-palette__empty">
                 <CircleHelp :size="32" :stroke-width="1.5" />
@@ -377,25 +402,48 @@ onUnmounted(() => document.removeEventListener('keydown', handleGlobalKeydown))
 
               <!-- Grouped results -->
               <template v-else>
-                <div v-for="group in groupedResults" :key="group.title" class="ch-command-palette__group">
+                <div
+                  v-for="group in groupedResults"
+                  :key="group.title"
+                  class="ch-command-palette__group"
+                >
                   <!-- Group heading — hidden when there is only one group -->
-                  <div v-if="groupedResults.length > 1 && group.title" class="ch-command-palette__group-title">
+                  <div
+                    v-if="groupedResults.length > 1 && group.title"
+                    class="ch-command-palette__group-title"
+                  >
                     {{ group.title }}
                   </div>
 
                   <div class="ch-command-palette__list">
-                    <button v-for="cmd in group.commands" :key="cmd.id" :class="[
-                      'ch-command-palette__item',
-                      {
-                        'ch-command-palette__item--selected':
-      flatIndexMap.get(cmd.id) === selectedIndex,
-    'ch-command-palette__item--disabled': cmd.disabled,
-  },
-]" role="option" :aria-selected="flatIndexMap.get(cmd.id) === selectedIndex"
-                      :disabled="cmd.disabled || undefined" @click="selectCommand(cmd)">
+                    <button
+                      v-for="cmd in group.commands"
+                      :key="cmd.id"
+                      :class="[
+                        'ch-command-palette__item',
+                        {
+                          'ch-command-palette__item--selected':
+                            flatIndexMap.get(cmd.id) === selectedIndex,
+                          'ch-command-palette__item--disabled': cmd.disabled,
+                        },
+                      ]"
+                      role="option"
+                      :aria-selected="flatIndexMap.get(cmd.id) === selectedIndex"
+                      :disabled="cmd.disabled || undefined"
+                      @click="selectCommand(cmd)"
+                    >
                       <!-- Icon -->
-                      <svg v-if="cmd.icon" class="ch-command-palette__item-icon" width="18" height="18"
-                        viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                      <svg
+                        v-if="cmd.icon"
+                        class="ch-command-palette__item-icon"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 18 18"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        aria-hidden="true"
+                      >
                         <path :d="cmd.icon" stroke-linecap="round" stroke-linejoin="round" />
                       </svg>
 
@@ -438,7 +486,7 @@ onUnmounted(() => document.removeEventListener('keydown', handleGlobalKeydown))
   cursor: pointer;
   transition:
     background-color var(--ch-duration-fast) var(--ch-ease-out),
-      border-color var(--ch-duration-fast) var(--ch-ease-out);
+    border-color var(--ch-duration-fast) var(--ch-ease-out);
 }
 
 .ch-command-palette__trigger:hover {
@@ -467,7 +515,7 @@ onUnmounted(() => document.removeEventListener('keydown', handleGlobalKeydown))
   position: fixed;
   inset: 0;
   z-index: var(--ch-z-modal, 1000);
-  background: rgb(0 0 0 / 0.5);
+  background: var(--ch-color-overlay);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -483,31 +531,31 @@ onUnmounted(() => document.removeEventListener('keydown', handleGlobalKeydown))
   display: flex;
   flex-direction: column;
   background: var(--ch-color-surface);
-    border: 1px solid var(--ch-color-border-strong);
-    border-radius: var(--ch-radius-lg);
-    box-shadow: var(--ch-shadow-xl);
-    overflow: hidden;
-  }
-  
-  /* ─── Transition ──────────────────────────────────────────────────────────── */
-  .ch-command-palette-enter-active,
-  .ch-command-palette-leave-active {
-    transition: opacity var(--ch-duration-fast) var(--ch-ease-out);
-  }
-  
-  .ch-command-palette-enter-active .ch-command-palette__dialog,
-  .ch-command-palette-leave-active .ch-command-palette__dialog {
-    transition: transform var(--ch-duration-fast) var(--ch-ease-spring);
-  }
-  
-  .ch-command-palette-enter-from,
-  .ch-command-palette-leave-to {
-    opacity: 0;
-  }
-  
-  .ch-command-palette-enter-from .ch-command-palette__dialog,
-  .ch-command-palette-leave-to .ch-command-palette__dialog {
-    transform: translateY(-8px) scale(0.98);
+  border: 1px solid var(--ch-color-border-strong);
+  border-radius: var(--ch-radius-lg);
+  box-shadow: var(--ch-shadow-xl);
+  overflow: hidden;
+}
+
+/* ─── Transition ──────────────────────────────────────────────────────────── */
+.ch-command-palette-enter-active,
+.ch-command-palette-leave-active {
+  transition: opacity var(--ch-duration-fast) var(--ch-ease-out);
+}
+
+.ch-command-palette-enter-active .ch-command-palette__dialog,
+.ch-command-palette-leave-active .ch-command-palette__dialog {
+  transition: transform var(--ch-duration-fast) var(--ch-ease-spring);
+}
+
+.ch-command-palette-enter-from,
+.ch-command-palette-leave-to {
+  opacity: 0;
+}
+
+.ch-command-palette-enter-from .ch-command-palette__dialog,
+.ch-command-palette-leave-to .ch-command-palette__dialog {
+  transform: translateY(-8px) scale(0.98);
 }
 
 /* ─── Search ──────────────────────────────────────────────────────────────── */

@@ -30,33 +30,33 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 export interface DateRange {
   start: Date | null
-  end:   Date | null
+  end: Date | null
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  modelValue:         Date | DateRange | null
-  range?:             boolean
-  placeholder?:       string
-  placeholderStart?:  string
-  placeholderEnd?:    string
-  minDate?:           Date
-  maxDate?:           Date
-  disabled?:          boolean
+  modelValue: Date | DateRange | null
+  range?: boolean
+  placeholder?: string
+  placeholderStart?: string
+  placeholderEnd?: string
+  minDate?: Date
+  maxDate?: Date
+  disabled?: boolean
   /** Error state — pass `true` for visual-only, or a string to show a message */
-  error?:             string | boolean
-  size?:              'sm' | 'md' | 'lg'
-  id?:                string
+  error?: string | boolean
+  size?: 'sm' | 'md' | 'lg'
+  id?: string
   /** Display format for the trigger text. Default: 'dd/mm/yyyy' */
-  displayFormat?:     'dd/mm/yyyy' | 'mm/dd/yyyy' | 'yyyy-mm-dd'
+  displayFormat?: 'dd/mm/yyyy' | 'mm/dd/yyyy' | 'yyyy-mm-dd'
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  range:          false,
-  disabled:       false,
-  size:           'md',
-  displayFormat:  'dd/mm/yyyy',
+  range: false,
+  disabled: false,
+  size: 'md',
+  displayFormat: 'dd/mm/yyyy',
 })
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
@@ -83,8 +83,20 @@ const popupPosition = ref<'bottom' | 'top'>('bottom')
 
 // ─── Date utilities ───────────────────────────────────────────────────────────
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December']
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
 const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
 /** Normalise a Date to midnight so time components don't affect comparisons */
@@ -94,15 +106,17 @@ function toMidnight(d: Date): Date {
 
 function sameDay(a: Date | null, b: Date | null): boolean {
   if (!a || !b) return false
-  return a.getFullYear() === b.getFullYear() &&
-         a.getMonth()    === b.getMonth()    &&
-         a.getDate()     === b.getDate()
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
 }
 
 function formatDate(d: Date | null, fmt: string): string {
   if (!d) return ''
-  const dd   = String(d.getDate()).padStart(2, '0')
-  const mm   = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
   const yyyy = String(d.getFullYear())
   if (fmt === 'dd/mm/yyyy') return `${dd}/${mm}/${yyyy}`
   if (fmt === 'mm/dd/yyyy') return `${mm}/${dd}/${yyyy}`
@@ -135,7 +149,7 @@ function isInRange(d: Date): boolean {
 // ─── Calendar grid ────────────────────────────────────────────────────────────
 
 const calendarDays = computed<(Date | null)[]>(() => {
-  const year  = viewDate.value.getFullYear()
+  const year = viewDate.value.getFullYear()
   const month = viewDate.value.getMonth()
   const first = new Date(year, month, 1).getDay()
   const total = new Date(year, month + 1, 0).getDate()
@@ -150,13 +164,13 @@ const calendarDays = computed<(Date | null)[]>(() => {
 // ─── Selected value accessors ─────────────────────────────────────────────────
 
 const selectedSingle = computed<Date | null>(() =>
-  !props.range ? (props.modelValue as Date | null) : null
+  !props.range ? (props.modelValue as Date | null) : null,
 )
 
 const selectedRange = computed<DateRange>(() =>
   props.range
     ? ((props.modelValue as DateRange) ?? { start: null, end: null })
-    : { start: null, end: null }
+    : { start: null, end: null },
 )
 
 // ─── Display text ─────────────────────────────────────────────────────────────
@@ -166,7 +180,8 @@ const triggerText = computed(() => {
     const { start, end } = selectedRange.value
     if (!start && !end) return ''
     return [formatDate(start, props.displayFormat), formatDate(end, props.displayFormat)]
-      .filter(Boolean).join(' → ')
+      .filter(Boolean)
+      .join(' → ')
   }
   return formatDate(selectedSingle.value, props.displayFormat)
 })
@@ -183,7 +198,7 @@ const triggerPlaceholder = computed(() => {
 
 /** Rendered error message string — undefined when error is boolean or absent */
 const errorMessage = computed(() =>
-  typeof props.error === 'string' && props.error.length > 0 ? props.error : null
+  typeof props.error === 'string' && props.error.length > 0 ? props.error : null,
 )
 
 const hasError = computed(() => !!props.error)
@@ -218,9 +233,8 @@ function computePopupPosition() {
   const rect = rootRef.value.getBoundingClientRect()
   const spaceBelow = window.innerHeight - rect.bottom
   const estimatedHeight = 320
-  popupPosition.value = spaceBelow < estimatedHeight && rect.top > estimatedHeight
-    ? 'top'
-    : 'bottom'
+  popupPosition.value =
+    spaceBelow < estimatedHeight && rect.top > estimatedHeight ? 'top' : 'bottom'
 }
 
 // ─── Open / close ─────────────────────────────────────────────────────────────
@@ -262,9 +276,7 @@ function selectDay(d: Date | null) {
   } else {
     // Second click — complete the range, normalise order
     const start = current.start
-    const result: DateRange = d >= start
-      ? { start, end: d }
-      : { start: d, end: start }
+    const result: DateRange = d >= start ? { start, end: d } : { start: d, end: start }
     emit('update:modelValue', result)
     emit('change', result)
     rangeSelectStep.value = 'start'
@@ -321,21 +333,42 @@ onUnmounted(() => {
   <div
     ref="rootRef"
     class="ch-datepicker"
-:class="[
-    `ch-datepicker--${size}`,
-    {
-      'ch-datepicker--disabled': disabled,
-      'ch-datepicker--error': hasError,
-      'ch-datepicker--open': isOpen,
-    },
-  ]">
+    :class="[
+      `ch-datepicker--${size}`,
+      {
+        'ch-datepicker--disabled': disabled,
+        'ch-datepicker--error': hasError,
+        'ch-datepicker--open': isOpen,
+      },
+    ]"
+  >
     <!-- ── Trigger ─────────────────────────────────────────────────────────── -->
-    <div class="ch-datepicker__trigger" role="button" :aria-haspopup="true" :aria-expanded="isOpen"
-      :aria-label="triggerPlaceholder" :tabindex="disabled ? -1 : 0" @click="openCalendar"
-      @keydown.enter.prevent="openCalendar" @keydown.space.prevent="openCalendar">
-      <svg class="ch-datepicker__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <rect x="2" y="3" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.3"/>
-        <path d="M5 1v3M11 1v3M2 7h12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+    <div
+      class="ch-datepicker__trigger"
+      role="button"
+      :aria-haspopup="true"
+      :aria-expanded="isOpen"
+      :aria-label="triggerPlaceholder"
+      :tabindex="disabled ? -1 : 0"
+      @click="openCalendar"
+      @keydown.enter.prevent="openCalendar"
+      @keydown.space.prevent="openCalendar"
+    >
+      <svg
+        class="ch-datepicker__icon"
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        fill="none"
+        aria-hidden="true"
+      >
+        <rect x="2" y="3" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.3" />
+        <path
+          d="M5 1v3M11 1v3M2 7h12"
+          stroke="currentColor"
+          stroke-width="1.3"
+          stroke-linecap="round"
+        />
       </svg>
 
       <span
@@ -354,25 +387,59 @@ onUnmounted(() => {
         @click.stop="clearDate"
       >
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <path d="M10.5 3.5l-7 7M3.5 3.5l7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path
+            d="M10.5 3.5l-7 7M3.5 3.5l7 7"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
         </svg>
       </button>
     </div>
 
     <!-- ── Calendar popup ──────────────────────────────────────────────────── -->
     <Transition name="ch-datepicker-drop">
-      <div v-if="isOpen" ref="popupRef" class="ch-datepicker__popup" :class="`ch-datepicker__popup--${popupPosition}`"
-        role="dialog" aria-modal="true" :aria-label="`Choose ${range ? 'date range' : 'date'}`">
+      <div
+        v-if="isOpen"
+        ref="popupRef"
+        class="ch-datepicker__popup"
+        :class="`ch-datepicker__popup--${popupPosition}`"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="`Choose ${range ? 'date range' : 'date'}`"
+      >
         <!-- Navigation header -->
         <div class="ch-datepicker__nav">
-          <button type="button" class="ch-datepicker__nav-btn" aria-label="Previous year" @click="prevYear">
+          <button
+            type="button"
+            class="ch-datepicker__nav-btn"
+            aria-label="Previous year"
+            @click="prevYear"
+          >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path d="M8.5 3L5 7l3.5 4M5.5 3L2 7l3.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path
+                d="M8.5 3L5 7l3.5 4M5.5 3L2 7l3.5 4"
+                stroke="currentColor"
+                stroke-width="1.3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
             </svg>
           </button>
-          <button type="button" class="ch-datepicker__nav-btn" aria-label="Previous month" @click="prevMonth">
+          <button
+            type="button"
+            class="ch-datepicker__nav-btn"
+            aria-label="Previous month"
+            @click="prevMonth"
+          >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path d="M9 3L5 7l4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path
+                d="M9 3L5 7l4 4"
+                stroke="currentColor"
+                stroke-width="1.3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
             </svg>
           </button>
 
@@ -380,23 +447,53 @@ onUnmounted(() => {
             {{ MONTHS[viewDate.getMonth()] }} {{ viewDate.getFullYear() }}
           </span>
 
-          <button type="button" class="ch-datepicker__nav-btn" aria-label="Next month" @click="nextMonth">
+          <button
+            type="button"
+            class="ch-datepicker__nav-btn"
+            aria-label="Next month"
+            @click="nextMonth"
+          >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path
+                d="M5 3l4 4-4 4"
+                stroke="currentColor"
+                stroke-width="1.3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
             </svg>
           </button>
-          <button type="button" class="ch-datepicker__nav-btn" aria-label="Next year" @click="nextYear">
+          <button
+            type="button"
+            class="ch-datepicker__nav-btn"
+            aria-label="Next year"
+            @click="nextYear"
+          >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path d="M5.5 3L9 7l-3.5 4M8.5 3L12 7l-3.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path
+                d="M5.5 3L9 7l-3.5 4M8.5 3L12 7l-3.5 4"
+                stroke="currentColor"
+                stroke-width="1.3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
             </svg>
           </button>
         </div>
 
         <!-- Day-of-week headers -->
-        <div class="ch-datepicker__grid" role="grid"
-          :aria-label="`${MONTHS[viewDate.getMonth()]} ${viewDate.getFullYear()}`">
+        <div
+          class="ch-datepicker__grid"
+          role="grid"
+          :aria-label="`${MONTHS[viewDate.getMonth()]} ${viewDate.getFullYear()}`"
+        >
           <div
-v-for="day in DAYS" :key="day" class="ch-datepicker__day-header" role="columnheader" :aria-label="day">
+            v-for="day in DAYS"
+            :key="day"
+            class="ch-datepicker__day-header"
+            role="columnheader"
+            :aria-label="day"
+          >
             {{ day }}
           </div>
 
@@ -404,26 +501,37 @@ v-for="day in DAYS" :key="day" class="ch-datepicker__day-header" role="columnhea
           <button
             v-for="(day, i) in calendarDays"
             :key="i"
-type="button"
+            type="button"
             class="ch-datepicker__day"
             :class="{
-  'ch-datepicker__day--empty': !day,
-  'ch-datepicker__day--today': day && sameDay(day, new Date()),
-  'ch-datepicker__day--selected': day && !range && sameDay(day, selectedSingle),
+              'ch-datepicker__day--empty': !day,
+              'ch-datepicker__day--today': day && sameDay(day, new Date()),
+              'ch-datepicker__day--selected': day && !range && sameDay(day, selectedSingle),
               'ch-datepicker__day--range-start': day && range && sameDay(day, selectedRange.start),
-              'ch-datepicker__day--range-end':   day && range && sameDay(day, selectedRange.end),
-              'ch-datepicker__day--in-range':    day && isInRange(day),
-              'ch-datepicker__day--disabled':    day && isDisabled(day),
+              'ch-datepicker__day--range-end': day && range && sameDay(day, selectedRange.end),
+              'ch-datepicker__day--in-range': day && isInRange(day),
+              'ch-datepicker__day--disabled': day && isDisabled(day),
             }"
-:disabled="!day || isDisabled(day) || undefined" :tabindex="day ? 0 : -1"
-            :aria-label="day ? `${day.getDate()} ${MONTHS[day.getMonth()]} ${day.getFullYear()}` : undefined"
-            :aria-pressed="day ? ((!range && sameDay(day, selectedSingle)) || (range && (sameDay(day, selectedRange.start) || sameDay(day, selectedRange.end)))) : undefined"
-            :aria-disabled="day && isDisabled(day) ? 'true' : undefined" role="gridcell"
+            :disabled="!day || isDisabled(day) || undefined"
+            :tabindex="day ? 0 : -1"
+            :aria-label="
+              day ? `${day.getDate()} ${MONTHS[day.getMonth()]} ${day.getFullYear()}` : undefined
+            "
+            :aria-pressed="
+              day
+                ? (!range && sameDay(day, selectedSingle)) ||
+                  (range && (sameDay(day, selectedRange.start) || sameDay(day, selectedRange.end)))
+                : undefined
+            "
+            :aria-disabled="day && isDisabled(day) ? 'true' : undefined"
+            role="gridcell"
             @click="selectDay(day)"
             @mouseenter="hoverDate = day"
             @mouseleave="hoverDate = null"
           >
-            <span v-if="day" class="ch-datepicker__day-num" aria-hidden="true">{{ day.getDate() }}</span>
+            <span v-if="day" class="ch-datepicker__day-num" aria-hidden="true">{{
+              day.getDate()
+            }}</span>
           </button>
         </div>
 
@@ -435,7 +543,12 @@ type="button"
     </Transition>
 
     <!-- Error message -->
-    <p v-if="errorMessage" :id="id ? `${id}-error` : undefined" class="ch-datepicker__error" role="alert">
+    <p
+      v-if="errorMessage"
+      :id="id ? `${id}-error` : undefined"
+      class="ch-datepicker__error"
+      role="alert"
+    >
       {{ errorMessage }}
     </p>
   </div>
@@ -443,24 +556,40 @@ type="button"
 
 <style scoped>
 /* ─── Root ────────────────────────────────────────────────────────────────── */
-.ch-datepicker { position: relative; width: 100%; }
+.ch-datepicker {
+  position: relative;
+  width: 100%;
+}
 
 /* ─── Trigger ─────────────────────────────────────────────────────────────── */
 .ch-datepicker__trigger {
-  display:       flex;
-  align-items:   center;
-  gap:           var(--ch-space-2);
-  background:    var(--ch-color-surface);
-  border:        1px solid var(--ch-color-border-strong);
+  display: flex;
+  align-items: center;
+  gap: var(--ch-space-2);
+  background: var(--ch-color-surface);
+  border: 1px solid var(--ch-color-border-strong);
   border-radius: var(--ch-radius-md);
-  cursor:        pointer;
-  transition: border-color var(--ch-duration-fast) var(--ch-ease-out),
-      outline-color var(--ch-duration-fast) var(--ch-ease-out);
+  cursor: pointer;
+  transition:
+    border-color var(--ch-duration-fast) var(--ch-ease-out),
+    outline-color var(--ch-duration-fast) var(--ch-ease-out);
 }
 
-.ch-datepicker--sm .ch-datepicker__trigger { padding: var(--ch-space-1_5) var(--ch-space-3);   min-height: 32px; font-size: var(--ch-text-xs); }
-.ch-datepicker--md .ch-datepicker__trigger { padding: var(--ch-space-2)   var(--ch-space-3_5); min-height: 38px; font-size: var(--ch-text-sm); }
-.ch-datepicker--lg .ch-datepicker__trigger { padding: var(--ch-space-2_5) var(--ch-space-4);   min-height: 44px; font-size: var(--ch-text-base); }
+.ch-datepicker--sm .ch-datepicker__trigger {
+  padding: var(--ch-space-1_5) var(--ch-space-3);
+  min-height: 32px;
+  font-size: var(--ch-text-xs);
+}
+.ch-datepicker--md .ch-datepicker__trigger {
+  padding: var(--ch-space-2) var(--ch-space-3_5);
+  min-height: 38px;
+  font-size: var(--ch-text-sm);
+}
+.ch-datepicker--lg .ch-datepicker__trigger {
+  padding: var(--ch-space-2_5) var(--ch-space-4);
+  min-height: 44px;
+  font-size: var(--ch-text-base);
+}
 
 /* Open state uses the isOpen class binding — now actually applied */
 .ch-datepicker--open .ch-datepicker__trigger,
@@ -469,37 +598,57 @@ type="button"
   outline: 2px solid var(--ch-color-primary);
   outline-offset: -1px;
 }
-.ch-datepicker--error .ch-datepicker__trigger { border-color: var(--ch-color-danger); }
+.ch-datepicker--error .ch-datepicker__trigger {
+  border-color: var(--ch-color-danger);
+}
 .ch-datepicker--error.ch-datepicker--open .ch-datepicker__trigger,
 .ch-datepicker--error .ch-datepicker__trigger:focus-within {
   outline: 2px solid var(--ch-color-danger);
   outline-offset: -1px;
 }
-.ch-datepicker--disabled .ch-datepicker__trigger { opacity: 0.5; cursor: not-allowed; }
+.ch-datepicker--disabled .ch-datepicker__trigger {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
-.ch-datepicker__icon    { color: var(--ch-color-text-subtle); flex-shrink: 0; }
-.ch-datepicker__display { flex: 1; color: var(--ch-color-text); }
-.ch-datepicker__display--placeholder { color: var(--ch-color-text-subtle); }
+.ch-datepicker__icon {
+  color: var(--ch-color-text-subtle);
+  flex-shrink: 0;
+}
+.ch-datepicker__display {
+  flex: 1;
+  color: var(--ch-color-text);
+}
+.ch-datepicker__display--placeholder {
+  color: var(--ch-color-text-subtle);
+}
 
 .ch-datepicker__clear {
-  background: none; border: none; padding: 0; cursor: pointer;
-  color: var(--ch-color-text-subtle); display: flex; align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--ch-color-text-subtle);
+  display: flex;
+  align-items: center;
   transition: color var(--ch-duration-fast) var(--ch-ease-out);
 }
-.ch-datepicker__clear:hover { color: var(--ch-color-text); }
+.ch-datepicker__clear:hover {
+  color: var(--ch-color-text);
+}
 
 /* ─── Popup ───────────────────────────────────────────────────────────────── */
 .ch-datepicker__popup {
   position: absolute;
-  left:          0;
-  background:    var(--ch-color-surface);
-  border:        1px solid var(--ch-color-border-strong);
+  left: 0;
+  background: var(--ch-color-surface);
+  border: 1px solid var(--ch-color-border-strong);
   border-radius: var(--ch-radius-md);
-  box-shadow:    var(--ch-shadow-xl);
-  z-index:       var(--ch-z-dropdown);
-  padding:       var(--ch-space-4);
-  width:         280px;
-  user-select:   none;
+  box-shadow: var(--ch-shadow-xl);
+  z-index: var(--ch-z-dropdown);
+  padding: var(--ch-space-4);
+  width: 280px;
+  user-select: none;
 }
 
 /* Opens downward (default) */
@@ -513,26 +662,30 @@ type="button"
 }
 /* ─── Navigation ──────────────────────────────────────────────────────────── */
 .ch-datepicker__nav {
-  display:         flex;
-  align-items:     center;
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom:   var(--ch-space-3);
+  margin-bottom: var(--ch-space-3);
 }
 
 .ch-datepicker__month-label {
-  font-size:   var(--ch-text-sm);
+  font-size: var(--ch-text-sm);
   font-weight: var(--ch-font-semibold);
-  color:       var(--ch-color-text);
+  color: var(--ch-color-text);
 }
 
 .ch-datepicker__nav-btn {
-  background: none; border: none; cursor: pointer;
-  color: var(--ch-color-text-subtle); display: flex; align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ch-color-text-subtle);
+  display: flex;
+  align-items: center;
   padding: var(--ch-space-1);
-    border-radius: var(--ch-radius-md);
-    transition:
-      color var(--ch-duration-fast) var(--ch-ease-out),
-      background-color var(--ch-duration-fast) var(--ch-ease-out);
+  border-radius: var(--ch-radius-md);
+  transition:
+    color var(--ch-duration-fast) var(--ch-ease-out),
+    background-color var(--ch-duration-fast) var(--ch-ease-out);
 }
 .ch-datepicker__nav-btn:hover {
   color: var(--ch-color-text);
@@ -547,26 +700,26 @@ type="button"
 }
 
 .ch-datepicker__day-header {
-  text-align:  center;
-  font-size:   var(--ch-text-xs);
+  text-align: center;
+  font-size: var(--ch-text-xs);
   font-weight: var(--ch-font-semibold);
-  color:       var(--ch-color-text-subtle);
-  padding:     var(--ch-space-1) 0;
+  color: var(--ch-color-text-subtle);
+  padding: var(--ch-space-1) 0;
   letter-spacing: var(--ch-tracking-wide);
 }
 
 /* Day cells — now <button> elements for keyboard accessibility */
 .ch-datepicker__day {
-  display:         flex;
-  align-items:     center;
+  display: flex;
+  align-items: center;
   justify-content: center;
   border-radius: var(--ch-radius-sm);
-    border: none;
-    background: none;
-  cursor:          pointer;
+  border: none;
+  background: none;
+  cursor: pointer;
   padding: 0;
-  transition:      background-color var(--ch-duration-fast) var(--ch-ease-out);
-  aspect-ratio:    1;
+  transition: background-color var(--ch-duration-fast) var(--ch-ease-out);
+  aspect-ratio: 1;
 }
 
 .ch-datepicker__day:disabled {
@@ -591,7 +744,7 @@ type="button"
 
 /* Today */
 .ch-datepicker__day--today .ch-datepicker__day-num {
-  color:       var(--ch-color-primary);
+  color: var(--ch-color-primary);
   font-weight: var(--ch-font-semibold);
 }
 /* Selected (single) / range endpoints */
@@ -599,13 +752,13 @@ type="button"
 .ch-datepicker__day--range-start,
 .ch-datepicker__day--range-end {
   background: var(--ch-color-primary);
-    border-radius: var(--ch-radius-sm);
+  border-radius: var(--ch-radius-sm);
 }
 
 .ch-datepicker__day--selected .ch-datepicker__day-num,
 .ch-datepicker__day--range-start .ch-datepicker__day-num,
 .ch-datepicker__day--range-end .ch-datepicker__day-num {
-  color: white;
+  color: var(--ch-color-primary-fg);
 }
 /* Range fill — flat edges to create a continuous band */
 .ch-datepicker__day--in-range {
@@ -621,16 +774,20 @@ type="button"
   border-radius: 0 var(--ch-radius-sm) var(--ch-radius-sm) 0;
 }
 
-.ch-datepicker__day-num { font-size: var(--ch-text-xs); color: var(--ch-color-text); line-height: 1; }
+.ch-datepicker__day-num {
+  font-size: var(--ch-text-xs);
+  color: var(--ch-color-text);
+  line-height: 1;
+}
 
 /* ─── Range hint ──────────────────────────────────────────────────────────── */
 .ch-datepicker__range-hint {
-  margin-top:  var(--ch-space-3);
-  text-align:  center;
-  font-size:   var(--ch-text-xs);
-  color:       var(--ch-color-text-subtle);
+  margin-top: var(--ch-space-3);
+  text-align: center;
+  font-size: var(--ch-text-xs);
+  color: var(--ch-color-text-subtle);
   padding-top: var(--ch-space-2);
-  border-top:  1px solid var(--ch-color-border);
+  border-top: 1px solid var(--ch-color-border);
 }
 
 /* ─── Error message ───────────────────────────────────────────────────────── */

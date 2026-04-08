@@ -64,7 +64,7 @@ const isOpen = ref(props.open)
 const triggerRef = ref<HTMLElement | null>(null)
 const popoverRef = ref<HTMLElement | null>(null)
 const actualPlacement = ref<Exclude<PopoverPlacement, 'auto'>>(
-  props.placement === 'auto' ? 'bottom' : props.placement
+  props.placement === 'auto' ? 'bottom' : props.placement,
 )
 
 // ─── Position state (imperative, not computed) ────────────────────────────────
@@ -243,9 +243,12 @@ onUnmounted(() => {
 
 // ─── Watch ────────────────────────────────────────────────────────────────────
 
-watch(() => props.open, (newVal) => {
-  isOpen.value = newVal
-})
+watch(
+  () => props.open,
+  (newVal) => {
+    isOpen.value = newVal
+  },
+)
 
 watch(isOpen, async (newVal) => {
   if (newVal) {
@@ -258,23 +261,37 @@ watch(isOpen, async (newVal) => {
 
 <template>
   <div class="ch-popover-wrapper" :class="{ 'ch-popover-wrapper--open': isOpen }">
-    <div ref="triggerRef" class="ch-popover__trigger" @click="handleTriggerClick" @mouseenter="handleTriggerEnter"
-      @mouseleave="handleTriggerLeave" @focus="handleTriggerFocus" @blur="handleTriggerBlur">
+    <div
+      ref="triggerRef"
+      class="ch-popover__trigger"
+      @click="handleTriggerClick"
+      @mouseenter="handleTriggerEnter"
+      @mouseleave="handleTriggerLeave"
+      @focus="handleTriggerFocus"
+      @blur="handleTriggerBlur"
+    >
       <slot name="trigger"></slot>
     </div>
 
     <Teleport to="body">
       <Transition :name="`ch-popover-fade--${actualPlacement}`">
-        <div v-if="isOpen" ref="popoverRef" class="ch-popover"
-          :class="[`ch-popover--${actualPlacement}`, props.class, { 'ch-popover--modal': modal }]" :style="[
+        <div
+          v-if="isOpen"
+          ref="popoverRef"
+          class="ch-popover"
+          :class="[`ch-popover--${actualPlacement}`, props.class, { 'ch-popover--modal': modal }]"
+          :style="[
             popoverStyle,
             {
               position: 'fixed',
-    top: position.top,
-    left: position.left,
-    transform: transformStyle,
-  },
-]" role="dialog" :aria-modal="modal ? 'true' : 'false'">
+              top: position.top,
+              left: position.left,
+              transform: transformStyle,
+            },
+          ]"
+          role="dialog"
+          :aria-modal="modal ? 'true' : 'false'"
+        >
           <div v-if="$slots.header" class="ch-popover__header">
             <slot name="header"></slot>
           </div>
@@ -369,7 +386,7 @@ watch(isOpen, async (newVal) => {
   content: '';
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 0.4);
+  background: var(--ch-color-overlay);
   z-index: -1;
 }
 

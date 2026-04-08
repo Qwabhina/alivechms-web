@@ -71,13 +71,13 @@ html {
  * `-moz-osx-font-smoothing: grayscale` — equivalent for Firefox on macOS.
  */
 body {
-  font-family:    var(--ch-font-sans);       /* Plus Jakarta Sans → Inter → system */
-  font-size:      var(--ch-text-base);       /* 16px default */
-  font-weight:    var(--ch-font-normal);     /* 400 */
-  line-height:    var(--ch-leading-normal);  /* 1.5 */
-  color:          var(--ch-color-text);      /* neutral-900 — near black */
-  background-color: var(--ch-color-bg);     /* white */
-  -webkit-font-smoothing:  antialiased;
+  font-family: var(--ch-font-sans); /* Plus Jakarta Sans → Inter → system */
+  font-size: var(--ch-text-base); /* 16px default */
+  font-weight: var(--ch-font-normal); /* 400 */
+  line-height: var(--ch-leading-normal); /* 1.5 */
+  color: var(--ch-color-text); /* neutral-900 — near black */
+  background-color: var(--ch-color-bg); /* white */
+  -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
@@ -92,19 +92,36 @@ body {
  * Individual heading sizes map down the type scale:
  *   h1 = 36px (page hero), h2 = 30px, h3 = 24px, h4 = 20px, h5 = 18px, h6 = 16px
  */
-h1, h2, h3, h4, h5, h6 {
-  font-family:  var(--ch-font-display);   /* Lora serif for warmth */
-  font-weight:  var(--ch-font-semibold);  /* 600 — prominent but not heavy */
-  line-height:  var(--ch-leading-tight);  /* 1.25 — tight for large text */
-  color:        var(--ch-color-text);
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--ch-font-display); /* Lora serif for warmth */
+  font-weight: var(--ch-font-semibold); /* 600 — prominent but not heavy */
+  line-height: var(--ch-leading-tight); /* 1.25 — tight for large text */
+  color: var(--ch-color-text);
 }
 
-h1 { font-size: var(--ch-text-4xl); }  /* 36px */
-h2 { font-size: var(--ch-text-3xl); }  /* 30px */
-h3 { font-size: var(--ch-text-2xl); }  /* 24px */
-h4 { font-size: var(--ch-text-xl); }   /* 20px */
-h5 { font-size: var(--ch-text-lg); }   /* 18px */
-h6 { font-size: var(--ch-text-base); } /* 16px — same as body, differentiated by weight */
+h1 {
+  font-size: var(--ch-text-4xl);
+} /* 36px */
+h2 {
+  font-size: var(--ch-text-3xl);
+} /* 30px */
+h3 {
+  font-size: var(--ch-text-2xl);
+} /* 24px */
+h4 {
+  font-size: var(--ch-text-xl);
+} /* 20px */
+h5 {
+  font-size: var(--ch-text-lg);
+} /* 18px */
+h6 {
+  font-size: var(--ch-text-base);
+} /* 16px — same as body, differentiated by weight */
 
 /* ─── Paragraphs ──────────────────────────────────────────────────────────────
  * `leading-relaxed` (1.625) is slightly more open than `leading-normal` (1.5),
@@ -112,7 +129,7 @@ h6 { font-size: var(--ch-text-base); } /* 16px — same as body, differentiated 
  */
 p {
   line-height: var(--ch-leading-relaxed);
-  color:       var(--ch-color-text);
+  color: var(--ch-color-text);
 }
 
 /* ─── Links ───────────────────────────────────────────────────────────────────
@@ -124,13 +141,13 @@ p {
  * feels natural as if the color "lands" into place.
  */
 a {
-  color:           var(--ch-color-primary);
+  color: var(--ch-color-primary);
   text-decoration: none;
   transition: color var(--ch-duration-fast) var(--ch-ease-out);
 }
 
 a:hover {
-  color:           var(--ch-color-primary-hover);
+  color: var(--ch-color-primary-hover);
   text-decoration: underline; /* reinstate underline on hover for clarity */
 }
 
@@ -140,21 +157,30 @@ a:hover {
  *
  * `small` gets `color-text-muted` to visually de-emphasize secondary info.
  */
-strong, b { font-weight: var(--ch-font-semibold); }
-em, i     { font-style: italic; }
+strong,
+b {
+  font-weight: var(--ch-font-semibold);
+}
+em,
+i {
+  font-style: italic;
+}
 
 small {
   font-size: var(--ch-text-sm);
-  color:     var(--ch-color-text-muted);
+  color: var(--ch-color-text-muted);
 }
 
 /* ─── Monospace Elements ──────────────────────────────────────────────────────
  * `font-size: 0.9em` — monospace fonts appear slightly larger than sans-serif
  * at the same point size due to wider letterforms. 0.9em compensates.
  */
-code, kbd, samp, pre {
+code,
+kbd,
+samp,
+pre {
   font-family: var(--ch-font-mono);
-  font-size:   0.9em;
+  font-size: 0.9em;
 }
 
 /* ─── Form Element Inheritance ────────────────────────────────────────────────
@@ -166,11 +192,15 @@ code, kbd, samp, pre {
  * `line-height: inherit` ensures form fields align correctly with surrounding text.
  * `color: inherit` ensures text color matches the surrounding context.
  */
-button, input, optgroup, select, textarea {
+button,
+input,
+optgroup,
+select,
+textarea {
   font-family: inherit;
-  font-size:   100%;
+  font-size: 100%;
   line-height: inherit;
-  color:       inherit;
+  color: inherit;
 }
 
 /* ─── Interactive State Cursors ───────────────────────────────────────────────
@@ -182,13 +212,16 @@ button, input, optgroup, select, textarea {
  * Disabled elements get `not-allowed` cursor and reduced opacity to
  * communicate non-interactivity both visually and via cursor affordance.
  */
-button, [role="button"] { cursor: pointer; }
+button,
+[role='button'] {
+  cursor: pointer;
+}
 
 button:disabled,
 input:disabled,
 select:disabled,
 textarea:disabled {
-  cursor:  not-allowed;
+  cursor: not-allowed;
   opacity: 0.6;
 }
 
@@ -200,10 +233,12 @@ textarea:disabled {
  * Note: We do NOT strip all styling here — only the three that conflict most.
  * We leave `color: inherit` (set above) and `font: inherit` (set above) intact.
  */
-input, textarea, select {
+input,
+textarea,
+select {
   background-color: transparent;
-  border:           none;
-  outline:          none;
+  border: none;
+  outline: none;
 }
 
 /* ─── Media Elements ──────────────────────────────────────────────────────────
@@ -214,17 +249,24 @@ input, textarea, select {
  * `max-width: 100%` prevents media from overflowing their containers.
  * `vertical-align: middle` on img gives better alignment when used inline.
  */
-img, video, svg {
-  display:   block;
+img,
+video,
+svg {
+  display: block;
   max-width: 100%;
 }
-img { vertical-align: middle; }
+img {
+  vertical-align: middle;
+}
 
 /* ─── Lists ───────────────────────────────────────────────────────────────────
  * Strip browser default bullets/numbers. Components that need list styling
  * (like ChDataList) will add it back explicitly.
  */
-ul, ol { list-style: none; }
+ul,
+ol {
+  list-style: none;
+}
 
 /* ─── Horizontal Rule ─────────────────────────────────────────────────────────
  * Replaces the default 3D-style browser HR with a clean single-pixel
@@ -233,9 +275,9 @@ ul, ol { list-style: none; }
  * adds back just the top edge.
  */
 hr {
-  border:     none;
+  border: none;
   border-top: 1px solid var(--ch-color-border);
-  margin:     var(--ch-space-4) 0;
+  margin: var(--ch-space-4) 0;
 }
 
 /* ─── Focus Ring (Accessibility) ──────────────────────────────────────────────
@@ -250,9 +292,9 @@ hr {
  * ring always matches the brand color.
  */
 :focus-visible {
-  outline:        2px solid var(--ch-color-border-focus);
+  outline: 2px solid var(--ch-color-border-focus);
   outline-offset: 2px;
-  border-radius:  var(--ch-radius-sm); /* slightly rounds the focus rectangle */
+  border-radius: var(--ch-radius-sm); /* slightly rounds the focus rectangle */
 }
 
 /* ─── Text Selection ──────────────────────────────────────────────────────────
@@ -261,8 +303,8 @@ hr {
  * with `primary-fg` (white) text for readability.
  */
 ::selection {
-  background-color: var(--ch-color-primary-muted);
-  color:            var(--ch-color-primary-fg);
+  background-color: var(--ch-color-primary); /* dark primary fill */
+  color: var(--ch-color-primary-fg); /* white — readable on dark fill */
 }
 
 /* ─── Custom Scrollbar ────────────────────────────────────────────────────────
@@ -275,7 +317,7 @@ hr {
  * `::-webkit-scrollbar-thumb`  → the draggable handle
  */
 ::-webkit-scrollbar {
-  width:  6px; /* vertical scrollbar width */
+  width: 6px; /* vertical scrollbar width */
   height: 6px; /* horizontal scrollbar height */
 }
 
@@ -284,8 +326,8 @@ hr {
 }
 
 ::-webkit-scrollbar-thumb {
-  background:    var(--ch-color-border-strong); /* medium gray handle */
-  border-radius: var(--ch-radius-full);         /* fully rounded pill shape */
+  background: var(--ch-color-border-strong); /* medium gray handle */
+  border-radius: var(--ch-radius-full); /* fully rounded pill shape */
 }
 
 /* Slightly darken the scrollbar thumb on hover for feedback */

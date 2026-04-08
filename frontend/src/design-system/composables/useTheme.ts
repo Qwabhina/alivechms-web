@@ -122,9 +122,17 @@ const brandSafeTokens = [
   '--ch-color-primary',
   '--ch-color-primary-hover',
   '--ch-color-primary-active',
+  '--ch-color-primary-dark',
   '--ch-color-primary-subtle',
   '--ch-color-primary-muted',
   '--ch-color-primary-fg',
+  '--ch-color-secondary',
+  '--ch-color-secondary-hover',
+  '--ch-color-secondary-active',
+  '--ch-color-secondary-dark',
+  '--ch-color-secondary-subtle',
+  '--ch-color-secondary-muted',
+  '--ch-color-secondary-fg',
 ]
 
 /**
@@ -140,7 +148,7 @@ const darkModeSemanticOverrides: ThemeOverrides = Object.entries(darkSemanticCol
     }
     return acc
   },
-  {} as ThemeOverrides
+  {} as ThemeOverrides,
 )
 
 /**
@@ -151,7 +159,7 @@ const darkModeSemanticOverrides: ThemeOverrides = Object.entries(darkSemanticCol
  * the composable's applyOverrides/resetTheme, because those are defined
  * inside useTheme() and aren't available at module scope. Instead we use
  * the same generateCSSVars + setProperty mechanism directly.
- * 
+ *
  * FIXED: Now preserves brand customizations (like custom primary colors)
  * when switching themes, only applying/removing dark mode-specific semantic colors.
  */
@@ -162,7 +170,7 @@ function _applyDarkMode(enabled: boolean) {
     // _initialOverrides captures what was passed to injectCSSVars() in main.ts
     // _overrides.value captures what was set via useTheme's applyOverrides()
     const preservedBrandTokens: ThemeOverrides = {}
-    brandSafeTokens.forEach(token => {
+    brandSafeTokens.forEach((token) => {
       const value = _overrides.value[token] || _initialOverrides[token]
       if (value) {
         preservedBrandTokens[token] = value
@@ -187,12 +195,12 @@ function _applyDarkMode(enabled: boolean) {
     const filteredOverrides: ThemeOverrides = { ..._overrides.value }
 
     // Remove dark mode semantic tokens
-    Object.keys(darkModeSemanticOverrides).forEach(token => {
+    Object.keys(darkModeSemanticOverrides).forEach((token) => {
       delete filteredOverrides[token]
     })
 
     // Preserve brand-safe tokens from both override sources
-    brandSafeTokens.forEach(token => {
+    brandSafeTokens.forEach((token) => {
       const value = _overrides.value[token] || _initialOverrides[token]
       if (value) {
         filteredOverrides[token] = value
@@ -236,7 +244,6 @@ _mediaQuery.addEventListener('change', (e: MediaQueryListEvent) => {
  * does NOT create duplicate listeners or redundant DOM operations.
  */
 export function useTheme() {
-
   // ─── applyOverrides ────────────────────────────────────────────────────────
   /**
    * Applies a partial theme override. Merges with any previously applied overrides.
@@ -256,7 +263,7 @@ export function useTheme() {
    */
   function applyOverrides(
     overrides: ThemeOverrides,
-    target: HTMLElement = document.documentElement
+    target: HTMLElement = document.documentElement,
   ): void {
     // Merge new overrides into the existing overrides object.
     // `{ ..._overrides.value, ...overrides }` creates a NEW object with all
@@ -293,7 +300,7 @@ export function useTheme() {
   function setVar(
     varName: string,
     value: string,
-    target: HTMLElement = document.documentElement
+    target: HTMLElement = document.documentElement,
   ): void {
     // Update the singleton overrides map for tracking
     _overrides.value[varName] = value
@@ -348,10 +355,7 @@ export function useTheme() {
    * // Previously: applyOverrides({ '--ch-color-primary': '#e11d48' })
    * removeOverride('--ch-color-primary') // reverts to indigo
    */
-  function removeOverride(
-    varName: string,
-    target: HTMLElement = document.documentElement
-  ): void {
+  function removeOverride(varName: string, target: HTMLElement = document.documentElement): void {
     // Destructure assignment to remove one key from the overrides object.
     // `const { [varName]: _, ...rest }` creates a new object `rest` that
     // contains everything EXCEPT the key `varName`. `_` is the discarded value.
@@ -378,10 +382,7 @@ export function useTheme() {
    * const { getVar } = useTheme()
    * const primaryColor = getVar('--ch-color-primary') // '#4f46e5'
    */
-  function getVar(
-    varName: string,
-    target: HTMLElement = document.documentElement
-  ): string {
+  function getVar(varName: string, target: HTMLElement = document.documentElement): string {
     // `getComputedStyle` returns the COMPUTED style (after cascade + inheritance).
     // `getPropertyValue` retrieves a CSS custom property's value.
     // `.trim()` removes any leading/trailing whitespace the browser may add.

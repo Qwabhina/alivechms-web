@@ -50,27 +50,27 @@ import ChSidebarItem from './ChSidebarItem.vue'
 
 export interface NavItem {
   /** Display label — shown in full sidebar, used as tooltip in collapsed mode */
-  label:    string
+  label: string
 
   /**
    * Route path this item links to.
    * For group headers (items with `children`), this is optional —
    * clicking the group just expands/collapses it, not navigates.
    */
-  to?:      string
+  to?: string
 
   /**
    * Icon component — a Vue component (e.g. from lucide-vue-next).
    * Usage: `import { UsersIcon } from 'lucide-vue-next'`
    */
-  icon?:    Component
+  icon?: Component
 
   /**
    * Optional badge value — shown as a count bubble on the right.
    * Common uses: unread message counts, pending approval counts.
    * Pass a number; if 0 or undefined, no badge is shown.
    */
-  badge?:   number
+  badge?: number
 
   /**
    * Nested child navigation items.
@@ -106,9 +106,9 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  collapsed:  false,
+  collapsed: false,
   mobileOpen: false,
-  brandName:  'App',
+  brandName: 'App',
 })
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
@@ -176,11 +176,7 @@ function handleMobileClose() {
     Uses Vue Transition for fade animation.
   -->
   <Transition name="ch-overlay">
-    <div
-      v-if="mobileOpen"
-      class="ch-sidebar-overlay"
-      @click="handleMobileClose"
-    />
+    <div v-if="mobileOpen" class="ch-sidebar-overlay" @click="handleMobileClose" />
   </Transition>
 
   <!-- ─── Sidebar Container ──────────────────────────────────────────────────── -->
@@ -200,12 +196,7 @@ function handleMobileClose() {
         <div class="ch-sidebar__logo">
           <!-- Custom logo slot or fallback -->
           <slot name="brand">
-            <img
-              v-if="logo"
-              :src="logo"
-              :alt="brandName"
-              class="ch-sidebar__logo-img"
-            />
+            <img v-if="logo" :src="logo" :alt="brandName" class="ch-sidebar__logo-img" />
             <!-- Initials fallback when no logo provided -->
             <span v-else class="ch-sidebar__logo-fallback">
               {{ brandInitials }}
@@ -231,7 +222,7 @@ function handleMobileClose() {
           fill="none"
           :style="{
             transform: collapsed ? 'rotate(180deg)' : 'none',
-            transition: 'transform var(--ch-duration-normal) var(--ch-ease-out)'
+            transition: 'transform var(--ch-duration-normal) var(--ch-ease-out)',
           }"
         >
           <path
@@ -274,22 +265,22 @@ function handleMobileClose() {
 /* ─── Sidebar Container ───────────────────────────────────────────────────── */
 .ch-sidebar {
   /* Fixed position so it stays in place while content scrolls */
-  position:   fixed;
-  top:        0;
-  left:       0;
-  bottom:     0;
-  z-index:    var(--ch-z-sticky);  /* above page content, below modals */
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: var(--ch-z-sticky); /* above page content, below modals */
 
   /* Width animates on collapse */
-  width:      240px;
+  width: 240px;
   transition: width var(--ch-duration-slow) var(--ch-ease-out);
 
-  display:       flex;
+  display: flex;
   flex-direction: column;
-  overflow:      hidden;            /* clip content during width animation */
+  overflow: hidden; /* clip content during width animation */
 
   background-color: var(--ch-color-surface);
-  border-right:     1px solid var(--ch-color-border-strong);
+  border-right: 1px solid var(--ch-color-border-strong);
 }
 
 /* Collapsed: shrink to icon-only width */
@@ -305,12 +296,12 @@ function handleMobileClose() {
  */
 @media (max-width: 768px) {
   .ch-sidebar {
-    transform:  translateX(-100%);
+    transform: translateX(-100%);
     transition:
       transform var(--ch-duration-slow) var(--ch-ease-out),
-      width     var(--ch-duration-slow) var(--ch-ease-out);
-    width:     240px !important; /* always full-width on mobile — no collapse */
-    z-index:   var(--ch-z-modal); /* above the overlay on mobile */
+      width var(--ch-duration-slow) var(--ch-ease-out);
+    width: 240px !important; /* always full-width on mobile — no collapse */
+    z-index: var(--ch-z-modal); /* above the overlay on mobile */
     box-shadow: var(--ch-shadow-xl);
   }
 
@@ -326,11 +317,11 @@ function handleMobileClose() {
 
 /* ─── Mobile Overlay ──────────────────────────────────────────────────────── */
 .ch-sidebar-overlay {
-  position:   fixed;
-  inset:      0;                        /* top: 0, right: 0, bottom: 0, left: 0 */
-  background: rgb(0 0 0 / 0.4);        /* 40% black scrim */
-  z-index:    var(--ch-z-overlay);     /* below sidebar, above content */
-  backdrop-filter: blur(2px);          /* subtle blur of page content behind overlay */
+  position: fixed;
+  inset: 0; /* top: 0, right: 0, bottom: 0, left: 0 */
+  background: var(--ch-color-overlay);
+  z-index: var(--ch-z-overlay); /* below sidebar, above content */
+  backdrop-filter: blur(2px); /* subtle blur of page content behind overlay */
 }
 
 /* Overlay fade transition (Vue <Transition> names) */
@@ -345,84 +336,84 @@ function handleMobileClose() {
 
 /* ─── Header ──────────────────────────────────────────────────────────────── */
 .ch-sidebar__header {
-  display:     flex;
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  padding:     var(--ch-space-4) var(--ch-space-3);
-  flex-shrink: 0;   /* never compress the header */
-  min-height:  64px;
+  padding: var(--ch-space-4) var(--ch-space-3);
+  flex-shrink: 0; /* never compress the header */
+  min-height: 64px;
 }
 
 /* ─── Brand / Logo area ───────────────────────────────────────────────────── */
 .ch-sidebar__brand {
-  display:     flex;
+  display: flex;
   align-items: center;
-  gap:         var(--ch-space-2_5);
-  overflow:    hidden; /* clip during collapse animation */
-  min-width:   0;
+  gap: var(--ch-space-2_5);
+  overflow: hidden; /* clip during collapse animation */
+  min-width: 0;
 }
 
 .ch-sidebar__logo {
   flex-shrink: 0;
-  width:       32px;
-  height:      32px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--ch-radius-lg);
-  overflow:    hidden;
+  overflow: hidden;
 }
 
 .ch-sidebar__logo-img {
-  width:  100%;
+  width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
 /* Fallback colored square with a letter when no logo is provided */
 .ch-sidebar__logo-fallback {
-  display:          flex;
-  align-items:      center;
-  justify-content:  center;
-  width:            100%;
-  height:           100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
   background-color: var(--ch-color-primary);
-  color:            var(--ch-color-primary-fg);
-  font-size:        var(--ch-text-base);
-  font-weight:      var(--ch-font-bold);
-  font-family:      var(--ch-font-display);
+  color: var(--ch-color-primary-fg);
+  font-size: var(--ch-text-base);
+  font-weight: var(--ch-font-bold);
+  font-family: var(--ch-font-display);
 }
 
 .ch-sidebar__church-name {
-  font-size:    var(--ch-text-sm);
-  font-weight:  var(--ch-font-semibold);
-  color:        var(--ch-color-text);
-  overflow:     hidden;
+  font-size: var(--ch-text-sm);
+  font-weight: var(--ch-font-semibold);
+  color: var(--ch-color-text);
+  overflow: hidden;
   text-overflow: ellipsis;
-  white-space:  nowrap;
-  font-family:  var(--ch-font-display);
+  white-space: nowrap;
+  font-family: var(--ch-font-display);
 }
 
 /* ─── Collapse Toggle ─────────────────────────────────────────────────────── */
 .ch-sidebar__collapse-btn {
   flex-shrink: 0;
-  display:     flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width:       28px;
-  height:      28px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--ch-radius-md);
-  border:      1px solid var(--ch-color-border);
-  background:  transparent;
-  color:       var(--ch-color-text-muted);
-  cursor:      pointer;
+  border: 1px solid var(--ch-color-border);
+  background: transparent;
+  color: var(--ch-color-text-muted);
+  cursor: pointer;
   transition:
     background-color var(--ch-duration-fast) var(--ch-ease-out),
-    color            var(--ch-duration-fast) var(--ch-ease-out),
-    border-color     var(--ch-duration-fast) var(--ch-ease-out);
+    color var(--ch-duration-fast) var(--ch-ease-out),
+    border-color var(--ch-duration-fast) var(--ch-ease-out);
 }
 
 .ch-sidebar__collapse-btn:hover {
   background-color: var(--ch-color-bg-muted);
-  color:            var(--ch-color-text);
-  border-color:     var(--ch-color-border-strong);
+  color: var(--ch-color-text);
+  border-color: var(--ch-color-border-strong);
 }
 
 /* In collapsed mode, the toggle button gets centered */
@@ -437,18 +428,18 @@ function handleMobileClose() {
 
 /* ─── Divider Rule ────────────────────────────────────────────────────────── */
 .ch-sidebar__rule {
-  height:     1px;
-  margin:     0 var(--ch-space-3);
+  height: 1px;
+  margin: 0 var(--ch-space-3);
   background: var(--ch-color-border);
   flex-shrink: 0;
 }
 
 /* ─── Scrollable Nav Area ─────────────────────────────────────────────────── */
 .ch-sidebar__scroll {
-  flex:       1;             /* fill remaining vertical space */
-  overflow-y: auto;          /* scroll if content overflows */
-  overflow-x: hidden;        /* never scroll horizontally */
-  padding:    var(--ch-space-2) var(--ch-space-2);
+  flex: 1; /* fill remaining vertical space */
+  overflow-y: auto; /* scroll if content overflows */
+  overflow-x: hidden; /* never scroll horizontally */
+  padding: var(--ch-space-2) var(--ch-space-2);
 
   /* Thin scrollbar in the nav */
   scrollbar-width: thin;
@@ -457,11 +448,11 @@ function handleMobileClose() {
 
 .ch-sidebar__nav {
   list-style: none;
-  margin:     0;
-  padding:   0;
-  display:   flex;
+  margin: 0;
+  padding: 0;
+  display: flex;
   flex-direction: column;
-  gap:       var(--ch-space-1);
+  gap: var(--ch-space-1);
 }
 
 /* ─── Footer ──────────────────────────────────────────────────────────────── */

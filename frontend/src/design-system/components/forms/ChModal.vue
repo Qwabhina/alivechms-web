@@ -71,7 +71,7 @@ interface Props {
    * Hides the default × close button in the header.
    * Use when the footer provides explicit Cancel / Close actions.
    */
-  hideClose?:  boolean
+  hideClose?: boolean
   /**
    * When true, the modal body gets its own scrollbar and the header/footer
    * stay fixed. Recommended for long-form content. Default: true.
@@ -80,9 +80,9 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  size:       'md',
+  size: 'md',
   persistent: false,
-  hideClose:  false,
+  hideClose: false,
   scrollable: true,
 })
 
@@ -107,9 +107,7 @@ const isShaking = ref(false)
  * Wire the subtitle to aria-describedby so screen readers announce it as
  * context for the dialog, not just as incidental body text.
  */
-const ariaDescribedby = computed(() =>
-  props.subtitle ? subtitleId : undefined,
-)
+const ariaDescribedby = computed(() => (props.subtitle ? subtitleId : undefined))
 
 // ─── Focus trap ───────────────────────────────────────────────────────────────
 
@@ -123,9 +121,7 @@ const FOCUSABLE = [
 ].join(',')
 
 function getFocusable(): HTMLElement[] {
-  return panelRef.value
-    ? Array.from(panelRef.value.querySelectorAll<HTMLElement>(FOCUSABLE))
-    : []
+  return panelRef.value ? Array.from(panelRef.value.querySelectorAll<HTMLElement>(FOCUSABLE)) : []
 }
 
 function trapFocus(e: KeyboardEvent) {
@@ -137,9 +133,15 @@ function trapFocus(e: KeyboardEvent) {
   const last = focusable[focusable.length - 1]!
 
   if (e.shiftKey) {
-    if (document.activeElement === first) { e.preventDefault(); last.focus() }
+    if (document.activeElement === first) {
+      e.preventDefault()
+      last.focus()
+    }
   } else {
-    if (document.activeElement === last)  { e.preventDefault(); first.focus() }
+    if (document.activeElement === last) {
+      e.preventDefault()
+      first.focus()
+    }
   }
 }
 
@@ -187,9 +189,7 @@ function onOpen() {
   // Capture the focused element for restoration on close.
   // Guard against document.body — it's not a meaningful restore target.
   const active = document.activeElement
-  triggerEl.value = active instanceof HTMLElement && active !== document.body
-    ? active
-    : null
+  triggerEl.value = active instanceof HTMLElement && active !== document.body ? active : null
 
   lockScroll()
   document.addEventListener('keydown', trapFocus)
@@ -209,9 +209,13 @@ function onClose() {
 }
 
 // immediate: true handles modals that mount with open: true
-watch(() => props.open, (isOpen) => {
-  isOpen ? onOpen() : onClose()
-}, { immediate: true })
+watch(
+  () => props.open,
+  (isOpen) => {
+    isOpen ? onOpen() : onClose()
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   // When open: true on mount, the immediate watch fires before panelRef
@@ -241,7 +245,9 @@ function onBackdropClick() {
     isShaking.value = false
     nextTick(() => {
       isShaking.value = true
-      setTimeout(() => { isShaking.value = false }, 400)
+      setTimeout(() => {
+        isShaking.value = false
+      }, 400)
     })
   } else {
     close()
@@ -262,21 +268,22 @@ function onBackdropClick() {
       enter-from nor leave-to are ever applied.
     -->
     <Transition name="ch-modal-fade">
-      <div
-        v-if="open"
-class="ch-modal-backdrop"
-        @click.self="onBackdropClick"
->
+      <div v-if="open" class="ch-modal-backdrop" @click.self="onBackdropClick">
         <div
-ref="panelRef" class="ch-modal"
-:class="[
-          `ch-modal--${size}`,
-          {
-            'ch-modal--scrollable': scrollable,
-            'ch-modal--shaking': isShaking,
-          },
-        ]" role="dialog" aria-modal="true" :aria-labelledby="title ? titleId : undefined"
-          :aria-describedby="ariaDescribedby">
+          ref="panelRef"
+          class="ch-modal"
+          :class="[
+            `ch-modal--${size}`,
+            {
+              'ch-modal--scrollable': scrollable,
+              'ch-modal--shaking': isShaking,
+            },
+          ]"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="title ? titleId : undefined"
+          :aria-describedby="ariaDescribedby"
+        >
           <!-- ── Header ── -->
           <div class="ch-modal__header">
             <div class="ch-modal__heading">
@@ -286,9 +293,20 @@ ref="panelRef" class="ch-modal"
             <div v-if="$slots.header" class="ch-modal__header-extra">
               <slot name="header" />
             </div>
-            <button v-if="!hideClose" type="button" class="ch-modal__close" aria-label="Close dialog" @click="close">
+            <button
+              v-if="!hideClose"
+              type="button"
+              class="ch-modal__close"
+              aria-label="Close dialog"
+              @click="close"
+            >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-                <path d="M13.5 4.5l-9 9M4.5 4.5l9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                <path
+                  d="M13.5 4.5l-9 9M4.5 4.5l9 9"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
               </svg>
             </button>
           </div>
@@ -311,39 +329,39 @@ ref="panelRef" class="ch-modal"
 <style scoped>
 /* ─── Backdrop ────────────────────────────────────────────────────────────── */
 .ch-modal-backdrop {
-  position:        fixed;
-  inset:           0;
-  background:      rgb(0 0 0 / 0.5);
-  display:         flex;
-  align-items:     center;
+  position: fixed;
+  inset: 0;
+  background: var(--ch-color-overlay);
+  display: flex;
+  align-items: center;
   justify-content: center;
-  z-index:         var(--ch-z-modal);
-  padding:         var(--ch-space-4);
-  overflow-y:      auto;
+  z-index: var(--ch-z-modal);
+  padding: var(--ch-space-4);
+  overflow-y: auto;
 }
 
 /* ─── Panel ───────────────────────────────────────────────────────────────── */
 .ch-modal {
-  background:     var(--ch-color-surface);
-  border:         1px solid var(--ch-color-border-strong);
+  background: var(--ch-color-surface);
+  border: 1px solid var(--ch-color-border-strong);
   border-radius: var(--ch-radius-lg);
-  box-shadow:     var(--ch-shadow-2xl);
-  width:          100%;
-  display:        flex;
+  box-shadow: var(--ch-shadow-2xl);
+  width: 100%;
+  display: flex;
   flex-direction: column;
   /*
       100dvh (dynamic viewport height) accounts for retractable browser chrome on
       mobile — address bars and nav bars make 100vh taller than the visible area.
       The 100vh fallback serves browsers that don't yet support dvh units.
     */
-    max-height: calc(100vh - var(--ch-space-8));
-    max-height: calc(100dvh - var(--ch-space-8));
-  position:       relative;
+  max-height: calc(100vh - var(--ch-space-8));
+  max-height: calc(100dvh - var(--ch-space-8));
+  position: relative;
   /*
       overflow: hidden clips slot content to the rounded corners.
       The footer needs no border-radius of its own as a result.
     */
-    overflow: hidden;
+  overflow: hidden;
 }
 
 /* ─── Sizes ───────────────────────────────────────────────────────────────── */
@@ -362,19 +380,22 @@ ref="panelRef" class="ch-modal"
 .ch-modal--lg {
   max-width: 768px;
 }
-.ch-modal--xl   { max-width: 1024px; }
-.ch-modal--full { max-width: calc(100vw - var(--ch-space-8)); }
+.ch-modal--xl {
+  max-width: 1024px;
+}
+.ch-modal--full {
+  max-width: calc(100vw - var(--ch-space-8));
+}
 
 /* ─── Scrollable body ─────────────────────────────────────────────────────── */
 .ch-modal--scrollable .ch-modal__body {
   overflow-y: auto;
-  flex:       1 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
 }
 
 /* ─── Persistent shake ────────────────────────────────────────────────────── */
 @keyframes ch-modal-shake {
-
   0%,
   100% {
     transform: translateX(0);
@@ -402,50 +423,55 @@ ref="panelRef" class="ch-modal"
 }
 /* ─── Header ──────────────────────────────────────────────────────────────── */
 .ch-modal__header {
-  display:         flex;
-  align-items:     flex-start;
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  gap:             var(--ch-space-4);
-  padding:         var(--ch-space-6) var(--ch-space-6) var(--ch-space-4);
-  border-bottom:   1px solid var(--ch-color-border-strong);
-  flex-shrink:     0;
+  gap: var(--ch-space-4);
+  padding: var(--ch-space-6) var(--ch-space-6) var(--ch-space-4);
+  border-bottom: 1px solid var(--ch-color-border-strong);
+  flex-shrink: 0;
 }
 
-.ch-modal__heading { flex: 1; min-width: 0; }
+.ch-modal__heading {
+  flex: 1;
+  min-width: 0;
+}
 
 .ch-modal__title {
   font-family: var(--ch-font-display);
-    font-size: var(--ch-text-xl);
-    font-weight: var(--ch-font-semibold);
-    color: var(--ch-color-text);
-    line-height: var(--ch-leading-tight);
-    margin: 0;
+  font-size: var(--ch-text-xl);
+  font-weight: var(--ch-font-semibold);
+  color: var(--ch-color-text);
+  line-height: var(--ch-leading-tight);
+  margin: 0;
 }
 
 .ch-modal__subtitle {
   font-size: var(--ch-text-sm);
-    color: var(--ch-color-text-muted);
-    margin: var(--ch-space-1) 0 0;
+  color: var(--ch-color-text-muted);
+  margin: var(--ch-space-1) 0 0;
 }
 
-.ch-modal__header-extra { flex-shrink: 0; }
+.ch-modal__header-extra {
+  flex-shrink: 0;
+}
 
 .ch-modal__close {
-  flex-shrink:   0;
-  background:    none;
-  border:        none;
-  cursor:        pointer;
-  color:         var(--ch-color-text-subtle);
-  padding:       var(--ch-space-1);
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ch-color-text-subtle);
+  padding: var(--ch-space-1);
   border-radius: var(--ch-radius-md);
-  display:       flex;
-  align-items:   center;
+  display: flex;
+  align-items: center;
   transition:
-    color            var(--ch-duration-fast) var(--ch-ease-out),
+    color var(--ch-duration-fast) var(--ch-ease-out),
     background-color var(--ch-duration-fast) var(--ch-ease-out);
 }
 .ch-modal__close:hover {
-  color:            var(--ch-color-text);
+  color: var(--ch-color-text);
   background-color: var(--ch-color-bg-muted);
 }
 .ch-modal__close:focus-visible {
@@ -456,22 +482,22 @@ ref="panelRef" class="ch-modal"
 /* ─── Body ────────────────────────────────────────────────────────────────── */
 .ch-modal__body {
   padding: var(--ch-space-6);
-    flex-shrink: 0;
-    color: var(--ch-color-text);
-    font-size: var(--ch-text-sm);
-    line-height: var(--ch-leading-relaxed);
+  flex-shrink: 0;
+  color: var(--ch-color-text);
+  font-size: var(--ch-text-sm);
+  line-height: var(--ch-leading-relaxed);
 }
 
 /* ─── Footer ──────────────────────────────────────────────────────────────── */
 .ch-modal__footer {
-  display:         flex;
-  align-items:     center;
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap:             var(--ch-space-2);
-  padding:         var(--ch-space-4) var(--ch-space-6);
-  border-top:      1px solid var(--ch-color-border-strong);
+  gap: var(--ch-space-2);
+  padding: var(--ch-space-4) var(--ch-space-6);
+  border-top: 1px solid var(--ch-color-border-strong);
   background: var(--ch-color-bg-subtle);
-  flex-shrink:     0;
+  flex-shrink: 0;
   /* No border-radius needed — overflow: hidden on .ch-modal clips the corners */
 }
 
@@ -506,7 +532,7 @@ ref="panelRef" class="ch-modal"
 }
 .ch-modal-fade-enter-from .ch-modal,
 .ch-modal-fade-leave-to .ch-modal {
-  opacity:   0;
+  opacity: 0;
   transform: scale(0.95) translateY(8px);
 }
 </style>
