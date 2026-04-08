@@ -194,6 +194,7 @@ export { default as ChBreadcrumb } from './components/navigation/ChBreadcrumb.vu
 export { default as ChBreadcrumbItem } from './components/navigation/ChBreadcrumbItem.vue'
 export { default as ChCommandPalette } from './components/navigation/ChCommandPalette.vue'
 
+export type { NavItem } from './components/navigation/ChSidebar.vue'
 export type { TopbarUser } from './components/navigation/ChTopbar.vue'
 export type { Command, CommandGroup } from './components/navigation/ChCommandPalette.vue'
 

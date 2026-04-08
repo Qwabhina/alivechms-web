@@ -201,6 +201,33 @@
   100% { transform: translateX(200%)  scaleX(0.5); } /* off-screen right */
 }
 
+/* ─── Shake Animation ─────────────────────────────────────────────────────────
+ * Used for shaking elements as an error indicator.
+ * 
+ */
+
+@keyframes ch-animate-shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-5px);
+  }
+
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(5px);
+  }
+}
 /* ─── Utility Classes ─────────────────────────────────────────────────────────
  * Pre-built animation classes you can apply directly in templates.
  * These use `both` fill mode so the element starts in its `from` state.
@@ -243,4 +270,8 @@
     var(--ch-duration-normal)
     var(--ch-ease-out)
     both;
+}
+
+.ch-animate-shake {
+  animation: shake 0.5s;
 }

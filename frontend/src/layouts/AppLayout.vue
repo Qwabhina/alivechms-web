@@ -8,8 +8,7 @@ import { computed } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
-import { ChSidebar } from '@/design-system'
-import type { NavItem } from '@/design-system/components/navigation/ChSidebar.vue'
+import { ChSidebar, type NavItem } from '@/design-system'
 import {
   LayoutDashboard,
   Users,

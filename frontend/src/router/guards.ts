@@ -19,7 +19,6 @@ export function registerGuards(router: Router) {
     if (to.meta.requiresAuth && !auth.isAuthenticated) {
       return {
         path: '/login',
-        query: { redirect: to.fullPath },
       }
     }
 
