@@ -51,8 +51,17 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://www.onechurch.com',
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
   build: {
     outDir: '../public',
-    emptyOutDir: true
+    emptyOutDir: true,
   }
 })
