@@ -1,168 +1,273 @@
 <script setup lang="ts">
 /**
- * @component ChSidebarItem
- * @description A single navigation entry with support for leaf items, groups, and collapsed mode.
+ * @component ChSidebar
+ * @path /frontend/src/design-system/components/navigation/ChSidebar.vue
+ * @description Main sidebar navigation component with collapsible layout.
+ *
+ * The ChSidebar provides a complete navigation sidebar with:
+ * - Header with logo/brand and collapse toggle
+ * - Scrollable navigation area with nav items
+ * - Footer for user actions
+ * - Mobile-responsive behavior with overlay
+ * - Collapsible to icon-only mode
+ *
+ * ─── Props ────────────────────────────────────────────────────────────────────
+ * Pass navItems as an array of NavItem objects. The component handles
+ * rendering ChSidebarItem components for each nav item.
+ *
+ * ─── Mobile Behavior ──────────────────────────────────────────────────────────
+ * On mobile (< 768px), the sidebar slides in from the left as an overlay.
+ * Clicking outside or navigating closes the mobile drawer.
+ *
+ * ─── Collapse Mode ────────────────────────────────────────────────────────────
+ * When collapsed, the sidebar shrinks to 64px width (icon-only). Labels,
+ * badges, and group children are hidden. Tooltips appear on hover.
+ *
+ * @example Basic usage
+ * <ChSidebar
+ *   :nav-items="navigationItems"
+ *   :current-route="route.path"
+ *   :collapsed="sidebarCollapsed"
+ *   :mobile-open="sidebarMobileOpen"
+ *   @navigate="handleNavigate"
+ *   @collapse-toggle="toggleSidebar"
+ *   @mobile-close="closeMobileSidebar"
+ * >
+ *   <template #brand>
+ *     <img src="/logo.png" alt="Company" />
+ *   </template>
+ *   <template #footer>
+ *     <button @click="logout">Logout</button>
+ *   </template>
+ * </ChSidebar>
  */
 
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { Component } from 'vue'
+import ChSidebarItem from './ChSidebarItem.vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface NavItem {
-  label: string
-  to?: string
-  icon?: Component  // 👈 now type-safe
-  badge?: number
+  /** Display label — shown in full sidebar, used as tooltip in collapsed mode */
+  label:    string
+
+  /**
+   * Route path this item links to.
+   * For group headers (items with `children`), this is optional —
+   * clicking the group just expands/collapses it, not navigates.
+   */
+  to?:      string
+
+  /**
+   * Icon component — a Vue component (e.g. from lucide-vue-next).
+   * Usage: `import { UsersIcon } from 'lucide-vue-next'`
+   */
+  icon?:    Component
+
+  /**
+   * Optional badge value — shown as a count bubble on the right.
+   * Common uses: unread message counts, pending approval counts.
+   * Pass a number; if 0 or undefined, no badge is shown.
+   */
+  badge?:   number
+
+  /**
+   * Nested child navigation items.
+   * If provided, this item renders as a collapsible group.
+   * Groups cannot have a `to` route themselves.
+   */
   children?: NavItem[]
+
+  /** When true, this item is permanently disabled — no hover, no click */
   disabled?: boolean
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  item: NavItem
+  /** Array of navigation items to render */
+  navItems: NavItem[]
+
+  /** Current route path for active state detection */
   currentRoute: string
-  collapsed?:    boolean
-  depth?: number
+
+  /** Whether the sidebar is in collapsed (icon-only) mode */
+  collapsed?: boolean
+
+  /** Whether the mobile sidebar overlay is open */
+  mobileOpen?: boolean
+
+  /** Custom logo image URL */
+  logo?: string
+
+  /** Church/company name to display in header */
+  brandName?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  collapsed: false,
-  depth: 0,
+  collapsed:  false,
+  mobileOpen: false,
+  brandName:  'App',
 })
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
 
 const emit = defineEmits<{
+  /** Fired when a nav item is clicked — parent handles navigation */
   navigate: [to: string]
+
+  /** Fired when the collapse toggle button is clicked */
+  'collapse-toggle': []
+
+  /** Fired when the mobile overlay should close (user clicked outside) */
+  'mobile-close': []
 }>()
-
-// ─── State ────────────────────────────────────────────────────────────────────
-
-const isOpen = ref(hasActiveChild())
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
-const isGroup = computed(() => !!props.item.children?.length)
+/** Generates initials from brand name for logo fallback */
+const brandInitials = computed(() => {
+  const name = props.brandName?.trim()
+  if (!name) return 'A'
 
-const isActive = computed(() =>
-  !!props.item.to && props.currentRoute === props.item.to
-)
+  const parts = name.split(/\s+/)
+  const firstPart = parts[0]
 
-const isChildActive = computed(() =>
-  isGroup.value && checkChildActive(props.item.children ?? [])
-)
+  if (!firstPart) return 'A'
 
-const isGroupHighlighted = computed(() =>
-  isGroup.value && (isOpen.value || isChildActive.value)
-)
-
-const showBadge = computed(() =>
-  typeof props.item.badge === 'number' && props.item.badge > 0
-)
-
-const badgeLabel = computed(() => {
-  const n = props.item.badge ?? 0
-  return n > 99 ? '99+' : String(n)
-})
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function checkChildActive(children: NavItem[]): boolean {
-  return children.some(child =>
-    child.to === props.currentRoute ||
-    (child.children ? checkChildActive(child.children) : false)
-  )
-}
-
-function hasActiveChild(): boolean {
-  if (!props.item.children) return false
-  return checkChildActive(props.item.children)
-}
-
-// ─── Watcher – auto‑expand group when a child becomes active ─────────────────
-
-watch(() => props.currentRoute, () => {
-  if (isGroup.value && !isOpen.value && hasActiveChild()) {
-    isOpen.value = true
+  if (parts.length === 1) {
+    return firstPart[0]?.toUpperCase() ?? 'A'
   }
+
+  const lastPart = parts[parts.length - 1]
+  const firstChar = firstPart[0] ?? ''
+  const lastChar = lastPart?.[0] ?? ''
+
+  return (firstChar + lastChar).toUpperCase() || 'A'
 })
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 
-function handleClick() {
-  if (props.item.disabled) return
-
-  if (isGroup.value) {
-    if (!props.collapsed) {
-      isOpen.value = !isOpen.value
-    }
-    return
+/** Handles navigation from child ChSidebarItem components */
+function handleNavigate(to: string) {
+  emit('navigate', to)
+  // Auto-close mobile sidebar after navigation
+  if (props.mobileOpen) {
+    emit('mobile-close')
   }
+}
 
-  if (props.item.to) {
-    emit('navigate', props.item.to)
-  }
+/** Handles collapse toggle button click */
+function handleCollapseToggle() {
+  emit('collapse-toggle')
+}
+
+/** Handles mobile overlay click (close sidebar) */
+function handleMobileClose() {
+  emit('mobile-close')
 }
 </script>
 
 <template>
-  <li class="ch-sidebar-item-wrapper">
-    <!--
-      Use a button for all items; leaf items get role="link" for accessibility.
-      Depth padding is handled via a CSS custom property.
-    -->
-    <button :class="[
-  'ch-sidebar-item',
-  {
-    'ch-sidebar-item--active': isActive,
-    'ch-sidebar-item--group-active': isGroupHighlighted,
-    'ch-sidebar-item--collapsed': collapsed,
-    'ch-sidebar-item--disabled': item.disabled,
-    'ch-sidebar-item--depth': depth > 0,
-  }
-]"
-:style="{ '--depth': depth }" :aria-current="isActive ? 'page' : undefined"
-      :aria-expanded="isGroup ? isOpen : undefined" :disabled="item.disabled"
-      :data-tooltip="collapsed ? item.label : undefined" :role="item.to && !isGroup ? 'link' : undefined" type="button"
-      @click="handleClick">
-      <!-- Icon – type‑safe component rendering -->
-      <span v-if="item.icon" class="ch-sidebar-item__icon" aria-hidden="true">
-        <component :is="item.icon" :size="18" />
-      </span>
-      <span v-else class="ch-sidebar-item__dot" aria-hidden="true" />
+  <!--
+    ─── Mobile Overlay ─────────────────────────────────────────────────────────
+    Only renders when mobile sidebar is open. Clicking it closes the sidebar.
+    Uses Vue Transition for fade animation.
+  -->
+  <Transition name="ch-overlay">
+    <div
+      v-if="mobileOpen"
+      class="ch-sidebar-overlay"
+      @click="handleMobileClose"
+    />
+  </Transition>
 
-      <span class="ch-sidebar-item__label">{{ item.label }}</span>
+  <!-- ─── Sidebar Container ──────────────────────────────────────────────────── -->
+  <aside
+    class="ch-sidebar"
+    :class="{
+      'ch-sidebar--collapsed': collapsed,
+      'ch-sidebar--open': mobileOpen,
+    }"
+    role="navigation"
+    aria-label="Main navigation"
+  >
+    <!-- ─── Header ──────────────────────────────────────────────────────────── -->
+    <div class="ch-sidebar__header">
+      <!-- Brand / Logo area -->
+      <div class="ch-sidebar__brand">
+        <div class="ch-sidebar__logo">
+          <!-- Custom logo slot or fallback -->
+          <slot name="brand">
+            <img
+              v-if="logo"
+              :src="logo"
+              :alt="brandName"
+              class="ch-sidebar__logo-img"
+            />
+            <!-- Initials fallback when no logo provided -->
+            <span v-else class="ch-sidebar__logo-fallback">
+              {{ brandInitials }}
+            </span>
+          </slot>
+        </div>
 
-      <span
-v-if="showBadge && !isGroup" class="ch-sidebar-item__badge" :aria-label="`${item.badge} pending`">
-        {{ badgeLabel }}
-      </span>
+        <!-- Brand name — hidden in collapsed mode -->
+        <span class="ch-sidebar__church-name">{{ brandName }}</span>
+      </div>
 
-      <span v-if="isGroup" :class="['ch-sidebar-item__chevron', { 'ch-sidebar-item__chevron--open': isOpen }]"
-        aria-hidden="true"
+      <!-- Collapse toggle button — hidden on mobile -->
+      <button
+        class="ch-sidebar__collapse-btn"
+        :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        type="button"
+        @click="handleCollapseToggle"
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-            stroke-linejoin="round" />
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          fill="none"
+          :style="{
+            transform: collapsed ? 'rotate(180deg)' : 'none',
+            transition: 'transform var(--ch-duration-normal) var(--ch-ease-out)'
+          }"
+        >
+          <path
+            d="M9 2L4 7l5 5"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
         </svg>
-      </span>
-    </button>
+      </button>
+    </div>
 
-    <!--
-      Children list – animated with max‑height transition.
-      The class .ch-sidebar-item__children--open toggles the visible height.
-    -->
-    <ul
-v-if="isGroup && !collapsed"
-      :class="['ch-sidebar-item__children', { 'ch-sidebar-item__children--open': isOpen }]" role="group">
-      <ChSidebarItem
-v-for="child in item.children" :key="child.label" :item="child" :current-route="currentRoute"
-        :collapsed="collapsed"
-:depth="depth + 1" @navigate="emit('navigate', $event)" />
-    </ul>
-  </li>
+    <!-- Visual separator -->
+    <hr class="ch-sidebar__rule" />
+
+    <!-- ─── Scrollable Navigation Area ──────────────────────────────────────── -->
+    <div class="ch-sidebar__scroll">
+      <ul class="ch-sidebar__nav">
+        <ChSidebarItem
+          v-for="item in navItems"
+          :key="item.label"
+          :item="item"
+          :current-route="currentRoute"
+          :collapsed="collapsed"
+          @navigate="handleNavigate"
+        />
+      </ul>
+    </div>
+
+    <!-- ─── Footer ──────────────────────────────────────────────────────────── -->
+    <!-- Custom footer content (e.g. logout button, user info) -->
+    <div v-if="$slots.footer" class="ch-sidebar__footer">
+      <slot name="footer" />
+    </div>
+  </aside>
 </template>
 
 <style scoped>
@@ -180,10 +285,10 @@ v-for="child in item.children" :key="child.label" :item="child" :current-route="
   transition: width var(--ch-duration-slow) var(--ch-ease-out);
 
   display:       flex;
-  flex-direction:column;
+  flex-direction: column;
   overflow:      hidden;            /* clip content during width animation */
 
-  background-color: var(--ch-color-surface); /* stark solid white */
+  background-color: var(--ch-color-surface);
   border-right:     1px solid var(--ch-color-border-strong);
 }
 
@@ -290,7 +395,7 @@ v-for="child in item.children" :key="child.label" :item="child" :current-route="
   font-weight:  var(--ch-font-semibold);
   color:        var(--ch-color-text);
   overflow:     hidden;
-  text-overflow:ellipsis;
+  text-overflow: ellipsis;
   white-space:  nowrap;
   font-family:  var(--ch-font-display);
 }
@@ -330,25 +435,6 @@ v-for="child in item.children" :key="child.label" :item="child" :current-route="
   display: none; /* hide brand entirely in collapsed mode */
 }
 
-/* ─── Children list with smooth animation ─────────────────────────────────── */
-.ch-sidebar-item__children {
-  overflow: hidden;
-  max-height: 0;
-  transition: max-height 0.3s ease-out;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ch-sidebar-item__children--open {
-  max-height: 1000px;
-  /* safe upper bound; adjust if groups can be larger */
-}
-
-/* ─── Depth padding using CSS custom property ────────────────────────────── */
-.ch-sidebar-item--depth {
-  padding-left: calc(var(--ch-space-4) + (var(--depth) * 12px));
-}
 /* ─── Divider Rule ────────────────────────────────────────────────────────── */
 .ch-sidebar__rule {
   height:     1px;
@@ -378,58 +464,9 @@ v-for="child in item.children" :key="child.label" :item="child" :current-route="
   gap:       var(--ch-space-1);
 }
 
-/* When section labels are present, adjust spacing for better visual hierarchy */
-.ch-sidebar__nav--has-labels {
-  padding-top: var(--ch-space-1);
-}
-
-/* ─── Sections ────────────────────────────────────────────────────────────── */
-.ch-sidebar__section {
-  display:       flex;
-  flex-direction:column;
-  gap:           var(--ch-space-0_5);
-}
-
-/* Add top spacing between sections (not before the first one) */
-.ch-sidebar__section + .ch-sidebar__section {
-  margin-top: var(--ch-space-4);
-}
-
-.ch-sidebar__section-label {
-  padding:     var(--ch-space-1) var(--ch-space-3);
-  font-size:   0.625rem;               /* 10px — very small uppercase label */
-  font-weight: var(--ch-font-semibold);
-  letter-spacing: var(--ch-tracking-wider);
-  text-transform: uppercase;
-  color:       var(--ch-color-text-subtle);
-}
-
-.ch-sidebar__section-items {
-  list-style:    none;
-  margin:        0;
-  padding:       0;
-  display:       flex;
-  flex-direction:column;
-  gap:           var(--ch-space-0_5);
-}
-
-/* ─── Spacer (pushes footer down) ────────────────────────────────────────── */
-.ch-sidebar__spacer {
-  flex: 1;
-}
-
 /* ─── Footer ──────────────────────────────────────────────────────────────── */
 .ch-sidebar__footer {
   flex-shrink: 0;
-  padding:     var(--ch-space-2);
-}
-
-/* ─── User area ───────────────────────────────────────────────────────────── */
-.ch-sidebar__user {
-  flex-shrink: 0;
-}
-
-.ch-sidebar__user-content {
-  padding: var(--ch-space-3) var(--ch-space-2);
+  padding: var(--ch-space-2);
 }
 </style>

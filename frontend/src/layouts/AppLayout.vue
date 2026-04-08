@@ -8,6 +8,8 @@ import { computed } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
+import { ChSidebar } from '@/design-system'
+import type { NavItem } from '@/design-system/components/navigation/ChSidebar.vue'
 import {
   LayoutDashboard,
   Users,
@@ -15,7 +17,6 @@ import {
   Settings,
   LogOut,
 } from 'lucide-vue-next'
-import type { NavItem } from '@/design-system/components/navigation/ChSidebarItem.vue'
 
 const auth = useAuthStore()
 const ui = useUiStore()
@@ -36,12 +37,13 @@ const navItems = computed<NavItem[]>(() => {
   if (auth.hasPermission('finances.view') || auth.hasPermission('contributions.view')) {
     items.push({
       label: 'Finance',
-      icon: Wallet,
-      children: [
-        ...(auth.hasPermission('finances.view')
-          ? [{ label: 'Contributions', to: '/finance/contributions' }]
-          : []),
-      ],
+      // icon: Wallet,
+      children: (auth.hasPermission('finances.view')
+        ? [{ label: 'Contributions', to: '/finance/contributions', icon: Wallet },
+        { label: 'Expenses', to: '/finance/expenses' },
+        { label: 'Financial Reports', to: '/finance/reports' },
+        { label: 'Pledges', to: '/finance/pledges' }]
+        : []),
     })
   }
   if (auth.hasPermission('settings.view')) {
@@ -81,73 +83,11 @@ const currentRoute = computed(() => route.path)
 <template>
   <div class="app-layout" :class="{ 'app-layout--collapsed': ui.sidebarCollapsed }">
 
-    <!-- Mobile overlay (from design system CSS pattern) -->
-    <Transition name="ch-overlay">
-      <div
-        v-if="ui.sidebarMobileOpen"
-        class="ch-sidebar-overlay"
-        @click="ui.closeMobileSidebar()"
-      />
-    </Transition>
-
     <!-- ── Sidebar ────────────────────────────────────────────────────── -->
-    <!--
-      ChSidebar is the design system's sidebar shell. We use its CSS classes
-      directly since it exposes its structure; ChSidebarItem handles each nav entry.
-    -->
-    <aside
-      class="ch-sidebar"
-      :class="{
-        'ch-sidebar--collapsed': ui.sidebarCollapsed,
-        'ch-sidebar--open': ui.sidebarMobileOpen,
-      }"
-    >
-      <!-- Header: brand + collapse toggle -->
-      <div class="ch-sidebar__header">
-        <div class="ch-sidebar__brand">
-          <div class="ch-sidebar__logo">
-            <span class="ch-sidebar__logo-fallback">A</span>
-          </div>
-          <span class="ch-sidebar__church-name">AliveChMS</span>
-        </div>
-
-        <button
-          class="ch-sidebar__collapse-btn"
-          :aria-label="ui.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-          type="button"
-          @click="ui.toggleSidebar()"
-        >
-          <!-- Chevron rotates with CSS transform via collapsed class -->
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
-            fill="none"
-            :style="{ transform: ui.sidebarCollapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }"
-          >
-            <path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
-      </div>
-
-      <hr class="ch-sidebar__rule" />
-
-      <!-- Scrollable nav area -->
-      <div class="ch-sidebar__scroll">
-        <ul class="ch-sidebar__nav" role="navigation" aria-label="Main navigation">
-          <ChSidebarItem
-            v-for="item in navItems"
-            :key="item.label"
-            :item="item"
-            :current-route="currentRoute"
-            :collapsed="ui.sidebarCollapsed"
-            @navigate="handleNavigate"
-          />
-        </ul>
-      </div>
-
-      <!-- Footer: logout -->
-      <div class="ch-sidebar__footer">
+    <ChSidebar :nav-items="navItems" :current-route="currentRoute" :collapsed="ui.sidebarCollapsed"
+      :mobile-open="ui.sidebarMobileOpen" brand-name="AliveChMS" @navigate="handleNavigate"
+      @collapse-toggle="ui.toggleSidebar()" @mobile-close="ui.closeMobileSidebar()">
+      <template #footer>
         <button
           class="ch-sidebar-item ch-sidebar-item--logout"
           :class="{ 'ch-sidebar-item--collapsed': ui.sidebarCollapsed }"
@@ -160,8 +100,8 @@ const currentRoute = computed(() => route.path)
           </span>
           <span class="ch-sidebar-item__label">Logout</span>
         </button>
-      </div>
-    </aside>
+      </template>
+    </ChSidebar>
 
     <!-- ── Main content area ───────────────────────────────────────────── -->
     <div class="app-main">
