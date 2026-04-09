@@ -1,73 +1,124 @@
 /**
  * @file tokens/index.ts
  * @path /frontend/src/design-system/tokens/index.ts
- * @description The token injection system — the bridge between TypeScript
- * token definitions and live CSS custom properties in the browser.
+ * @description The token system — the bridge between TypeScript token definitions
+ * and live CSS custom properties in the browser.
  *
  * ─── How the system works ────────────────────────────────────────────────────
- * 1. You define token values in `colors.ts`, `typography.ts`, `spacing.ts`.
- * 2. This file merges all tokens into one flat object.
- * 3. Each key is prefixed with `--ch-` to create a CSS custom property name.
- * 4. Those properties are written to `document.documentElement` (the <html>
- *    element), making them available to ALL CSS on the page as `:root` vars.
- * 5. Every component's scoped CSS uses `var(--ch-*)` to read these values.
+ * 1. Token values are defined in `colors.ts`, `typography.ts`, `spacing.ts`.
+ * 2. This file merges them and provides utilities to generate CSS custom props.
+ * 3. Each token key is prefixed with `--ch-` when written to the DOM.
+ * 4. `useTheme.ts` automatically initializes all tokens at module load time —
+ *    you do NOT need to call any initialization function in `main.ts`.
  *
- * ─── Why CSS custom properties instead of just importing TS values? ──────────
- * CSS custom properties are:
- *   - Inherited — child elements automatically get parent values
- *   - Overridable — you can scope a theme to any DOM subtree
- *   - Runtime-changeable — you can update them with JS without re-rendering
- *   - Framework-agnostic — work in Vue SFCs, plain CSS, and inline styles
+ * ─── Initialization ──────────────────────────────────────────────────────────
+ * CSS tokens are initialized automatically when the module is first imported.
+ * `useTheme.ts` runs at module-load time, reads the user's dark mode preference
+ * (localStorage → OS), and writes all tokens to `document.documentElement`.
  *
- * ─── Usage in your app's entry point (main.ts) ───────────────────────────────
- * @example
- * import { injectCSSVars } from '@/design-system/tokens'
+ * In `main.ts`, you only need to import the global styles:
+ *
+ *   import '@/design-system/styles/base.css'
+ *
+ * ─── Startup brand overrides ─────────────────────────────────────────────────
+ * To apply a brand color at app startup (e.g. from a config file), use
+ * `useTheme().applyOverrides()`. Unlike the old `injectCSSVars()` approach,
+ * overrides set this way survive dark mode toggles and `applyTheme()` calls.
+ *
+ * @example Apply a startup brand color
+ * // main.ts
+ * import { useTheme } from '@/design-system'
  * import '@/design-system/styles/base.css'
- * import '@/design-system/styles/animations.css'
  *
- * Writes all --ch-* vars to document.documentElement (:root)
- * injectCSSVars()
+ * const { applyOverrides } = useTheme()
+ * applyOverrides({ '--ch-color-primary': appConfig.brandColor })
  *
- * Or with a brand color override:
- * injectCSSVars({ '--ch-color-primary': '#e11d48' })
+ * @example Switch to a named theme post-login
+ * import { useTheme, defineTheme } from '@/design-system'
+ * const { applyTheme } = useTheme()
+ * applyTheme(defineTheme({ primary900: church.brandColor }, church.name))
+ *
+ * @example SSR — generate a static CSS string (no DOM required)
+ * import { generateStyleTag } from '@/design-system'
+ * const css = generateStyleTag(':root')
+ * useHead({ style: [{ innerHTML: css }] })
  */
 
-// Re-export all token objects and types so consumers can import from
-// one place: `import { palette, semanticColors, spacing } from '@/design-system/tokens'`
-export { palette, semanticColors }      from './colors'
-export { typography }                   from './typography'
+// ─── Color token re-exports ───────────────────────────────────────────────────
+// Everything you need to work with the color system:
+//
+//   palette              — raw hex values (the paint swatches)
+//   semanticColors       — default light-mode semantic token map
+//   darkSemanticColors   — default dark-mode semantic token map
+//   createSemanticColors — factory: build a light semantic map from any palette
+//   createDarkSemanticColors — factory: build a dark semantic map from any palette
+//   defaultTheme         — the built-in Theme object (light + dark co-located)
+//   defineTheme          — create a custom Theme by merging palette overrides
+//
+// Types:
+//   SemanticColor        — union of all valid semantic token key names
+//   Theme                — a portable { name, palette, light, dark } bundle
+//   Palette              — record type matching all palette keys (for overrides)
+export {
+  palette,
+  semanticColors,
+  darkSemanticColors,
+  createSemanticColors,
+  createDarkSemanticColors,
+  defaultTheme,
+  defineTheme,
+} from './colors'
+
+export type { SemanticColor, Theme, Palette } from './colors'
+
+// ─── Other token re-exports ───────────────────────────────────────────────────
+export { typography } from './typography'
 export { spacing, radius, shadows, transitions, zIndex } from './spacing'
 
-// Also re-export all the TypeScript types for use in consuming code
-export type { SemanticColor }                         from './colors'
-export type { TypographyToken }                       from './typography'
-export type { SpacingToken, RadiusToken, ShadowToken,
-              TransitionToken, ZIndexToken }          from './spacing'
+export type { TypographyToken } from './typography'
+export type {
+  SpacingToken,
+  RadiusToken,
+  ShadowToken,
+  TransitionToken,
+  ZIndexToken,
+} from './spacing'
 
-// Import all token maps so we can merge them in the functions below
-import { semanticColors }  from './colors'
-import { typography }      from './typography'
+// ─── Internal imports (for CSS var utilities below) ───────────────────────────
+import { semanticColors } from './colors'
+import { typography } from './typography'
 import { spacing, radius, shadows, transitions, zIndex } from './spacing'
 
+// ─── ThemeOverrides ───────────────────────────────────────────────────────────
 /**
  * A map of CSS custom property names to string values.
- * Used as the shape for both generated vars and user overrides.
+ * Used as the shape for both generated vars and caller-supplied overrides.
  *
- * Keys must be full CSS var names including the `--ch-` prefix.
+ * Keys must include the `--ch-` prefix, though helper functions such as
+ * `generateCSSVars` and `injectCSSVars` also accept bare token keys
+ * (e.g. `'color-primary'`) and normalize them automatically.
+ *
  * @example
  * const overrides: ThemeOverrides = {
  *   '--ch-color-primary': '#e11d48',
- *   '--ch-font-sans': '"Nunito", sans-serif',
+ *   '--ch-font-sans':     '"Nunito", sans-serif',
  * }
  */
 export type ThemeOverrides = Partial<Record<string, string>>
 
-// Short constant for the CSS custom property namespace used across the system
+// ─── Internal constants ───────────────────────────────────────────────────────
+
+/** The `--ch-` namespace prefix applied to every design token. */
 const CSS_VAR_PREFIX = '--ch-'
 
-// Merge all token objects once at module init to avoid re-creating this map
-// on every call to `generateCSSVars`. Tokens are static values imported
-// from the token modules above, so this is safe and slightly more efficient.
+/**
+ * All design tokens merged into one flat object, built once at module init.
+ *
+ * `semanticColors` provides the LIGHT MODE color defaults. At runtime,
+ * `useTheme.ts` passes the active theme's color map as overrides to
+ * `generateCSSVars`, so those overrides take precedence over these defaults.
+ * Spacing, typography, radius, etc. are always static and come from here.
+ */
 const ALL_TOKENS: Record<string, string> = {
   ...semanticColors,
   ...typography,
@@ -78,16 +129,15 @@ const ALL_TOKENS: Record<string, string> = {
   ...zIndex,
 }
 
+// ─── normalizeOverrides ───────────────────────────────────────────────────────
 /**
- * Normalize override keys so callers may supply either full CSS var names
- * (e.g. `--ch-color-primary`) or token keys (e.g. `color-primary`).
- * Returns a map keyed by full CSS custom property names.
+ * Normalizes override keys so callers can provide either full CSS var names
+ * (`--ch-color-primary`) or bare token keys (`color-primary`).
+ * Returns a record keyed by fully-prefixed CSS custom property names.
  */
 function normalizeOverrides(overrides: ThemeOverrides = {}): Record<string, string> {
   const normalized: Record<string, string> = {}
   for (const [k, v] of Object.entries(overrides)) {
-    // If caller passed a full custom property name, use it as-is.
-    // Otherwise prefix the token key with `--ch-` so both forms are allowed.
     const name = k.startsWith('--') ? k : `${CSS_VAR_PREFIX}${k.replace(/^--?/, '')}`
     normalized[name] = v as string
   }
@@ -96,120 +146,93 @@ function normalizeOverrides(overrides: ThemeOverrides = {}): Record<string, stri
 
 // ─── generateCSSVars ──────────────────────────────────────────────────────────
 /**
- * Merges all token objects into a single flat map of CSS custom properties.
+ * Merges all token definitions into a single flat map of CSS custom properties.
  *
- * Each token key is prefixed with `--ch-` to namespace it, preventing
- * collisions with other CSS variables in the project.
+ * Each token key is prefixed with `--ch-`. When `overrides` are provided those
+ * values take precedence over the defaults in `ALL_TOKENS` — this is how
+ * `useTheme.ts` applies theme or dark-mode color vars on top of static defaults.
  *
- * If `overrides` are provided, those values take precedence over the
- * default token values. This is how runtime theming works.
- *
- * @param overrides - Optional map of `--ch-*` var names to override values
- * @returns A flat `Record<string, string>` of all CSS custom properties
+ * @param overrides - Optional `--ch-*` overrides (bare token keys accepted too)
+ * @returns A flat `Record<string, string>` ready to be written to the DOM
  *
  * @example
  * const vars = generateCSSVars({ '--ch-color-primary': '#e11d48' })
- * { '--ch-color-primary': '#e11d48', '--ch-text-sm': '0.875rem', ... }
+ * // → { '--ch-color-primary': '#e11d48', '--ch-text-sm': '0.875rem', ... }
  */
 export function generateCSSVars(overrides: ThemeOverrides = {}): Record<string, string> {
-  // Allow callers to provide either token-style keys (`color-primary`) or
-  // full CSS custom property names (`--ch-color-primary`). Normalize once.
   const normalizedOverrides = normalizeOverrides(overrides)
-
   const vars: Record<string, string> = {}
-
   for (const [key, value] of Object.entries(ALL_TOKENS)) {
     const varName = `${CSS_VAR_PREFIX}${key}`
     vars[varName] = normalizedOverrides[varName] ?? (value as string)
   }
-
   return vars
 }
 
-// ─── Shared initial overrides ─────────────────────────────────────────────────
-/**
- * Stores the overrides passed to `injectCSSVars()` so that other modules
- * (e.g. `useTheme.ts`) can read the brand customizations that were set at
- * app startup. This bridges the gap between the one-time CSS injection in
- * `main.ts` and the reactive theme system in `useTheme`.
- *
- * Mutable by design — `injectCSSVars()` writes to it, `useTheme` reads from it.
- */
-export let _initialOverrides: Record<string, string> = {}
-
 // ─── injectCSSVars ────────────────────────────────────────────────────────────
 /**
- * Writes all CSS custom properties directly onto a DOM element's inline style.
+ * Applies a specific set of CSS custom property overrides to a DOM element.
  *
- * By default this targets `document.documentElement` (the `<html>` element),
- * which is equivalent to setting them on `:root` in CSS.
+ * ⚠ **Changed behavior (v2)**: This function no longer writes the full default
+ * token set to the DOM. The complete token set — including correct dark/light
+ * mode colors — is now initialized automatically by `useTheme.ts` at module
+ * load time. Rewriting all tokens here would overwrite those dark mode colors
+ * with the light-mode snapshot baked into `ALL_TOKENS`.
  *
- * Call this **once** in `main.ts` during app initialization, before mounting Vue.
- * This ensures all `--ch-*` vars exist before any component renders.
+ * Calling this with **no arguments is a no-op** — initialization is handled
+ * automatically and requires nothing from `main.ts`.
  *
- * @param overrides - Optional theme overrides (will replace default token values)
- * @param target    - DOM element to inject onto (default: `<html>`)
+ * Only the keys you supply are written. Overrides applied this way do NOT
+ * survive dark mode toggles or `applyTheme()` calls, because `useTheme.ts`
+ * has no knowledge of them. For persistent overrides, use
+ * `useTheme().applyOverrides()` instead.
  *
- * @example
- * main.ts
- * import { injectCSSVars } from '@/design-system/tokens'
- * injectCSSVars() // uses defaults
+ * @param overrides - Specific CSS properties to set (default: `{}`)
+ * @param target    - DOM element to write to (default: `<html>` = `:root`)
  *
- * With a brand override:
- * injectCSSVars({ '--ch-color-primary': '#e11d48' })
+ * @example One-shot startup override (NOT dark-mode-persistent)
+ * injectCSSVars({ '--ch-color-primary': startupConfig.brandColor })
  *
- * Scoped to a specific element (e.g. for per-tenant theming):
- * const tenantRoot = document.getElementById('tenant-app')!
- * injectCSSVars({ '--ch-color-primary': tenant.brandColor }, tenantRoot)
+ * @example Preferred: persistent override via useTheme
+ * import { useTheme } from '@/design-system'
+ * const { applyOverrides } = useTheme()
+ * applyOverrides({ '--ch-color-primary': church.brandColor })
+ * // ↑ Survives dark mode toggles and applyTheme() calls automatically.
  */
 export function injectCSSVars(
   overrides: ThemeOverrides = {},
-  target: HTMLElement = document.documentElement // defaults to <html> = :root
+  target: HTMLElement = document.documentElement,
 ): void {
-  // Normalize and store overrides so `useTheme` and other modules can read
-  // the same shape (`--ch-*` keys) regardless of how callers supplied keys.
   const normalized = normalizeOverrides(overrides)
-  _initialOverrides = { ...normalized }
-
-  // Generate the full flat map of CSS var name → value
-  const vars = generateCSSVars(normalized)
-
-  // Write each property onto the target element's inline style.
-  // `style.setProperty` is the correct API for CSS custom properties
-  // (you can't use `el.style['--ch-color-primary']` directly).
-  for (const [prop, value] of Object.entries(vars)) {
+  // Write ONLY the provided overrides — do NOT write the full default token set.
+  // The full token set (with correct dark/light mode colors) is owned by
+  // useTheme.ts which already ran at module load time.
+  for (const [prop, value] of Object.entries(normalized)) {
     target.style.setProperty(prop, value)
   }
 }
 
 // ─── generateStyleTag ─────────────────────────────────────────────────────────
 /**
- * Generates a complete CSS string (not a DOM node) with all vars under
- * a given selector. Useful for:
- *   - SSR environments (Nuxt) where `document` doesn't exist at build time
- *   - Injecting a `<style>` tag server-side into the HTML response
- *   - Generating a CSS file with default tokens for static deployment
+ * Generates a complete CSS string with all token vars under a given selector.
+ * Produces a pure string — does NOT touch the DOM. Designed for SSR environments
+ * where `document` doesn't exist at build time.
  *
- * @param selector - The CSS selector to wrap vars in (default: `':root'`)
+ * @param selector  - CSS selector wrapping the declarations (default: `':root'`)
  * @param overrides - Optional overrides applied before generating
- * @returns A CSS string like `:root { --ch-color-primary: #4f46e5; ... }`
+ * @returns A CSS string like `:root { --ch-color-primary: #00026d; ... }`
  *
- * @example
- * In a Nuxt plugin or server middleware:
+ * @example Nuxt plugin / server middleware
  * const css = generateStyleTag(':root')
  * useHead({ style: [{ innerHTML: css }] })
  *
- * For a scoped theme on a specific element:
- * const css = generateStyleTag('[data-theme="dark"]', darkOverrides)
+ * @example Scoped theme on a specific selector
+ * const css = generateStyleTag('[data-theme="forest"]', forestOverrides)
  */
 export function generateStyleTag(selector = ':root', overrides: ThemeOverrides = {}): string {
   const vars = generateCSSVars(overrides)
-
-  // Build the CSS declaration block, one line per property
   const declarations = Object.entries(vars)
-    .map(([prop, value]) => `  ${prop}: ${value};`) // indent for readability
+    .map(([prop, value]) => `  ${prop}: ${value};`)
     .join('\n')
-
-  // Wrap in the selector and return as a complete CSS rule
   return `${selector} {\n${declarations}\n}`
 }

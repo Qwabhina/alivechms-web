@@ -14,32 +14,40 @@
  * import { ChButton, ChCard, ChBadge } from '@/design-system'
  *
  * ─── Usage in main.ts (app entry point) ──────────────────────────────────────
+ * Token initialization is automatic — `useTheme` runs at module load time and
+ * writes all CSS vars (respecting the user's saved dark mode preference).
+ * You only need to import the global styles:
+ *
  * @example
  * main.ts
- * import { createApp }    from 'vue'
- * import { injectCSSVars } from '@/design-system'
+ * import { createApp } from 'vue'
  * import '@/design-system/styles/base.css'
  * import App from './App.vue'
  *
- * Initialize CSS vars BEFORE mounting the app.
- * This ensures all --ch-* variables exist before any component renders.
- * injectCSSVars()
- *
  * createApp(App).mount('#app')
+ *
+ * For startup brand overrides, use useTheme — overrides set this way survive
+ * dark mode toggles and applyTheme() calls automatically:
+ * import { useTheme } from '@/design-system'
+ * const { applyOverrides } = useTheme()
+ * applyOverrides({ '--ch-color-primary': appConfig.brandColor })
  *
  * ─── Styles to import manually in main.ts ────────────────────────────────────
  * This CSS file cannot be auto-imported — it must be explicitly imported
- * in your app's entry point (main.ts) after calling injectCSSVars():
+ * in your app's entry point (main.ts):
  *
  *   import '@/design-system/styles/base.css' → global reset + element defaults + animations
  *
  * ─── Note on styles/tokens.css ───────────────────────────────────────────────
  * The original plan included a `styles/tokens.css` file for static CSS custom
  * property declarations. This was intentionally replaced by the JS-based
- * `injectCSSVars()` approach (see tokens/index.ts) because it provides:
- *   - Runtime override support (per-church branding, dark mode)
+ * theming system (see `useTheme.ts` and `tokens/index.ts`) because it provides:
+ *   - Automatic initialization — no setup code needed in main.ts
+ *   - Dark mode awareness built in (reads localStorage + OS preference)
+ *   - Named theme support via `defineTheme()` and `applyTheme()`
+ *   - Runtime override support (per-church branding, post-login)
  *   - TypeScript type safety on token names
- *   - A single source of truth (tokens are defined once in TS, not duplicated in CSS)
+ *   - A single source of truth (tokens defined once in TS, not duplicated in CSS)
  * If you need a static CSS file (e.g. for email templates), use `generateStyleTag()`
  * from tokens/index.ts to generate the CSS string at build time.
  * Add this to `vite.config.ts` so you can use `@/design-system` as the import path:
@@ -56,18 +64,23 @@
 /**
  * ─── Token System ─────────────────────────────────────────────────────────────
  * Re-exports everything from the token system:
- * - `palette`         — raw color values
- * - `semanticColors`  — intent-mapped color tokens
- * - `typography`      — font, size, weight, spacing tokens
- * - `spacing`         — space scale
- * - `radius`          — border-radius scale
- * - `shadows`         — elevation shadows
- * - `transitions`     — duration + easing tokens
- * - `zIndex`          — stacking layer tokens
- * - `generateCSSVars` — utility to get all vars as a plain object
- * - `injectCSSVars`   — utility to write vars to a DOM element
- * - `generateStyleTag`— utility to generate a CSS string (for SSR)
- * - All TypeScript token types
+ * - `palette`                  — raw primitive color values
+ * - `semanticColors`           — default light-mode semantic token map
+ * - `darkSemanticColors`       — default dark-mode semantic token map
+ * - `defaultTheme`             — built-in Theme object (light + dark co-located)
+ * - `defineTheme`              — create a custom Theme from palette overrides
+ * - `createSemanticColors`     — factory: build a light semantic map from any palette
+ * - `createDarkSemanticColors` — factory: build a dark semantic map from any palette
+ * - `typography`               — font, size, weight, line-height, tracking tokens
+ * - `spacing`                  — space scale (4px base grid)
+ * - `radius`                   — border-radius scale
+ * - `shadows`                  — elevation shadows (dark-mode aware via color-shadow)
+ * - `transitions`              — duration + easing tokens
+ * - `zIndex`                   — stacking layer tokens
+ * - `generateCSSVars`          — utility: all vars as a plain object
+ * - `injectCSSVars`            — utility: apply specific overrides to a DOM element
+ * - `generateStyleTag`         — utility: generate a full CSS string for SSR
+ * - Types: `Theme`, `Palette`, `SemanticColor`, `SpacingToken`, and more
  */
 export * from './tokens'
 
@@ -93,7 +106,10 @@ export { default as ChIcon } from './components/core/ChIcon.vue'
 // Core component types
 export type { TooltipPlacement } from './components/core/ChTooltip.vue'
 export type { PopoverTrigger, PopoverPlacement } from './components/core/ChPopover.vue'
-export type { DropdownItem as ChDropdownItemType, DropdownItemVariant } from './components/core/ChDropdown.vue'
+export type {
+  DropdownItem as ChDropdownItemType,
+  DropdownItemVariant,
+} from './components/core/ChDropdown.vue'
 export type { IconSize, IconColor, IconName } from './components/core/ChIcon.vue'
 
 // ─── Composables ────────────────────
@@ -106,10 +122,20 @@ export { useTableExport, type ExportFormat } from './composables/useTableExport'
 export { useToast } from './composables/useToast'
 export { useModal } from './composables/useModal'
 export { useStepperWizard } from './composables/useStepperWizard'
-export { useValidation, useForm, validators, type ValidationRule, type ValidatorFn, type UseValidationOptions } from './composables/useValidation'
-export { useLocalStorage, useSessionStorage, type UseLocalStorageOptions, type StorageInfo } from './composables/useLocalStorage'
-export { darkSemanticColors } from './tokens/colors'
-
+export {
+  useValidation,
+  useForm,
+  validators,
+  type ValidationRule,
+  type ValidatorFn,
+  type UseValidationOptions,
+} from './composables/useValidation'
+export {
+  useLocalStorage,
+  useSessionStorage,
+  type UseLocalStorageOptions,
+  type StorageInfo,
+} from './composables/useLocalStorage'
 // ─── Utility Functions ─────────────────────────────────────────────────────────
 /**
  * General utilities for string, number, date, array, DOM, validation, color, and function operations.
@@ -120,70 +146,70 @@ export { groupBy as useGrouping } from './utils'
 export * as dateUtils from './utils/date'
 // Re-export commonly used date utils at top level for convenience
 export {
-   parse,
-   format,
-   formatISO,
-   formatTime,
-   formatRelative,
-   formatDistance,
-   isToday,
-   isYesterday,
-   isTomorrow,
-   isSameDay,
-   isSameMonth,
-   isSameYear,
-   isPast,
-   isFuture,
-   isAfter,
-   isBefore,
-   isWithinRange,
-   addDays,
-   addMonths,
-   addYears,
-   addHours,
-   addMinutes,
-   addSeconds,
-   subDays,
-   subMonths,
-   subYears,
-   startOfDay,
-   endOfDay,
-   startOfMonth,
-   endOfMonth,
-   startOfYear,
-   endOfYear,
-   startOfWeek,
-   endOfWeek,
-   differenceInMilliseconds,
-   differenceInSeconds,
-   differenceInMinutes,
-   differenceInHours,
-   differenceInDays,
-   differenceInMonths,
-   differenceInYears,
-   getDate,
-   getDay,
-   getMonth,
-   getYear,
-   getHours,
-   getMinutes,
-   getSeconds,
-   getMilliseconds,
-   setDate,
-   setDay,
-   setMonth,
-   setYear,
-   setHours,
-   setMinutes,
-   setSeconds,
-   now,
-   timestamp,
-   isLeapYear,
-   getDaysInMonth,
-   getDaysInYear,
-   clamp,
-   closestTo,
-   areIntervalsOverlapping,
+  parse,
+  format,
+  formatISO,
+  formatTime,
+  formatRelative,
+  formatDistance,
+  isToday,
+  isYesterday,
+  isTomorrow,
+  isSameDay,
+  isSameMonth,
+  isSameYear,
+  isPast,
+  isFuture,
+  isAfter,
+  isBefore,
+  isWithinRange,
+  addDays,
+  addMonths,
+  addYears,
+  addHours,
+  addMinutes,
+  addSeconds,
+  subDays,
+  subMonths,
+  subYears,
+  startOfDay,
+  endOfDay,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+  startOfWeek,
+  endOfWeek,
+  differenceInMilliseconds,
+  differenceInSeconds,
+  differenceInMinutes,
+  differenceInHours,
+  differenceInDays,
+  differenceInMonths,
+  differenceInYears,
+  getDate,
+  getDay,
+  getMonth,
+  getYear,
+  getHours,
+  getMinutes,
+  getSeconds,
+  getMilliseconds,
+  setDate,
+  setDay,
+  setMonth,
+  setYear,
+  setHours,
+  setMinutes,
+  setSeconds,
+  now,
+  timestamp,
+  isLeapYear,
+  getDaysInMonth,
+  getDaysInYear,
+  clamp,
+  closestTo,
+  areIntervalsOverlapping,
 } from './utils/date'
 // ── Navigation ────────────────────────────────────────────────────────────────
 export { default as ChSidebar } from './components/navigation/ChSidebar.vue'

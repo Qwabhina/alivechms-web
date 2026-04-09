@@ -61,7 +61,6 @@ declare global {
   const useModel: typeof import('vue').useModel
   const useSlots: typeof import('vue').useSlots
   const useTemplateRef: typeof import('vue').useTemplateRef
-  const user: typeof import('@/design-system').user
   const userid: typeof import('@/design-system').userid
   const watch: typeof import('vue').watch
   const watchEffect: typeof import('vue').watchEffect

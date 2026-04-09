@@ -8,106 +8,135 @@
  * app startup, `useTheme` allows you to change theme values AFTER the app
  * is running — without reloading the page.
  *
+ * ─── Layered override model ───────────────────────────────────────────────────
+ * All CSS variable state is managed in two distinct layers, applied in priority:
+ *
+ *   1. **Theme vars** (`_themeVars`) — derived from the active `Theme` object's
+ *      light or dark semantic map. Updated atomically when `applyTheme()` is
+ *      called or dark mode is toggled.
+ *
+ *   2. **User overrides** (`_userOverrides`) — set explicitly via `applyOverrides()`
+ *      or `setVar()`. These survive theme switches and dark mode toggles.
+ *      Think: per-church brand colors applied after login.
+ *
+ * Final applied CSS = theme vars merged with user overrides (user wins).
+ *
+ * This replaces the previous `brandSafeTokens` allowlist approach, which was
+ * fragile (hardcoded keys) and didn't scale to arbitrary theme structures.
+ *
  * ─── Use cases ───────────────────────────────────────────────────────────────
- * 1. **Per-church branding**: Each church using the system has its own brand
- *    color. When they log in, load their `primaryColor` from the database and
- *    call `applyOverrides({ '--ch-color-primary': church.primaryColor })`.
+ * 1. **Per-church branding**: Load `church.primaryColor` after login and call
+ *    `applyOverrides({ '--ch-color-primary': church.primaryColor })`.
+ *    The override survives dark mode toggles and theme switches.
  *
- * 2. **Dark mode toggle**: Define a dark theme override map and apply it
- *    when the user switches to dark mode.
+ * 2. **Named themes**: Pre-build theme objects with `defineTheme()` and switch
+ *    between them with `applyTheme()`. Dark mode automatically uses the active
+ *    theme's dark semantic map.
  *
- * 3. **Accessibility modes**: High contrast mode, large text mode, etc.
+ * 3. **Dark mode toggle**: Call `toggleDarkMode()`. The active theme's `.dark`
+ *    semantic map is applied automatically — no manual color mapping needed.
  *
- * 4. **Tenant customization**: If this SaaS serves multiple organizations,
- *    each can have a scoped theme on their section of the app.
+ * 4. **Tenant customization**: Combine `applyTheme(tenantTheme)` for structure
+ *    and `applyOverrides({ '--ch-color-primary': tenant.brandColor })` for
+ *    per-church accent colors on top.
  *
  * ─── How it works ────────────────────────────────────────────────────────────
- * CSS custom properties on `document.documentElement` (`:root`) cascade
- * to every element on the page. By changing them at runtime with
- * `element.style.setProperty('--ch-color-primary', '#e11d48')`, every
- * component that uses `var(--ch-color-primary)` in its CSS instantly
- * re-renders with the new color — no Vue re-render cycle needed.
+ * CSS custom properties on `document.documentElement` (`:root`) cascade to every
+ * element on the page. `element.style.setProperty('--ch-color-primary', '#00026d')`
+ * makes every component using `var(--ch-color-primary)` update instantly —
+ * no Vue re-render cycle needed.
  *
- * ─── Singleton pattern ───────────────────────────────────────────────────────
- * `_overrides` is declared OUTSIDE the composable function. This makes it
- * a module-level singleton — all components calling `useTheme()` share the
- * same `_overrides` state. This is intentional: the current theme is global
- * state, not per-component state.
+ * ─── Singleton pattern ────────────────────────────────────────────────────────
+ * All module-level `_` vars are true singletons. All `useTheme()` callers share
+ * the same state. This is intentional: the current theme is global state.
+ * The composable exists to expose a clean API — not to hold per-component state.
  *
  * @example Per-church branding on login
  * const { applyOverrides } = useTheme()
- *
  * onMounted(async () => {
  *   const church = await fetchChurchSettings(churchId)
- *   applyOverrides({
- *     '--ch-color-primary':       church.brandColor,
- *     '--ch-color-primary-hover': church.brandColorDark,
- *   })
+ *   applyOverrides({ '--ch-color-primary': church.brandColor })
  * })
  *
- * @example Dark mode toggle
- * const { applyOverrides, resetTheme } = useTheme()
+ * @example Switching named themes
+ * import { roseTheme } from '@/design-system/tokens/themes'
+ * const { applyTheme } = useTheme()
+ * applyTheme(roseTheme)
  *
- * function toggleDarkMode(enabled: boolean) {
- *   if (enabled) {
- *     applyOverrides({
- *       '--ch-color-bg':      '#0f172a',
- *       '--ch-color-surface': '#1e293b',
- *       '--ch-color-text':    '#f8fafc',
- *       '--ch-color-border':  '#334155',
- *     })
- *   } else {
- *     resetTheme()
- *   }
- * }
+ * @example Dark mode toggle
+ * const { toggleDarkMode, isDarkMode } = useTheme()
+ * // isDarkMode is reactive — bind it to a toggle switch
  */
 
-import { ref, readonly } from 'vue'
-import { generateCSSVars, type ThemeOverrides, _initialOverrides } from '../tokens'
-import { darkSemanticColors } from '../tokens/colors'
+import { ref, readonly, computed } from 'vue'
+import { generateCSSVars, type ThemeOverrides } from '../tokens'
+import { defaultTheme, type Theme } from '../tokens/colors'
 
 // ─── Module-level singletons ──────────────────────────────────────────────────
-/**
- * The current set of active overrides.
- * Stored as a `ref` so computed properties or watchers can react to changes.
- *
- * Declared outside the composable function so it's shared across ALL
- * component instances that call `useTheme()` — it's truly global state.
- *
- * We export it as `readonly` via the composable to prevent direct mutation
- * (consumers should only change it through the provided functions).
- */
-const _overrides = ref<ThemeOverrides>({})
 
 /**
- * Dark mode state — module-level singleton like _overrides.
- *
- * Previously this lived inside useTheme(), which meant every component that
- * called useTheme() created its own isDarkMode ref, ran checkDarkMode(),
- * applyDarkMode(), and added a NEW media query listener. This caused:
- *   1. Listener accumulation (memory leak)
- *   2. Redundant localStorage reads on every useTheme() call
- *   3. Redundant DOM writes (classList, style.setProperty) on every call
- *
- * Moving to module scope means all of this runs exactly once, when the
- * module is first imported. All useTheme() consumers share this ref.
+ * CSS vars derived from the active theme's light or dark semantic map.
+ * Keys are `--ch-*` CSS property names. Swapped atomically on `applyTheme()`
+ * and dark mode toggle. Never mutated by user overrides.
  */
+const _themeVars = ref<ThemeOverrides>({})
+
+/**
+ * Explicit overrides set by the consuming application (e.g. per-church colors).
+ * These persist across `applyTheme()` calls and dark mode toggles.
+ * User overrides always win over theme vars.
+ */
+const _userOverrides = ref<ThemeOverrides>({})
+
+/** The currently active theme. */
+const _activeTheme = ref<Theme>(defaultTheme)
+
+/** Whether dark mode is currently active. */
 const _isDarkMode = ref(false)
 
-// ─── Module-level dark mode functions ─────────────────────────────────────────
-// Forward-declared so _checkDarkMode and the media listener can reference
-// applyOverrides/resetTheme. These are defined after useTheme but called at
-// module init, which is fine because JS hoists function declarations.
+// ─── Internal helpers ─────────────────────────────────────────────────────────
 
 /**
- * Reads the saved theme preference or falls back to the system preference.
- * Runs once at module load time.
+ * Converts a semantic color map (e.g. `theme.light`) to a ThemeOverrides record
+ * with `--ch-*` prefixed CSS custom property keys.
  */
-function _checkDarkMode() {
-  const savedTheme = localStorage.getItem('ch-theme')
-  if (savedTheme === 'dark') {
+function _semanticsToVars(semantics: Record<string, string>): ThemeOverrides {
+  return Object.fromEntries(Object.entries(semantics).map(([key, value]) => [`--ch-${key}`, value]))
+}
+
+/**
+ * Computes the final merged ThemeOverrides: theme vars + user overrides.
+ * User overrides take precedence (spread last).
+ */
+function _computeFinalVars(): ThemeOverrides {
+  return { ..._themeVars.value, ..._userOverrides.value }
+}
+
+/**
+ * The single write point for all DOM changes. Every other function ultimately
+ * calls this. Writes the merged final vars and syncs the `dark` class.
+ *
+ * @param target - DOM element to write to (default: `<html>` = `:root`)
+ */
+function _commit(target: HTMLElement = document.documentElement): void {
+  const vars = generateCSSVars(_computeFinalVars())
+  for (const [prop, value] of Object.entries(vars)) {
+    target.style.setProperty(prop, value)
+  }
+  target.classList.toggle('dark', _isDarkMode.value)
+}
+
+// ─── Module-level dark mode setup ─────────────────────────────────────────────
+
+/**
+ * Reads the saved theme preference or falls back to the OS preference.
+ * Runs exactly once at module load time.
+ */
+function _checkDarkMode(): void {
+  const saved = localStorage.getItem('ch-theme')
+  if (saved === 'dark') {
     _isDarkMode.value = true
-  } else if (savedTheme === 'light') {
+  } else if (saved === 'light') {
     _isDarkMode.value = false
   } else {
     _isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -115,316 +144,209 @@ function _checkDarkMode() {
 }
 
 /**
- * Brand-safe tokens that should persist across theme switches.
- * These represent brand customizations that should not be overridden by dark mode.
+ * Applies or removes dark mode by switching the active theme's semantic map.
+ * User overrides are preserved — they're layered on top in `_commit()`.
  */
-const brandSafeTokens = [
-  '--ch-color-primary',
-  '--ch-color-primary-hover',
-  '--ch-color-primary-active',
-  '--ch-color-primary-dark',
-  '--ch-color-primary-subtle',
-  '--ch-color-primary-muted',
-  '--ch-color-primary-fg',
-  '--ch-color-secondary',
-  '--ch-color-secondary-hover',
-  '--ch-color-secondary-active',
-  '--ch-color-secondary-dark',
-  '--ch-color-secondary-subtle',
-  '--ch-color-secondary-muted',
-  '--ch-color-secondary-fg',
-]
-
-/**
- * Dark mode semantic tokens that should be applied when dark mode is enabled.
- * Excludes brand-related tokens to preserve custom brand colors.
- */
-const darkModeSemanticOverrides: ThemeOverrides = Object.entries(darkSemanticColors).reduce(
-  (acc, [key, value]) => {
-    const varName = `--ch-${key}`
-    // Only include non-brand semantic tokens
-    if (!brandSafeTokens.includes(varName)) {
-      acc[varName] = value
-    }
-    return acc
-  },
-  {} as ThemeOverrides,
-)
-
-/**
- * Applies or removes dark mode overrides.
- * Called at module init and when the system preference changes.
- *
- * NOTE: This function directly sets CSS vars on :root rather than calling
- * the composable's applyOverrides/resetTheme, because those are defined
- * inside useTheme() and aren't available at module scope. Instead we use
- * the same generateCSSVars + setProperty mechanism directly.
- *
- * FIXED: Now preserves brand customizations (like custom primary colors)
- * when switching themes, only applying/removing dark mode-specific semantic colors.
- */
-function _applyDarkMode(enabled: boolean) {
-  const root = document.documentElement
-  if (enabled) {
-    // Preserve brand-safe tokens from current overrides AND initial overrides
-    // _initialOverrides captures what was passed to injectCSSVars() in main.ts
-    // _overrides.value captures what was set via useTheme's applyOverrides()
-    const preservedBrandTokens: ThemeOverrides = {}
-    brandSafeTokens.forEach((token) => {
-      const value = _overrides.value[token] || _initialOverrides[token]
-      if (value) {
-        preservedBrandTokens[token] = value
-      }
-    })
-
-    // Merge: current overrides → dark mode semantic tokens → preserved brand tokens
-    // This ensures brand tokens take precedence over dark mode defaults
-    _overrides.value = {
-      ..._overrides.value,
-      ...darkModeSemanticOverrides,
-      ...preservedBrandTokens,
-    }
-
-    const vars = generateCSSVars(_overrides.value)
-    for (const [prop, value] of Object.entries(vars)) {
-      root.style.setProperty(prop, value)
-    }
-    root.classList.add('dark')
-  } else {
-    // Disable dark mode: remove only dark mode semantic tokens, preserve brand tokens
-    const filteredOverrides: ThemeOverrides = { ..._overrides.value }
-
-    // Remove dark mode semantic tokens
-    Object.keys(darkModeSemanticOverrides).forEach((token) => {
-      delete filteredOverrides[token]
-    })
-
-    // Preserve brand-safe tokens from both override sources
-    brandSafeTokens.forEach((token) => {
-      const value = _overrides.value[token] || _initialOverrides[token]
-      if (value) {
-        filteredOverrides[token] = value
-      }
-    })
-
-    _overrides.value = filteredOverrides
-
-    const vars = generateCSSVars(_overrides.value)
-    for (const prop of Object.keys(vars)) {
-      root.style.removeProperty(prop)
-    }
-    for (const [prop, value] of Object.entries(vars)) {
-      root.style.setProperty(prop, value)
-    }
-    root.classList.remove('dark')
-  }
+function _applyDarkMode(enabled: boolean): void {
+  _isDarkMode.value = enabled
+  const semantics = enabled ? _activeTheme.value.dark : _activeTheme.value.light
+  _themeVars.value = _semanticsToVars(semantics)
+  _commit()
 }
 
-// ─── Module-level initialization ──────────────────────────────────────────────
-// Runs exactly once when the module is first imported. This is the fix for
-// the memory leak: previously each useTheme() call added a new listener.
+// ─── Module-level initialization (runs once on first import) ──────────────────
 _checkDarkMode()
-_applyDarkMode(_isDarkMode.value)
 
-const _mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-_mediaQuery.addEventListener('change', (e: MediaQueryListEvent) => {
-  // Only respond to system preference if user hasn't explicitly set a theme
-  if (!localStorage.getItem('ch-theme')) {
-    _isDarkMode.value = e.matches
-    _applyDarkMode(e.matches)
-  }
-})
+_themeVars.value = _semanticsToVars(_isDarkMode.value ? defaultTheme.dark : defaultTheme.light)
+_commit()
+
+// Respond to OS-level preference changes, but only when the user hasn't
+// pinned an explicit preference via localStorage.
+window
+  .matchMedia('(prefers-color-scheme: dark)')
+  .addEventListener('change', (e: MediaQueryListEvent) => {
+    if (!localStorage.getItem('ch-theme')) {
+      _applyDarkMode(e.matches)
+    }
+  })
 
 // ─── Composable ──────────────────────────────────────────────────────────────
 /**
- * Returns theme control functions and the current overrides state.
+ * Returns theme control functions and reactive state.
  * Can be called from any Vue component or other composable.
  *
- * All state is module-level singleton — calling this from multiple components
- * does NOT create duplicate listeners or redundant DOM operations.
+ * All state is module-level — calling this from multiple components does NOT
+ * create duplicate listeners or redundant DOM writes.
  */
 export function useTheme() {
+  // ─── applyTheme ───────────────────────────────────────────────────────────
+  /**
+   * Switches to a new `Theme` (created by `defineTheme()`).
+   *
+   * Atomically replaces all theme-derived CSS vars with the new theme's
+   * light or dark semantic map (depending on current dark mode state).
+   * Any active `_userOverrides` are preserved and re-applied on top.
+   *
+   * @param theme  - A `Theme` object from `defineTheme()`
+   * @param target - DOM element (default: `<html>`)
+   *
+   * @example Switch to a pre-built theme
+   * import { roseTheme } from '@/design-system/tokens/themes'
+   * applyTheme(roseTheme)
+   *
+   * @example Derive a runtime theme from a single color
+   * applyTheme(defineTheme({ primary900: tenant.brandColor }, tenant.name))
+   */
+  function applyTheme(theme: Theme, target: HTMLElement = document.documentElement): void {
+    _activeTheme.value = theme
+    const semantics = _isDarkMode.value ? theme.dark : theme.light
+    _themeVars.value = _semanticsToVars(semantics)
+    _commit(target)
+  }
+
   // ─── applyOverrides ────────────────────────────────────────────────────────
   /**
-   * Applies a partial theme override. Merges with any previously applied overrides.
+   * Applies user-level overrides. Merges with any existing user overrides.
+   * These persist across `applyTheme()` calls and dark mode toggles.
    *
-   * The merge behavior means you can apply overrides in multiple calls without
-   * losing earlier ones. For example:
-   *   applyOverrides({ '--ch-color-primary': '#e11d48' })  // sets primary color
-   *   applyOverrides({ '--ch-font-sans': '"Nunito"' })     // adds font override
-   *   // Both overrides are now active
+   * Merge behavior: calling twice combines both sets of overrides.
+   * To fully replace overrides, call `resetTheme()` first.
    *
-   * @param overrides - Partial map of `--ch-*` property names to new values
-   * @param target    - DOM element to apply overrides to (default: `<html>` = `:root`)
+   * @param overrides - Map of `--ch-*` CSS property names to values
+   * @param target    - DOM element (default: `<html>`)
    *
    * @example
-   * const { applyOverrides } = useTheme()
-   * applyOverrides({ '--ch-color-primary': '#e11d48' })
+   * applyOverrides({ '--ch-color-primary': church.brandColor })
    */
   function applyOverrides(
     overrides: ThemeOverrides,
     target: HTMLElement = document.documentElement,
   ): void {
-    // Merge new overrides into the existing overrides object.
-    // `{ ..._overrides.value, ...overrides }` creates a NEW object with all
-    // current keys plus any new/changed keys from `overrides`.
-    // We must create a new object (not mutate in-place) to trigger Vue's
-    // reactivity system to detect the change.
-    _overrides.value = { ..._overrides.value, ...overrides }
-
-    // Generate the FULL var map (all defaults + all overrides) and
-    // apply every property. This ensures the complete state is always
-    // reflected on the element, even after partial updates.
-    const vars = generateCSSVars(_overrides.value)
-
-    for (const [prop, value] of Object.entries(vars)) {
-      // `style.setProperty` is the only API that works for CSS custom properties.
-      // `el.style['--ch-color-primary'] = '...'` does NOT work.
-      target.style.setProperty(prop, value)
-    }
+    _userOverrides.value = { ..._userOverrides.value, ...overrides }
+    _commit(target)
   }
 
   // ─── setVar ───────────────────────────────────────────────────────────────
   /**
-   * Overrides a single CSS variable directly.
-   * A convenience function for simple one-property changes.
+   * Overrides a single CSS variable. Convenience wrapper around `applyOverrides`.
    *
-   * @param varName - The full CSS custom property name (e.g. '--ch-color-primary')
-   * @param value   - The new value string
+   * @param varName - Full CSS custom property name (e.g. `'--ch-color-primary'`)
+   * @param value   - New value string
    * @param target  - DOM element (default: `<html>`)
    *
    * @example
-   * const { setVar } = useTheme()
-   * setVar('--ch-color-primary', '#7c3aed')
+   * setVar('--ch-color-primary', '#e11d48')
    */
   function setVar(
     varName: string,
     value: string,
     target: HTMLElement = document.documentElement,
   ): void {
-    // Update the singleton overrides map for tracking
-    _overrides.value[varName] = value
-
-    // Directly set the single property (more efficient than regenerating all vars)
-    target.style.setProperty(varName, value)
+    _userOverrides.value = { ..._userOverrides.value, [varName]: value }
+    _commit(target)
   }
 
   // ─── resetTheme ───────────────────────────────────────────────────────────
   /**
-   * Removes ALL runtime overrides and reverts to the token default values.
+   * Clears all user overrides, reverting to the active theme's values.
    *
-   * How it reverts: calling `style.removeProperty` on the element removes
-   * the inline style. The CSS then cascades up to find the value — but since
-   * `injectCSSVars()` was called at startup, the defaults are set as inline
-   * styles on `<html>`. To restore those defaults, we re-set them all here.
+   * The active theme itself is NOT changed. To also reset the theme, call
+   * `applyTheme(defaultTheme)` afterward.
    *
-   * @param target - DOM element to reset (default: `<html>`)
+   * @param target - DOM element (default: `<html>`)
    *
    * @example
-   * const { resetTheme } = useTheme()
-   * resetTheme() // removes all overrides, restores token defaults
+   * resetTheme()              // removes user overrides, keeps active theme
+   * applyTheme(defaultTheme)  // additionally resets to the default theme
    */
   function resetTheme(target: HTMLElement = document.documentElement): void {
-    // Generate defaults (no overrides) and re-apply them to restore the baseline
-    const defaultVars = generateCSSVars({})
-
-    for (const prop of Object.keys(defaultVars)) {
-      // Remove the inline style for this property...
-      target.style.removeProperty(prop)
-    }
-
-    // ...then reset the in-memory override tracker to empty
-    _overrides.value = {}
-
-    // Re-apply the defaults (since we removed all inline styles above)
-    for (const [prop, value] of Object.entries(defaultVars)) {
-      target.style.setProperty(prop, value)
-    }
+    _userOverrides.value = {}
+    _commit(target)
   }
 
   // ─── removeOverride ───────────────────────────────────────────────────────
   /**
-   * Removes a single override, reverting ONLY that variable to its token default.
-   * Useful when you want to reset one color without resetting the whole theme.
+   * Removes a single user override, reverting ONLY that variable to the active
+   * theme's current value. Everything else is untouched.
    *
-   * @param varName - The `--ch-*` property name to revert
+   * @param varName - The `--ch-*` property to revert
    * @param target  - DOM element (default: `<html>`)
    *
    * @example
-   * const { removeOverride } = useTheme()
-   * // Previously: applyOverrides({ '--ch-color-primary': '#e11d48' })
-   * removeOverride('--ch-color-primary') // reverts to indigo
+   * removeOverride('--ch-color-primary') // reverts to theme's primary color
    */
   function removeOverride(varName: string, target: HTMLElement = document.documentElement): void {
-    // Destructure assignment to remove one key from the overrides object.
-    // `const { [varName]: _, ...rest }` creates a new object `rest` that
-    // contains everything EXCEPT the key `varName`. `_` is the discarded value.
-    const { [varName]: _, ...rest } = _overrides.value
-    _overrides.value = rest as ThemeOverrides
-
-    // Re-generate vars WITHOUT the removed override, then re-apply just this var.
-    // This restores the token default value for this specific property.
-    const vars = generateCSSVars(_overrides.value)
-    target.style.setProperty(varName, vars[varName] ?? '')
+    const { [varName]: _removed, ...rest } = _userOverrides.value
+    _userOverrides.value = rest as ThemeOverrides
+    _commit(target)
   }
 
   // ─── getVar ───────────────────────────────────────────────────────────────
   /**
-   * Reads the current computed value of any CSS variable on an element.
-   * This reads the LIVE browser-computed value (accounting for inheritance,
-   * cascading, etc.) — not just what's in `_overrides`.
+   * Reads the current computed value of any CSS variable from the DOM.
+   * Returns the LIVE browser-computed value — accounts for cascade and inheritance.
    *
-   * @param varName - The CSS custom property name to read
+   * @param varName - CSS custom property to read
    * @param target  - DOM element to read from (default: `<html>`)
-   * @returns The current string value, trimmed of whitespace
    *
    * @example
-   * const { getVar } = useTheme()
-   * const primaryColor = getVar('--ch-color-primary') // '#4f46e5'
+   * const primary = getVar('--ch-color-primary') // '#00026d'
    */
   function getVar(varName: string, target: HTMLElement = document.documentElement): string {
-    // `getComputedStyle` returns the COMPUTED style (after cascade + inheritance).
-    // `getPropertyValue` retrieves a CSS custom property's value.
-    // `.trim()` removes any leading/trailing whitespace the browser may add.
     return getComputedStyle(target).getPropertyValue(varName).trim()
   }
 
-  // ─── Dark mode toggle (composable-level wrapper) ─────────────────────────
+  // ─── toggleDarkMode ───────────────────────────────────────────────────────
   /**
-   * Toggles dark mode on/off. Writes the preference to localStorage and
-   * applies the visual change. Delegates to module-level singletons.
+   * Toggles dark mode on/off. Persists the preference to localStorage.
+   *
+   * Uses the ACTIVE THEME's `.dark` or `.light` semantic map — so calling
+   * `applyTheme(roseTheme)` then `toggleDarkMode()` gives you rose dark mode,
+   * not the default dark mode.
    */
-  function toggleDarkMode() {
-    _isDarkMode.value = !_isDarkMode.value
-    localStorage.setItem('ch-theme', _isDarkMode.value ? 'dark' : 'light')
-    _applyDarkMode(_isDarkMode.value)
+  function toggleDarkMode(): void {
+    const next = !_isDarkMode.value
+    localStorage.setItem('ch-theme', next ? 'dark' : 'light')
+    _applyDarkMode(next)
   }
 
   // ─── Return public API ────────────────────────────────────────────────────
   return {
+    // ── Theme switching ──────────────────────────────────────────────────────
+    applyTheme,
+
+    // ── User overrides ───────────────────────────────────────────────────────
     applyOverrides,
     setVar,
     resetTheme,
     removeOverride,
     getVar,
 
-    /**
-     * The currently active overrides, as a readonly reactive ref.
-     * Use this in a component to reactively display the current theme state,
-     * e.g. in a theme editor UI.
-     *
-     * `readonly()` wraps the ref so consumers can read it reactively
-     * but cannot directly mutate `_overrides.value` from outside this composable.
-     */
-    currentOverrides: readonly(_overrides),
-
-    /**
-     * Dark mode properties and methods.
-     * isDarkMode and toggleDarkMode reference module-level singletons,
-     * so they work identically regardless of which component calls useTheme().
-     */
+    // ── Dark mode ────────────────────────────────────────────────────────────
     isDarkMode: readonly(_isDarkMode),
     toggleDarkMode,
+    /** Direct setter for dark mode — use `toggleDarkMode` for the common case. */
     applyDarkMode: _applyDarkMode,
+
+    // ── State inspection ─────────────────────────────────────────────────────
+    /**
+     * The currently active theme. Reactive — bind to a display component or
+     * use in a computed to derive theme-aware values.
+     */
+    activeTheme: readonly(_activeTheme),
+
+    /**
+     * Only the user-level overrides currently in effect.
+     * Does NOT include theme-derived vars — only what the app explicitly set.
+     * Useful for a theme editor UI that shows customizations separately from defaults.
+     */
+    userOverrides: readonly(_userOverrides),
+
+    /**
+     * All active CSS vars: theme vars + user overrides fully merged.
+     * Equivalent to what's currently written to the DOM. Useful for serializing,
+     * snapshotting, or debugging the full computed theme state.
+     */
+    computedVars: computed(() => _computeFinalVars()),
   }
 }
