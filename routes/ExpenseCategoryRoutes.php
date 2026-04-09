@@ -27,8 +27,11 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../core/ExpenseCategory.php';
-require_once __DIR__ . '/../core/ResponseHelper.php';
+require_once __DIR__ . "/../vendor/autoload.php";
+
+use AliveChMS\Core\Financial\ExpenseCategory;
+use AliveChMS\Core\System\BaseRoute;
+use AliveChMS\Core\System\ResponseHelper;
 
 class ExpenseCategoryRoutes extends BaseRoute
 {

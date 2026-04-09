@@ -33,9 +33,15 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../core/Group.php';
-require_once __DIR__ . '/../core/GroupType.php';
-require_once __DIR__ . '/../core/ResponseHelper.php';
+require_once __DIR__ . "/../vendor/autoload.php";
+
+use AliveChMS\Core\Identity\Auth;
+use AliveChMS\Core\Infrastructure\RateLimiter;
+use AliveChMS\Core\Operations\Group;
+use AliveChMS\Core\Operations\GroupType;
+use AliveChMS\Core\People\Member;
+use AliveChMS\Core\System\BaseRoute;
+use AliveChMS\Core\System\ResponseHelper;
 
 class GroupRoutes extends BaseRoute
 {
@@ -225,10 +231,8 @@ class GroupRoutes extends BaseRoute
             self::authenticate();
             self::authorize('groups.view');
 
-            [$page, $limit] = self::getPagination(10, 100);
-
-            $result = GroupType::getAll($page, $limit);
-            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+               $result = GroupType::getAll();
+               ResponseHelper::success($result);
          })(),
 
          // FALLBACK

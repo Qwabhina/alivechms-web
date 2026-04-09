@@ -14,7 +14,11 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../Middleware.php';
+namespace AliveChMS\Core\Http\Middleware;
+
+use AliveChMS\Core\Http\Middleware;
+use AliveChMS\Core\Http\Request;
+use AliveChMS\Core\Http\Response;
 
 class CorsMiddleware extends Middleware
 {
@@ -32,7 +36,7 @@ class CorsMiddleware extends Middleware
       ], $config);
    }
 
-   public function handle(Request $request, callable $next): Response
+   public function execute(Request $request, callable $next): Response
    {
       // Handle preflight OPTIONS request
       if ($request->getMethod() === 'OPTIONS') {

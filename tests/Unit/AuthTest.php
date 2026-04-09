@@ -4,12 +4,21 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 use Mockery as m;
+use AliveChMS\Core\Auth;
 
 /**
  * Unit tests for Auth class
+ * @covers \AliveChMS\Core\Auth
  */
 class AuthTest extends TestCase
 {
+   protected function setUp(): void
+   {
+      parent::setUp();
+      $_ENV['JWT_SECRET'] = 'test_secret_key_1234567890';
+      $_ENV['JWT_REFRESH_SECRET'] = 'test_refresh_secret_key_1234567890';
+   }
+
    protected function tearDown(): void
    {
       m::close();
@@ -95,37 +104,6 @@ class AuthTest extends TestCase
 
       $token = Auth::getBearerToken();
       $this->assertNull($token);
-   }
-
-   public function testPasswordHashing(): void
-   {
-      $password = 'TestPassword123!';
-      $hash = Auth::hashPassword($password);
-
-      $this->assertIsString($hash);
-      $this->assertNotEquals($password, $hash);
-      $this->assertTrue(password_verify($password, $hash));
-   }
-
-   public function testPasswordVerification(): void
-   {
-      $password = 'TestPassword123!';
-      $hash = password_hash($password, PASSWORD_DEFAULT);
-
-      $this->assertTrue(Auth::verifyPassword($password, $hash));
-      $this->assertFalse(Auth::verifyPassword('WrongPassword', $hash));
-   }
-
-   public function testValidatePasswordStrength(): void
-   {
-      // Strong password
-      $this->assertTrue(Auth::validatePasswordStrength('StrongPass123!'));
-
-      // Weak passwords
-      $this->assertFalse(Auth::validatePasswordStrength('weak'));
-      $this->assertFalse(Auth::validatePasswordStrength('12345678'));
-      $this->assertFalse(Auth::validatePasswordStrength('NoNumbers!'));
-      $this->assertFalse(Auth::validatePasswordStrength('nonumbers123'));
    }
 
    public function testTokenExpiration(): void

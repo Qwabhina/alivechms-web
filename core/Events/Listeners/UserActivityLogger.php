@@ -13,14 +13,21 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../EventListener.php';
-require_once __DIR__ . '/../UserEvents.php';
+namespace AliveChMS\Core\Events\Listeners;
+
+use AliveChMS\Core\Events\AbstractEventListener;
+use AliveChMS\Core\Events\Event;
+use AliveChMS\Core\Events\UserLoginEvent;
+use AliveChMS\Core\Events\UserLogoutEvent;
+use AliveChMS\Core\Events\UserRegistrationEvent;
+use AliveChMS\Core\Events\UserProfileUpdateEvent;
+use AliveChMS\Core\Events\PasswordChangeEvent;
 
 class UserActivityLogger extends AbstractEventListener
 {
     private string $logFile;
 
-    public function __construct(string $logFile = null)
+    public function __construct(?string $logFile = null)
     {
         $this->logFile = $logFile ?? __DIR__ . '/../../../logs/user_activity.log';
         $this->ensureLogDirectory();

@@ -14,11 +14,25 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../ServiceProvider.php';
-require_once __DIR__ . '/../Events/EventDispatcher.php';
-require_once __DIR__ . '/../Events/Listeners/UserActivityLogger.php';
-require_once __DIR__ . '/../Events/Listeners/DatabaseQueryLogger.php';
-require_once __DIR__ . '/../Events/Listeners/ErrorNotifier.php';
+namespace AliveChMS\Core\Providers;
+
+use AliveChMS\Core\System\ServiceProvider;
+use AliveChMS\Core\Events\EventDispatcher;
+use AliveChMS\Core\Events\SystemEvents;
+use AliveChMS\Core\Events\UserEvents;
+use AliveChMS\Core\Events\Listeners\UserActivityLogger;
+use AliveChMS\Core\Events\Listeners\DatabaseQueryLogger;
+use AliveChMS\Core\Events\Listeners\ErrorNotifier;
+use AliveChMS\Core\Events\HttpRequestEvent;
+use AliveChMS\Core\Events\HttpResponseEvent;
+use AliveChMS\Core\Events\Event;
+use AliveChMS\Core\Events\UserLoginEvent;
+use AliveChMS\Core\Events\UserLogoutEvent;
+use AliveChMS\Core\Events\UserRegistrationEvent;
+use AliveChMS\Core\Events\UserProfileUpdateEvent;
+use AliveChMS\Core\Events\PasswordChangeEvent;
+use AliveChMS\Core\Events\DatabaseQueryEvent;
+use AliveChMS\Core\Events\ErrorEvent;
 
 class EventServiceProvider extends ServiceProvider
 {

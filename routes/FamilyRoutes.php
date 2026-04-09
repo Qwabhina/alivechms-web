@@ -21,8 +21,17 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../core/Family.php';
-require_once __DIR__ . '/../core/ResponseHelper.php';
+require_once __DIR__ . "/../vendor/autoload.php";
+
+use AliveChMS\Core\Identity\Auth;
+use AliveChMS\Core\Infrastructure\RateLimiter;
+use AliveChMS\Core\People\Family;
+use AliveChMS\Core\People\Member;
+use AliveChMS\Core\System\BaseRoute;
+use AliveChMS\Core\System\Helpers;
+use AliveChMS\Core\System\ORM;
+use AliveChMS\Core\System\ResponseHelper;
+use Exception;
 
 class FamilyRoutes extends BaseRoute
 {
@@ -120,7 +129,7 @@ class FamilyRoutes extends BaseRoute
                 ]);
 
                 $result = self::withTransaction(function () use ($familyId, $payload) {
-                    return Family::addMember($familyId, (int)$payload['member_id'], $payload);
+                        return Family::addMember($familyId, (int) $payload['member_id']);
                 });
                 ResponseHelper::success($result, 'Member added to family');
             })(),
@@ -152,7 +161,7 @@ class FamilyRoutes extends BaseRoute
                 ]);
 
                 $result = self::withTransaction(function () use ($familyId, $memberId, $payload) {
-                    return Family::updateMemberRole($familyId, $memberId, $payload);
+                        return Family::updateMemberRole($familyId, $memberId, $payload['role']);
                 });
                 ResponseHelper::success($result, 'Member role updated');
             })(),

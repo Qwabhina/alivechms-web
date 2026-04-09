@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Base Event Class
  *
@@ -20,6 +19,8 @@
  */
 
 declare(strict_types=1);
+
+namespace AliveChMS\Core\Events;
 
 abstract class Event
 {

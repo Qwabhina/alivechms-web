@@ -21,8 +21,12 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/Migration.php';
-require_once __DIR__ . '/SchemaBuilder.php';
+namespace AliveChMS\Core\Database;
+
+use PDO;
+use Exception;
+use AliveChMS\Core\Database\Migration;
+use AliveChMS\Core\Database\SchemaBuilder;
 
 class MigrationManager
 {
@@ -30,7 +34,7 @@ class MigrationManager
    private string $migrationsPath;
    private string $migrationsTable = 'migrations';
 
-   public function __construct(PDO $connection, string $migrationsPath = null)
+   public function __construct(PDO $connection, ?string $migrationsPath = null)
    {
       $this->connection = $connection;
       $this->migrationsPath = $migrationsPath ?? __DIR__ . '/../../migrations';

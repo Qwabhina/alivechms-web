@@ -37,8 +37,12 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../core/Role.php';
-require_once __DIR__ . '/../core/ResponseHelper.php';
+require_once __DIR__ . "/../vendor/autoload.php";
+
+use AliveChMS\Core\Identity\Role;
+use AliveChMS\Core\System\BaseRoute;
+use AliveChMS\Core\System\ORM;
+use AliveChMS\Core\System\ResponseHelper;
 
 class RoleRoutes extends BaseRoute
 {
@@ -147,7 +151,7 @@ class RoleRoutes extends BaseRoute
                'role_id' => 'required|numeric'
             ]);
 
-            $result = Role::assignToMember($memberId, (int)$payload['role_id']);
+               $result = Role::assignToMember((int) $payload['role_id'], [$memberId]);
             ResponseHelper::success($result, 'Role assigned to member');
          })(),
 

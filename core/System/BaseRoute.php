@@ -1,0 +1,419 @@
+<?php
+
+/**
+ * BaseRoute - Centralised Route Handler
+ *
+ * Eliminates duplication across all route files by providing:
+ * - Unified authentication & token decoding
+ * - Permission checking
+ * - Standardised JSON payload parsing & validation
+ * - Path-based ID extraction with validation
+ * - Pagination & filter helpers
+ * - Rate limiting integration
+ * - Transaction support
+ * - Consistent success/error responses
+ *
+ * All route classes should extend this class.
+ *
+ * @package  AliveChMS\Core
+ * @version  1.0.0
+ * @author   Benjamin Ebo Yankson
+ * @since    2025-November
+ */
+
+declare(strict_types=1);
+
+namespace AliveChMS\Core\System;
+
+use Exception;
+use AliveChMS\Core\Identity\Auth;
+use AliveChMS\Core\Infrastructure\RateLimiter;
+use AliveChMS\Core\Infrastructure\Cache;
+
+abstract class BaseRoute
+{
+   protected static ?array $decodedToken = null;
+   protected static ?int $currentUserId = null;
+
+   // Dependency Injection support (merged from BaseRouteWithDI)
+   protected static ?Container $container = null;
+   protected static ?Auth $auth = null;
+   protected static ?Validator $validator = null;
+   protected static ?RateLimiter $rateLimiter = null;
+   protected static ?ORM $orm = null;
+
+   /**
+    * Initialize dependencies from container (optional DI support)
+    * Call this method to use DI instead of direct class instantiation
+    */
+   protected static function initializeDependencies(): void
+   {
+      if (self::$container === null && class_exists('Application')) {
+         self::$container = Application::resolve('Container');
+         self::$auth = Application::resolve('Auth');
+         self::$rateLimiter = Application::resolve('RateLimiter');
+         self::$orm = Application::resolve('ORM');
+      }
+   }
+
+   /**
+    * Get ORM instance (uses DI if initialized, otherwise creates new)
+    */
+   protected static function getORM(): ORM
+   {
+      if (self::$orm !== null) {
+         return self::$orm;
+      }
+      return new ORM();
+   }
+
+   /**
+    * Start database transaction
+    */
+   protected static function beginTransaction(): void
+   {
+      self::getORM()->beginTransaction();
+   }
+
+   /**
+    * Commit database transaction
+    */
+   protected static function commitTransaction(): void
+   {
+      self::getORM()->commit();
+   }
+
+   /**
+    * Rollback database transaction
+    */
+   protected static function rollbackTransaction(): void
+   {
+      self::getORM()->rollBack();
+   }
+
+   /**
+    * Get route variables from global scope
+    * Ensures consistency across all route files
+    */
+   protected static function getRouteVars(): array
+   {
+      global $method, $path, $pathParts;
+      return [
+         'method' => $method ?? $_SERVER['REQUEST_METHOD'] ?? 'GET',
+         'path' => $path ?? '',
+         'pathParts' => $pathParts ?? []
+      ];
+   }
+
+   /**
+    * Authenticate request and decode JWT token
+    *
+    * @param bool $required Whether authentication is mandatory (default: true)
+    * @return bool True if authenticated (or not required)
+    */
+   protected static function authenticate(bool $required = true): bool
+   {
+      $token = Auth::getBearerToken();
+
+      if (!$token) {
+         if ($required) {
+            ResponseHelper::unauthorized('Valid token required');
+         }
+         return false;
+      }
+
+      $decoded = Auth::verify($token);
+
+      if ($decoded === false) {
+         if ($required) {
+            ResponseHelper::unauthorized('Invalid or expired token');
+         }
+         return false;
+      }
+
+      self::$decodedToken = $decoded;
+      self::$currentUserId = (int) (self::$decodedToken['user_id'] ?? 0);
+
+      return true;
+   }
+
+   /**
+    * Check if current user has required permission
+    *
+    * @param string $permission Permission name (e.g., 'manage_members')
+    * @return void Exits with 403 if not authorized
+    */
+   protected static function authorize(string $permission): void
+   {
+      if (self::$currentUserId === null) {
+         self::authenticate();
+      }
+
+      try {
+         Auth::checkPermission($permission);
+      } catch (Exception $e) {
+         Helpers::logError("Authorization failed for user " . self::$currentUserId . ": " . $e->getMessage());
+         ResponseHelper::forbidden('Insufficient permissions');
+      }
+   }
+
+   /**
+    * Get and validate JSON payload from request body
+    *
+    * @param array $rules    Validation rules (passed to Helpers::validateInput)
+    * @param bool  $required Whether payload is required
+    * @return array          Validated and sanitized payload
+    */
+   protected static function getPayload(array $rules = [], bool $required = true): array
+   {
+      $payload = json_decode(file_get_contents('php://input'), true);
+
+      if (!is_array($payload)) {
+         if ($required) {
+            ResponseHelper::error('Invalid JSON payload', 400);
+         }
+         return [];
+      }
+
+      if (!empty($rules)) {
+         $validator = Validator::make($payload, $rules);
+         if ($validator->fails()) {
+            ResponseHelper::validationError($validator->errors());
+         }
+         return $validator->validated();
+      }
+
+      return $payload;
+   }
+
+   /**
+    * Extract and validate numeric ID from path parts
+    *
+    * @param array  $pathParts Path segments from routing
+    * @param int    $position  Array index of the ID
+    * @param string $name      Name for error message (e.g., 'Member ID')
+    * @return int              Validated ID
+    */
+   protected static function getIdFromPath(array $pathParts, int $position, string $name = 'ID'): int
+   {
+      if (!isset($pathParts[$position]) || !is_numeric($pathParts[$position])) {
+         ResponseHelper::error("Valid {$name} required", 400);
+      }
+
+      return (int) $pathParts[$position];
+   }
+
+   /**
+    * Get pagination parameters from query string
+    *
+    * @param int $defaultLimit Default items per page
+    * @param int $maxLimit     Maximum allowed limit (prevents abuse)
+    * @return array [page: int, limit: int, offset: int]
+    */
+   protected static function getPagination(int $defaultLimit = 10, int $maxLimit = 100): array
+   {
+      $page = max(1, (int) ($_GET['page'] ?? 1));
+      $limit = max(1, min($maxLimit, (int) ($_GET['limit'] ?? $defaultLimit)));
+      $offset = ($page - 1) * $limit;
+
+      return [$page, $limit, $offset];
+   }
+
+   /**
+    * Extract allowed filters from query string with sanitization
+    *
+    * @param array $allowedFilters List of permitted filter keys
+    * @return array Sanitized filter values
+    */
+   protected static function getFilters(array $allowedFilters): array
+   {
+      $filters = [];
+
+      foreach ($allowedFilters as $key) {
+         if (isset($_GET[$key]) && $_GET[$key] !== '') {
+            $filters[$key] = Helpers::sanitize($_GET[$key]);
+         }
+      }
+
+      return $filters;
+   }
+
+   /**
+    * Get sorting parameters from query string
+    *
+    * @param string $defaultColumn Default column to sort by
+    * @param string $defaultDirection Default sort direction (ASC or DESC)
+    * @param array $allowedColumns List of allowed column names for sorting
+    * @return array [sort_by: string, sort_dir: string]
+    */
+   protected static function getSorting(string $defaultColumn = '', string $defaultDirection = 'ASC', array $allowedColumns = []): array
+   {
+      $sortBy = $_GET['sort_by'] ?? $defaultColumn;
+      $sortDir = strtoupper($_GET['sort_dir'] ?? $defaultDirection);
+
+      // Validate sort direction
+      if (!in_array($sortDir, ['ASC', 'DESC'], true)) {
+         $sortDir = $defaultDirection;
+      }
+
+      // Validate sort column if allowed columns specified
+      if (!empty($allowedColumns) && !empty($sortBy)) {
+         if (!in_array($sortBy, $allowedColumns, true)) {
+            $sortBy = $defaultColumn;
+         }
+      }
+
+      // Sanitize column name to prevent SQL injection
+      if (!empty($sortBy)) {
+         $sortBy = preg_replace('/[^a-zA-Z0-9_.]/', '', $sortBy);
+      }
+
+      return [$sortBy, $sortDir];
+   }
+
+   /**
+    * Apply rate limiting to the current request
+    *
+    * @param string $identifier     Custom identifier (defaults to IP)
+    * @param int    $maxAttempts    Max requests allowed
+    * @param int    $windowSeconds  Time window in seconds
+    * @return void                  Exits with 429 if limited
+    */
+   protected static function rateLimit(
+      string $identifier = '',
+      int $maxAttempts = 60,
+      int $windowSeconds = 60
+   ): void {
+      if ($identifier === '') {
+         $identifier = Helpers::getClientIp();
+      }
+
+      RateLimiter::enforce($identifier, $maxAttempts, $windowSeconds);
+   }
+
+   /**
+    * Execute database operation within a transaction
+    *
+    * @param callable $operation Callback receiving ORM instance
+    * @return mixed Result from operation
+    */
+   protected static function withTransaction(callable $operation)
+   {
+      $orm = new ORM();
+
+      try {
+         $orm->beginTransaction();
+         $result = $operation($orm);
+         $orm->commit();
+         return $result;
+      } catch (Exception $e) {
+         if ($orm->inTransaction()) {
+            $orm->rollback();
+         }
+         Helpers::logError('Transaction failed: ' . $e->getMessage());
+         throw $e;
+      }
+   }
+
+   /**
+    * Get current authenticated user ID
+    *
+    * @return int|null User ID or null if not authenticated
+    */
+   protected static function getCurrentUserId(): ?int
+   {
+      return self::$currentUserId;
+   }
+
+   /**
+    * Send standard success response
+    *
+    * @param mixed  $data    Response data
+    * @param string $message Optional message
+    * @param int    $code    HTTP status code
+    * @return never
+    */
+   protected static function success($data = null, string $message = 'Success', int $code = 200): never
+   {
+      ResponseHelper::success($data, $message, $code);
+   }
+
+   /**
+    * Send standard paginated success response
+    *
+    * @param array $data  Result rows
+    * @param int   $total Total records
+    * @param int   $page  Current page
+    * @param int   $limit Items per page
+    * @return never
+    */
+   protected static function paginated(array $data, int $total, int $page, int $limit): never
+   {
+      ResponseHelper::paginated($data, $total, $page, $limit);
+   }
+
+   /**
+    * Send standard error response
+    *
+    * @param string $message Error message
+    * @param int    $code    HTTP status code
+    * @param array  $errors  Additional error details (optional)
+    * @return never
+    */
+   protected static function error(string $message, int $code = 400, array $errors = []): never
+   {
+      ResponseHelper::error($message, $code, $errors);
+   }
+
+   /**
+    * Set cache headers for GET requests
+    *
+    * @param int $maxAge Cache duration in seconds (default: 5 minutes)
+    * @param bool $public Whether cache can be shared (default: false for private data)
+    * @param bool $mustRevalidate Whether to force revalidation (default: true)
+    * @return void
+    */
+   protected static function setCacheHeaders(int $maxAge = 300, bool $public = false, bool $mustRevalidate = true): void
+   {
+      $cacheControl = [];
+
+      if ($public) {
+         $cacheControl[] = 'public';
+      } else {
+         $cacheControl[] = 'private';
+      }
+
+      $cacheControl[] = "max-age={$maxAge}";
+
+      if ($mustRevalidate) {
+         $cacheControl[] = 'must-revalidate';
+      }
+
+      header('Cache-Control: ' . implode(', ', $cacheControl));
+      header('Expires: ' . gmdate('D, d M Y H:i:s', time() + $maxAge) . ' GMT');
+
+      // Add ETag for conditional requests
+      $etag = md5($_SERVER['REQUEST_URI'] . (self::$currentUserId ?? 0));
+      header("ETag: \"{$etag}\"");
+
+      // Check if client has cached version
+      if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && $_SERVER['HTTP_IF_NONE_MATCH'] === "\"{$etag}\"") {
+         http_response_code(304);
+         exit;
+      }
+   }
+
+   /**
+    * Disable caching for sensitive endpoints
+    *
+    * @return void
+    */
+   protected static function disableCache(): void
+   {
+      header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+      header('Cache-Control: post-check=0, pre-check=0', false);
+      header('Pragma: no-cache');
+      header('Expires: 0');
+   }
+}
+

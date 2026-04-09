@@ -19,8 +19,11 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../core/Event.php';
-require_once __DIR__ . '/../core/ResponseHelper.php';
+require_once __DIR__ . "/../vendor/autoload.php";
+
+use AliveChMS\Core\Operations\Event;
+use AliveChMS\Core\System\BaseRoute;
+use AliveChMS\Core\System\ResponseHelper;
 
 class EventRoutes extends BaseRoute
 {
@@ -128,7 +131,7 @@ class EventRoutes extends BaseRoute
             ]);
 
             $status = $payload['status'] ?? 'Present';
-            $result = Event::recordSingleAttendance($eventId, (int)$payload['member_id'], $status);
+               $result = Event::recordAttendance($eventId, (int) $payload['member_id'], status: $status);
             ResponseHelper::success($result, 'Attendance recorded');
          })(),
 

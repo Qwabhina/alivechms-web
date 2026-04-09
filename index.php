@@ -28,7 +28,7 @@ if ($appEnv === 'production') {
     ini_set('display_errors', '0');
     ini_set('display_startup_errors', '0');
     ini_set('log_errors', '1');
-    error_reporting(E_ALL & ~E_DEPRECATED, ~E_NOTICE);
+    error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
 } else {
     // Development: Display errors for debugging
     ini_set('display_errors', '1');
@@ -49,24 +49,14 @@ $dotenv->load();
 $appEnv = $_ENV['APP_ENV'] ?? 'development';
 apache_setenv('APP_ENV', $appEnv);
 
-// Core dependencies
-require_once __DIR__ . '/core/Application.php';
-require_once __DIR__ . '/core/ResponseHelper.php';
+use AliveChMS\Core\System\Application;
+use AliveChMS\Core\System\ResponseHelper;
+use AliveChMS\Core\System\Helpers;
+use AliveChMS\Core\Identity\Auth;
 
 // Bootstrap the application with DI container
 $app = Application::getInstance();
 $app->bootstrap();
-
-// Legacy includes for backward compatibility (will be removed in Phase 3)
-require_once __DIR__ . '/core/Database.php';
-require_once __DIR__ . '/core/ORM.php';
-require_once __DIR__ . '/core/Auth.php';
-require_once __DIR__ . '/core/Helpers.php';
-require_once __DIR__ . '/core/BaseRoute.php';
-require_once __DIR__ . '/core/Validator.php';
-require_once __DIR__ . '/core/RateLimiter.php';
-require_once __DIR__ . '/core/Settings.php';
-require_once __DIR__ . '/core/SettingsHelper.php';
 
 // Security headers
 header('Content-Type: application/json; charset=utf-8');
@@ -101,7 +91,7 @@ if (str_contains($path, '..') || str_contains($path, "\0")) {
 }
 
 if ($path === '') {
-    header('Location: /public');
+    header('Location: public/');
     exit;
 }
 
@@ -136,7 +126,8 @@ $routes = [
     'role'            => 'RoleRoutes.php',
     'lookups'         => 'LookupRoutes.php',
     'settings'        => 'SettingsRoutes.php',
-    'permission'      => 'PermissionRoutes.php',
+    // 'permission'      => 'PermissionRoutes.php',
+    'permission' => 'RoleRoutes.php',
     'volunteer'       => 'VolunteerRoutes.php',
     'public'          => 'PublicRoutes.php',
 ];

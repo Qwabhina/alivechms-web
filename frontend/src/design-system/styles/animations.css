@@ -1,0 +1,277 @@
+/**
+ * animations.css
+ * @path /frontend/src/design-system/styles/animations.css
+ * ─────────────────────────────────────────────────────────────────────────────
+ * All keyframe animation definitions for the design system.
+ *
+ * Import this ONCE in main.ts alongside base.css:
+ *   import '@/design-system/styles/animations.css'
+ *
+ * ─── What this file provides ─────────────────────────────────────────────────
+ * 1. Named @keyframes — reusable animation building blocks
+ * 2. Utility animation classes — apply animations directly in templates
+ *
+ * ─── How @keyframes work ─────────────────────────────────────────────────────
+ * An @keyframe defines the state of an element at different points in time.
+ * `from` = 0% = starting state, `to` = 100% = ending state.
+ * You then reference the keyframe name in an `animation` property:
+ *   animation: ch-fade-in 150ms ease-out both;
+ *
+ * ─── The `both` fill-mode ────────────────────────────────────────────────────
+ * `animation-fill-mode: both` means:
+ *   - The element starts in the `from` state BEFORE the animation runs
+ *   - The element stays in the `to` state AFTER the animation ends
+ * Without this, elements flash visible before/after the animation.
+ *
+ * ─── Usage in components ─────────────────────────────────────────────────────
+ * Option 1: Use utility classes (defined at the bottom of this file)
+ *   <div class="ch-animate-fade-in">...</div>
+ *
+ * Option 2: Reference keyframes directly in component scoped styles:
+ *   .my-element { animation: ch-scale-in var(--ch-duration-normal) var(--ch-ease-spring) both; }
+ *
+ * Option 3: Use with Vue's <Transition> component:
+ *   .v-enter-active { animation: ch-slide-up 200ms var(--ch-ease-out) both; }
+ *   .v-leave-active { animation: ch-fade-out 150ms var(--ch-ease-in) both; }
+ */
+
+/* ─── Fade ────────────────────────────────────────────────────────────────────
+ * The most fundamental animation: simply changes opacity.
+ * Used for: overlays, tooltips, gentle content transitions.
+ */
+
+/** Fades an element from invisible to fully visible */
+@keyframes ch-fade-in {
+  from { opacity: 0; } /* start fully transparent */
+  to   { opacity: 1; } /* end fully opaque */
+}
+
+/** Fades an element from visible to invisible (for exit animations) */
+@keyframes ch-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ─── Scale ───────────────────────────────────────────────────────────────────
+ * Combines opacity with a subtle scale transform.
+ * `scale(0.95)` is a 5% shrink — barely perceptible but adds physical weight.
+ * Used for: modals, dropdown menus, popovers, context menus.
+ */
+
+/** Scales up from 95% while fading in — gives a "popping up" feel */
+@keyframes ch-scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/** Scales down while fading out — reverse of scale-in for dismissal */
+@keyframes ch-scale-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.95); }
+}
+
+/* ─── Slide ───────────────────────────────────────────────────────────────────
+ * Combines opacity with a translate offset.
+ * The 8px offset is small enough to feel subtle but large enough to convey direction.
+ * The directional name refers to where the element ARRIVES FROM:
+ *   ch-slide-up    → arrives from below (translateY positive → negative)
+ *   ch-slide-down  → arrives from above (translateY negative → zero)
+ *   ch-slide-left  → arrives from the right (translateX positive → zero)
+ *   ch-slide-right → arrives from the left (translateX negative → zero)
+ */
+
+/** Slides up from 8px below — used for bottom sheets, toast notifications */
+@keyframes ch-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/** Slides down from 8px above — used for top-anchored dropdowns */
+@keyframes ch-slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/** Slides in from the right — used for side panels, right-anchored toasts */
+@keyframes ch-slide-left {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/** Slides in from the left — used for left-anchored content */
+@keyframes ch-slide-right {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ─── Spinner ─────────────────────────────────────────────────────────────────
+ * A full 360° continuous rotation.
+ * Applied to an element with a partially-transparent border to create a
+ * circular loading indicator (the solid portion appears to chase itself).
+ * Used in: ChSpinner, ChButton loading state.
+ */
+@keyframes ch-spin {
+  from { transform: rotate(0deg); }   /* start at 12 o'clock */
+  to   { transform: rotate(360deg); } /* one full rotation */
+}
+
+/* ─── Pulse ───────────────────────────────────────────────────────────────────
+ * Gently oscillates opacity between full and 40%.
+ * Used for: "live" status indicators, "recording" dots, ambient loading states.
+ * Less aggressive than a spinner — good for passive background loading.
+ */
+@keyframes ch-pulse {
+  0%, 100% { opacity: 1;   } /* fully visible at start and end */
+  50%      { opacity: 0.4; } /* dim to 40% at midpoint */
+}
+
+/* ─── Skeleton Shimmer ────────────────────────────────────────────────────────
+ * Creates a light-to-dark-to-light sweep across a skeleton loading placeholder.
+ *
+ * How it works:
+ * 1. The element has a wide `background-image: linear-gradient(...)` (200% wide)
+ * 2. `background-size: 200% 100%` makes the gradient wider than the element
+ * 3. This animation moves `background-position` from -200% to +200%
+ * 4. The gradient enters from the left, sweeps across, and exits to the right
+ *
+ * The actual gradient is applied in ChSkeleton.vue, not here.
+ * This file only defines the position animation keyframes.
+ */
+@keyframes ch-shimmer {
+  from { background-position: -200% 0; } /* gradient starts off-screen left */
+  to   { background-position:  200% 0; } /* gradient exits off-screen right */
+}
+
+/* ─── Toast Slide-In ──────────────────────────────────────────────────────────
+ * Toast notifications enter from the right side.
+ * `translateX(100%)` means "moved 100% of the element's own width to the right"
+ * — i.e., completely off-screen to the right.
+ * `scale(0.95)` adds slight pop as it lands.
+ */
+@keyframes ch-toast-in {
+  from {
+    opacity:   0;
+    transform: translateX(100%) scale(0.95); /* off-screen right, slightly small */
+  }
+  to {
+    opacity:   1;
+    transform: translateX(0) scale(1);       /* in position, full size */
+  }
+}
+
+/**
+ * Toast exit: reverses the entrance. Also collapses `max-height` and
+ * `margin-bottom` to zero so the remaining toasts close the gap smoothly.
+ * The height collapse creates a "stacking" effect as toasts dismiss.
+ */
+@keyframes ch-toast-out {
+  from {
+    opacity:       1;
+    transform:     translateX(0) scale(1);
+    max-height:    120px;                  /* generous enough for any toast */
+    margin-bottom: var(--ch-space-2);      /* matches the gap between toasts */
+  }
+  to {
+    opacity:       0;
+    transform:     translateX(100%) scale(0.95);
+    max-height:    0;                      /* collapse height so items above move down */
+    margin-bottom: 0;
+  }
+}
+
+/* ─── Bounce Dot (3-Dot Loader) ───────────────────────────────────────────────
+ * Used for typing indicators and pending state loaders with multiple dots.
+ * Each dot uses this same animation but with a staggered `animation-delay`.
+ * `scale(0)` collapses the dot to invisible; `scale(1)` restores it.
+ */
+@keyframes ch-bounce-dot {
+  0%, 80%, 100% { transform: scale(0); } /* dot is invisible most of the cycle */
+  40%           { transform: scale(1); } /* dot briefly appears at 40% */
+}
+
+/* ─── Indeterminate Progress Bar ──────────────────────────────────────────────
+ * For progress bars with no known completion percentage.
+ * A bar element is translated from -100% (fully left) to +200% (fully right)
+ * in a loop, creating the appearance of continuous movement.
+ * `scaleX(0.5)` keeps the bar at 50% of the track width so it appears as a
+ * segment, not a full-width block sweeping across.
+ */
+@keyframes ch-progress-indeterminate {
+  0%   { transform: translateX(-100%) scaleX(0.5); } /* off-screen left */
+  100% { transform: translateX(200%)  scaleX(0.5); } /* off-screen right */
+}
+
+/* ─── Shake Animation ─────────────────────────────────────────────────────────
+ * Used for shaking elements as an error indicator.
+ * 
+ */
+
+@keyframes ch-animate-shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-5px);
+  }
+
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+/* ─── Utility Classes ─────────────────────────────────────────────────────────
+ * Pre-built animation classes you can apply directly in templates.
+ * These use `both` fill mode so the element starts in its `from` state.
+ *
+ * Usage in Vue templates:
+ *   <div class="ch-animate-fade-in">...</div>
+ *   <div class="ch-animate-scale-in" style="--animation-delay: 100ms">...</div>
+ *
+ * For staggered animations, set --animation-delay as an inline style:
+ *   <div
+ *     v-for="(item, i) in items"
+ *     class="ch-animate-slide-up"
+ *     :style="{ animationDelay: `${i * 50}ms` }"
+ *   />
+ */
+
+.ch-animate-fade-in {
+  animation: ch-fade-in
+    var(--ch-duration-normal)   /* 150ms — standard transition speed */
+    var(--ch-ease-out)          /* decelerates to rest */
+    both;                       /* fill-mode: start in from state, hold at to state */
+}
+
+.ch-animate-scale-in {
+  animation: ch-scale-in
+    var(--ch-duration-normal)
+    var(--ch-ease-spring)       /* spring easing for a physical "pop" */
+    both;
+}
+
+.ch-animate-slide-up {
+  animation: ch-slide-up
+    var(--ch-duration-normal)
+    var(--ch-ease-out)
+    both;
+}
+
+.ch-animate-slide-down {
+  animation: ch-slide-down
+    var(--ch-duration-normal)
+    var(--ch-ease-out)
+    both;
+}
+
+.ch-animate-shake {
+  animation: shake 0.5s;
+}

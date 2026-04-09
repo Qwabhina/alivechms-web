@@ -14,7 +14,9 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../Helpers.php';
+namespace AliveChMS\Core\Http\Middleware;
+
+use AliveChMS\Core\System\Helpers;
 
 class InputSanitizationMiddleware
 {

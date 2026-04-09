@@ -13,8 +13,13 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../core/Settings.php';
-require_once __DIR__ . '/../core/ResponseHelper.php';
+require_once __DIR__ . "/../vendor/autoload.php";
+
+use AliveChMS\Core\System\BaseRoute;
+use AliveChMS\Core\System\Helpers;
+use AliveChMS\Core\System\ResponseHelper;
+use AliveChMS\Core\System\Settings;
+use AliveChMS\Core\System\SettingsHelper;
 
 class SettingsRoutes extends BaseRoute
 {
@@ -25,13 +30,38 @@ class SettingsRoutes extends BaseRoute
       self::rateLimit(maxAttempts: 60, windowSeconds: 60);
 
       match (true) {
+         // PUBLIC SETTINGS (No Auth Required)
+         $method === 'GET' && $path === 'public/settings' => (function () {
+               // No auth check needed for public settings (logo, name, etc.)
+   
+               $keys = [
+               'church_name',
+               'church_motto',
+               'church_logo',
+               'church_website',
+               'currency_symbol',
+               'currency_code',
+               'date_format',
+               'time_format',
+               'timezone',
+               'language'
+               ];
+
+               $settings = [];
+               foreach ($keys as $key) {
+                  $settings[$key] = Settings::get($key);
+               }
+
+               ResponseHelper::success($settings);
+            })(),
+
          // GET ALL SETTINGS
          $method === 'GET' && $path === 'settings/all' => (function () {
             self::authenticate();
             self::authorize('settings.view');
 
             $settings = Settings::getAll();
-            ResponseHelper::success(['data' => $settings]);
+               ResponseHelper::success($settings);
          })(),
 
          // GET SETTINGS BY CATEGORY
@@ -101,7 +131,7 @@ class SettingsRoutes extends BaseRoute
             }
 
             // Create upload directory if not exists
-            $uploadDir = __DIR__ . '/../public/uploads/logos/';
+               $uploadDir = __DIR__ . '/../uploads/logos/';
             if (!is_dir($uploadDir)) {
                mkdir($uploadDir, 0755, true);
             }
@@ -121,8 +151,8 @@ class SettingsRoutes extends BaseRoute
 
             // Delete old logo if exists
             $oldLogo = Settings::get('church_logo');
-            if ($oldLogo && file_exists(__DIR__ . '/../public/' . $oldLogo)) {
-               unlink(__DIR__ . '/../public/' . $oldLogo);
+               if ($oldLogo && file_exists(__DIR__ . '/../' . $oldLogo)) {
+                  unlink(__DIR__ . '/../' . $oldLogo);
             }
 
             // Move uploaded file
@@ -142,7 +172,7 @@ class SettingsRoutes extends BaseRoute
 
             ResponseHelper::success([
                'path' => $relativePath,
-               'url' => '/public/' . $relativePath
+               'url' => '/' . $relativePath
             ], 'Logo uploaded successfully');
          })(),
 

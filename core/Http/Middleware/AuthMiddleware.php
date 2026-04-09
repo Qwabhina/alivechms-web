@@ -14,8 +14,13 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../Middleware.php';
-require_once __DIR__ . '/../../Auth.php';
+namespace AliveChMS\Core\Http\Middleware;
+
+use AliveChMS\Core\Http\Middleware;
+use AliveChMS\Core\Http\Request;
+use AliveChMS\Core\Http\Response;
+use AliveChMS\Core\Identity\Auth;
+use Exception;
 
 class AuthMiddleware extends Middleware
 {
@@ -34,7 +39,7 @@ class AuthMiddleware extends Middleware
       ], $config);
    }
 
-   public function handle(Request $request, callable $next): Response
+   public function execute(Request $request, callable $next): Response
    {
       $token = $this->extractToken($request);
 

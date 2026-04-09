@@ -1,173 +1,154 @@
-# AliveChMS - Church Management System
+# AliveChMS - Church Management System (Backend V2.0)
 
-A comprehensive church management system built with PHP, featuring member management, contributions tracking, expense management, and more.
-
----
-
-## 🚀 Quick Start
-
-### ✅ Recent Updates (January 22, 2026)
-
-**Schema Fixes (CRITICAL)**
-
-- Fixed 19 SQL JOIN conditions across 10 core files
-- Resolved `membership_status` table column mismatch
-- Fixed 403 errors on member listing and statistics
-- See `SCHEMA_FIX_SUMMARY.md` for details
-
-**Members Module Refactor (COMPLETE)**
-
-- Broke down 1575-line monolithic file into 8 focused ES6 modules
-- Fixed URL doubling issue (relative paths)
-- Implemented clean modular architecture
-- Backend already optimized (N+1 queries eliminated)
-- See `MEMBERS_REFACTOR_SUMMARY.md` for details
-
-### Requirements
-
-- PHP 8.0+
-- MySQL 5.7+
-- Composer
-- Apache/Nginx
-
-### Installation
-
-1. **Clone the repository**
-
-   ```bash
-   git clone <repository-url>
-   cd alivechms
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   composer install
-   ```
-
-3. **Configure database**
-   - Copy `.env.example` to `.env`
-   - Update database credentials
-
-4. **Import database**
-
-   ```bash
-   mysql -u username -p database_name < alive_chms.sql
-   ```
-
-5. **Set permissions**
-
-   ```bash
-   chmod -R 755 cache/ logs/ uploads/
-   ```
-
-6. **Access the application**
-   - Navigate to `http://localhost/alivechms`
-   - Default login credentials in documentation
+A robust, enterprise-grade church management system refactored for scalability, security, and maintainability.
 
 ---
 
-## 📚 Features
+## 🏗 Architecture & Refactoring (Feb 2026)
 
-- **Member Management** - Registration, profiles, families
-- **Contributions** - Track tithes, offerings, donations
-- **Expenses** - Request, approve, track expenses
-- **Events** - Schedule and manage church events
-- **Groups** - Manage ministries and small groups
-- **Communications** - Send emails/SMS to members
-- **Reports** - Financial and membership reports
-- **Roles & Permissions** - Granular access control
+This project has undergone a major architectural transformation (Phases 1-6) to adopt modern PHP standards and design patterns.
+
+### 1. Repository Pattern
+Data access logic has been decoupled from business logic.
+- **Location**: `core/Repositories/`
+- **Purpose**: Handles all database interactions (CRUD, complex queries).
+- **Key Class**: `MemberRepository` - Manages member persistence, filtering, and retrieval.
+- **Benefit**: Allows swapping storage backends (if needed) and simplifies unit testing by mocking repositories.
+
+### 2. Service-Oriented Architecture
+Core classes now act as the **Service Layer**, orchestrating business rules and delegating tasks.
+- **Location**: `core/` (e.g., `Member.php`, `Auth.php`)
+- **Role**: Validates input, checks permissions, and calls Repositories/Stats classes.
+- **Benefit**: Thinner controllers (Routes) and cleaner entities.
+
+### 3. Statistics & Reporting Module
+Heavy aggregation queries have been moved to dedicated classes.
+- **Location**: `core/Stats/`
+- **Classes**: `MemberStats`, `ContributionStats`, `ExpenseStats`.
+- **Benefit**: `Member.php` dropped ~500 lines of code, focusing solely on member management, while reporting logic lives separately.
+
+### 4. Direct Injection & Helper Standardization
+- **Dependency Injection**: `ORM` and other dependencies are injected or instantiated locally, avoiding global state where possible.
+- **Helpers**: Consolidated into `AliveChMS\Core\Helpers` and `ResponseHelper` for standard execution.
+
+### 5. PSR-4 Namespacing & Autoloading
+- **Namespace**: `AliveChMS\Core\`
+- **Autoloading**: Managed via Composer. `require_once` calls have been largely removed in favor of `use` statements.
 
 ---
 
-## 📁 Project Structure
+## 📁 Updated Project Structure
 
 ```
 alivechms/
-├── core/           # Core classes and business logic
-├── routes/         # API route handlers
-├── public/         # Frontend files
-├── docs/           # Documentation
-├── tests/          # Unit and integration tests
-├── migrations/     # Database migrations
-├── cache/          # Cache files
-├── logs/           # Application logs
-└── uploads/        # User uploads
+├── core/
+│   ├── Repositories/       # [NEW] Data access layer (MemberRepository)
+│   ├── Stats/              # [NEW] Reporting logic (MemberStats, ContributionStats)
+│   ├── Http/               # Request/Response/Middleware
+│   ├── Security/           # CSRF, Token Management
+│   ├── Auth.php            # Authentication Service (JWT, RBAC)
+│   ├── Member.php          # Member Service Layer
+│   ├── ORM.php             # Database Wrapper
+│   └── Helpers.php         # Utilities
+├── routes/                 # API Endpoints
+├── tests/                  # Test Suite
+│   ├── Unit/               # Isolated tests (AuthTest, SimpleValidatorTest)
+│   └── Integration/        # Database-dependent tests
+├── vendor/                 # Composer dependencies
+└── phpunit.xml             # Test Configuration
 ```
 
 ---
 
-## 📖 Documentation
+## 🚀 Installation & Setup
 
-Essential documentation in `/docs`:
+### Requirements
+- PHP 8.1+
+- Composer
+- MySQL 5.7+ / MariaDB
 
-- **TESTING_GUIDE.md** - Step-by-step testing instructions (NEW)
-- **SCHEMA_FIX_SUMMARY.md** - Database schema fixes applied (NEW)
-- **MEMBERS_REFACTOR_SUMMARY.md** - Members module refactor summary (NEW)
-- **SCHEMA_REFERENCE.md** - Database field reference
-- **DEPLOYMENT_GUIDE.md** - Deployment checklist
-- **FIXES_SUMMARY.md** - Recent fixes and improvements
-- **MEMBERS_MODULE_REFACTOR.md** - Technical documentation
-- **MEMBERS_QUICK_START.md** - Developer quick reference
-- **TROUBLESHOOTING.md** - Common issues & solutions
+### 1. specific Dependencies
+```bash
+composer install
+composer dump-autoload
+```
+
+### 2. Environment Configuration
+Copy `.env.example` to `.env` and configure:
+```ini
+DB_HOST=localhost
+DB_NAME=alivechms
+DB_USER=root
+DB_PASS=
+JWT_SECRET=your_secret_key
+JWT_REFRESH_SECRET=your_refresh_secret
+```
+
+### 3. Database
+Import the schema (ensure `alive_chms.sql` is up to date):
+```bash
+mysql -u root -p alivechms < alive_chms.sql
+```
 
 ---
 
 ## 🧪 Testing
 
-Run tests with PHPUnit:
+The system uses **PHPUnit 10** for testing.
 
 ```bash
-./vendor/bin/phpunit
+# Run all tests
+composer test
+
+# Run specific test file
+vendor/bin/phpunit tests/Unit/AuthTest.php
+```
+
+### Test Suites
+- **Unit Tests**: Test individual classes (`Auth`, `Validators`) using mocking. working and passing.
+- **Integration Tests**: Test database interactions (`ORMTest`). *Note: Requires local test database setup.*
+
+---
+
+## 🔒 Security Features
+
+- **JWT Authentication**: Secure stateless authentication with Access (30m) and Refresh (24h) tokens.
+- **RBAC**: Role-Based Access Control integrated into `Auth::checkPermission()`.
+- **Input Sanitization**: Middleware and Helper-based sanitization for all inputs.
+- **CSRF Protection**: Double-submit cookie pattern for state-changing requests.
+- **Secure Headers**: CORS headers configured via environment variables.
+
+---
+
+## 🛠 API Overview
+
+The backend exposes a JSON REST API.
+
+- **Auth**: `/auth/login`, `/auth/refresh`, `/auth/logout`
+- **Members**: `/members/list`, `/members/get/{id}`, `/members/create`, `/members/update/{id}`
+- **Stats**: `/members/stats`, `/finance/stats` (Delegated to `Stats/` module)
+
+Response Format (Standardized):
+```json
+{
+  "status": "success",
+  "message": "Operation successful",
+  "data": { ... },
+  "timestamp": "2026-02-01T12:00:00+00:00"
+}
 ```
 
 ---
 
-## 🔒 Security
+## 📜 Recent Changelog (Feb 2026)
 
-- SQL injection protection via prepared statements
-- XSS protection with input sanitization
-- CSRF protection enabled
-- Role-based access control
-- Password hashing with bcrypt
-
----
-
-## 📊 Performance
-
-- Database query optimization
-- Caching layer implemented
-- Indexed database tables
-- Optimized N+1 queries
+- **Phase 1**: Critical Schema fixes (`church_budget`, `fiscal_year`).
+- **Phase 2**: Foundation (Autoloading, FileService).
+- **Phase 3**: Deduplication (Helpers cleanup).
+- **Phase 4**: Namespacing (`AliveChMS\Core`).
+- **Phase 5**: Architecture (Repositories, Stats Extraction).
+- **Phase 6**: Cleanup & Test Stabilization.
 
 ---
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests
-5. Submit a pull request
-
----
-
-## 📝 License
-
-[Your License Here]
-
----
-
-## 👥 Support
-
-For support and questions:
-
-- Email: [support email]
-- Documentation: `/docs`
-- Issues: [GitHub Issues URL]
-
----
-
-**Version:** 6.0.0 (Modular Refactor)  
-**Last Updated:** January 22, 2026  
-**Status:** ✅ Members Module Refactored & Schema Fixed
+**Status**: ✅ Stable | **Version**: 2.0.0 Refactor

@@ -25,7 +25,11 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../core/ResponseHelper.php';
+require_once __DIR__ . "/../vendor/autoload.php";
+
+use AliveChMS\Core\System\BaseRoute;
+use AliveChMS\Core\System\ORM;
+use AliveChMS\Core\System\ResponseHelper;
 
 class LookupRoutes extends BaseRoute
 {
@@ -109,6 +113,30 @@ class LookupRoutes extends BaseRoute
                              FROM branch 
                              WHERE IsActive = 1 
                              ORDER BY BranchName"
+                  ),
+                  'contribution_types' => $orm->runQuery(
+                     "SELECT ContributionTypeID as id, ContributionTypeName as name, ContributionTypeDescription as description, IsTaxDeductible 
+                             FROM contribution_type 
+                             WHERE IsActive = 1 
+                             ORDER BY ContributionTypeName"
+                  ),
+                  'fiscal_years' => $orm->runQuery(
+                     "SELECT FiscalYearID as id, FiscalYearName as name, StartDate, EndDate, Status 
+                             FROM fiscal_year 
+                             WHERE Status != 'Deleted' 
+                             ORDER BY StartDate DESC"
+                  ),
+                  'expense_categories' => $orm->runQuery(
+                     "SELECT ExpCategoryID as id, CategoryName as name 
+                             FROM expense_category 
+                             WHERE IsActive = 1 
+                             ORDER BY CategoryName"
+                  ),
+                  'pledge_types' => $orm->runQuery(
+                     "SELECT PledgeTypeID as id, PledgeTypeName as name, Description as description 
+                             FROM pledge_type 
+                             WHERE IsActive = 1 
+                             ORDER BY PledgeTypeName"
                   )
                ];
 

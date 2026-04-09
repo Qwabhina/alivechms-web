@@ -14,10 +14,13 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../ServiceProvider.php';
-require_once __DIR__ . '/../Cache/CacheManager.php';
-require_once __DIR__ . '/../Cache/FileDriver.php';
-require_once __DIR__ . '/../Cache/MemoryDriver.php';
+namespace AliveChMS\Core\Providers;
+
+use AliveChMS\Core\System\ServiceProvider;
+use AliveChMS\Core\Infrastructure\Cache\CacheManager;
+use AliveChMS\Core\Infrastructure\Cache\FileDriver;
+use AliveChMS\Core\Infrastructure\Cache\MemoryDriver;
+use Exception;
 
 class CacheServiceProvider extends ServiceProvider
 {

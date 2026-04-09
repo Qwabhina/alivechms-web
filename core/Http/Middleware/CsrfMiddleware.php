@@ -14,8 +14,11 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../Middleware.php';
-require_once __DIR__ . '/../../Security/CsrfProtection.php';
+namespace AliveChMS\Core\Http\Middleware;
+
+use AliveChMS\Core\Http\Middleware;
+use AliveChMS\Core\Http\Request;
+use AliveChMS\Core\Http\Response;
 
 class CsrfMiddleware extends Middleware
 {
@@ -28,7 +31,7 @@ class CsrfMiddleware extends Middleware
         $this->enabled = $enabled;
     }
 
-    public function handle(Request $request, callable $next): Response
+    public function execute(Request $request, callable $next): Response
     {
         // Skip if CSRF protection is disabled
         if (!$this->enabled) {
@@ -36,7 +39,7 @@ class CsrfMiddleware extends Middleware
         }
 
         // Skip if request method doesn't require protection
-        if (!CsrfProtection::requiresProtection($request->getMethod())) {
+        if (!\CsrfProtection::requiresProtection($request->getMethod())) {
             return $next($request);
         }
 
@@ -46,7 +49,7 @@ class CsrfMiddleware extends Middleware
         }
 
         // Verify CSRF token
-        if (!CsrfProtection::verifyRequest($request)) {
+        if (!\CsrfProtection::verifyRequest($request)) {
             return $this->buildCsrfErrorResponse();
         }
 

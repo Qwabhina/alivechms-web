@@ -29,8 +29,11 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../core/FiscalYear.php';
-require_once __DIR__ . '/../core/ResponseHelper.php';
+require_once __DIR__ . "/../vendor/autoload.php";
+
+use AliveChMS\Core\System\BaseRoute;
+use AliveChMS\Core\System\FiscalYear;
+use AliveChMS\Core\System\ResponseHelper;
 
 class FiscalYearRoutes extends BaseRoute
 {
@@ -51,19 +54,6 @@ class FiscalYearRoutes extends BaseRoute
 
             $result = FiscalYear::create($payload);
             ResponseHelper::created($result, 'Fiscal year created');
-         })(),
-
-         // UPDATE FISCAL YEAR
-         $method === 'POST' && $pathParts[0] === 'fiscalyear' && ($pathParts[1] ?? '') === 'update' && isset($pathParts[2]) => (function () use ($pathParts) {
-            self::authenticate();
-            self::authorize('settings.edit');
-
-            $fiscalYearId = self::getIdFromPath($pathParts, 2, 'Fiscal Year ID');
-
-            $payload = self::getPayload();
-
-            $result = FiscalYear::update($fiscalYearId, $payload);
-            ResponseHelper::success($result, 'Fiscal year updated');
          })(),
 
          // DELETE FISCAL YEAR (Only if no financial records)
@@ -109,8 +99,8 @@ class FiscalYearRoutes extends BaseRoute
                $filters['date_to'] = $_GET['date_to'];
             }
 
-            $result = FiscalYear::getAll($page, $limit, $filters);
-            ResponseHelper::paginated($result['data'], $result['pagination']['total'], $page, $limit);
+               $result = FiscalYear::getAll($filters, $page, $limit);
+               ResponseHelper::paginated($result['data'], $result['total'], $page, $limit);
          })(),
 
          // CLOSE FISCAL YEAR (Irreversible)

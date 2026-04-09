@@ -13,10 +13,12 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../ServiceProvider.php';
-require_once __DIR__ . '/../Database.php';
-require_once __DIR__ . '/../ORM.php';
-require_once __DIR__ . '/../QueryBuilder.php';
+namespace AliveChMS\Core\Providers;
+
+use AliveChMS\Core\System\ServiceProvider;
+use AliveChMS\Core\System\Database;
+use AliveChMS\Core\System\ORM;
+use AliveChMS\Core\System\QueryBuilder;
 
 class DatabaseServiceProvider extends ServiceProvider
 {

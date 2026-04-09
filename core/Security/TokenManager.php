@@ -18,6 +18,8 @@
 
 declare(strict_types=1);
 
+namespace AliveChMS\Core\Security;
+
 class TokenManager
 {
    private const REFRESH_COOKIE_NAME = 'alive_refresh_token';
