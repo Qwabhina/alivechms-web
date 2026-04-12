@@ -40,6 +40,8 @@ export interface AuthUser {
 export interface RefreshResponse {
   access_token: string
   csrf_token: string
+  user: AuthUser
+  refresh_token: string | null
 }
 
 /* ---------- Auth Status ---------- */

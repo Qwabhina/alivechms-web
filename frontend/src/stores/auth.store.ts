@@ -21,6 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
   /* ── State ─────────────────────────────────────────────────────── */
 
   const accessToken = ref<string | null>(null)
+  const refreshToken = ref<string | null>(null)
   const csrfToken = ref<string | null>(null)
   const user = ref<AuthUser | null>(null)
   const permissions = ref<string[]>([])
@@ -66,6 +67,7 @@ export const useAuthStore = defineStore('auth', () => {
       const payload = res.data!
 
       accessToken.value = payload.access_token
+      refreshToken.value = payload.refresh_token ?? ''
       csrfToken.value = payload.csrf_token
       user.value = payload.user
       permissions.value = payload.user.permissions ?? []
@@ -91,31 +93,11 @@ export const useAuthStore = defineStore('auth', () => {
 
       accessToken.value = payload.access_token
       csrfToken.value = payload.csrf_token
+      user.value = payload.user
+      permissions.value = payload.user?.permissions ?? []
+      refreshToken.value = payload.refresh_token ?? ''
 
-      // Fetch user details via auth/status
-      const { data: statusRes } = await authService.status()
-      const statusPayload = statusRes.data!
-
-      if (statusPayload.authenticated) {
-        // We need to populate full user — refresh doesn't return user data.
-        // For now, set minimal data from token. Full hydration happens
-        // when the dashboard loads.
-        user.value = {
-          MbrID: statusPayload.user_id!,
-          UserID: 0,
-          Username: statusPayload.username!,
-          MbrFirstName: '',
-          MbrFamilyName: '',
-          MbrEmailAddress: '',
-          MbrProfilePicture: null,
-          MembershipStatus: '',
-          BranchID: 0,
-          permissions: [],
-        }
-        return true
-      }
-
-      return false
+      return true
     } catch {
       // No valid session — that's fine
       return false
