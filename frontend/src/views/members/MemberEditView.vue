@@ -4,6 +4,7 @@ import { memberService } from '@/services/member.service'
 import { useToast } from '@/design-system'
 import type { MemberLookupData, MemberUpdate } from '@/types/member'
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-vue-next'
+import { normalizeProfileImage } from '@/utils/image'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -131,7 +132,7 @@ async function loadData() {
     dobDate.value = m.MbrDateOfBirth ? new Date(m.MbrDateOfBirth) : null
 
     // Store current profile picture URL for preview
-    currentProfilePicture.value = m.MbrProfilePicture
+    currentProfilePicture.value = normalizeProfileImage(m.MbrProfilePicture) ?? null
 
     // Populate phones
     if (m.phones && m.phones.length > 0) {

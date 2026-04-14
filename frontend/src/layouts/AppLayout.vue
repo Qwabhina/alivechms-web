@@ -8,8 +8,7 @@ import { computed } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
-import { ChSidebar, type NavItem } from '@/design-system'
-import { useTheme } from '@/composables/useTheme'
+import { ChSidebar, ChSidebarItem, ChModal, ChButton, type NavItem } from '@/design-system'
 import {
   LayoutDashboard,
   Users,
@@ -18,14 +17,10 @@ import {
   CalendarDays,
   Settings,
   LogOut,
-  Sun,
-  Moon,
-  Monitor,
 } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const ui = useUiStore()
-const { theme: dsTheme, setTheme: dsSetTheme } = useTheme()
 const router = useRouter()
 const route = useRoute()
 
@@ -62,6 +57,9 @@ const navItems = computed<NavItem[]>(() => {
     items.push({ label: 'Settings', to: '/settings', icon: Settings })
   }
 
+  // Logout is intentionally not part of the main nav list; it's rendered
+  // separately in the sidebar footer for visual separation.
+
   return items
 })
 
@@ -71,19 +69,37 @@ async function handleLogout() {
   router.push('/login')
 }
 
+// Use shared confirm modal
+import { confirmModal, confirm } from '@/design-system/composables/useConfirm'
+
 /* ── Sidebar navigation handler ────────────────────────────────────────── */
-function handleNavigate(to: string) {
+async function handleNavigate(to: string) {
+  // Intercept the Logout pseudo-route to run the logout flow
+  if (to === '/logout') {
+    ui.closeMobileSidebar()
+    const ok = await confirm({
+      title: 'Confirm Logout',
+      message: 'Are you sure you want to sign out of your account?',
+      confirmLabel: 'Logout',
+      cancelLabel: 'Cancel',
+    })
+    if (ok) await handleLogout()
+    return
+  }
+
   router.push(to)
   ui.closeMobileSidebar()
 }
 
 /* ── Topbar user object (ChTopbar shape) ───────────────────────────────── */
+import { normalizeProfileImage } from '@/utils/image'
+
 const topbarUser = computed(() =>
   auth.user
     ? {
         name: auth.fullName || auth.user.Username,
         role: auth.user.MembershipStatus || undefined,
-        avatar: auth.user.MbrProfilePicture ?? undefined,
+        avatar: normalizeProfileImage(auth.user.MbrProfilePicture) ?? undefined,
       }
     : undefined,
 )
@@ -91,26 +107,6 @@ const topbarUser = computed(() =>
 /* ── Current route for ChSidebarItem active state ──────────────────────── */
 const currentRoute = computed(() => route.path)
 
-/* ── Theme toggle ──────────────────────────────────────────────────────── */
-const themeIcon = computed(() => {
-  if (dsTheme.value === 'dark') return Moon
-  if (dsTheme.value === 'light') return Sun
-  return Monitor
-})
-
-const themeLabel = computed(() => {
-  if (dsTheme.value === 'dark') return 'Dark'
-  if (dsTheme.value === 'light') return 'Light'
-  return 'System'
-})
-
-function cycleTheme() {
-  const themes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system']
-  const currentTheme = dsTheme.value ?? 'system'
-  const currentIndex = themes.indexOf(currentTheme)
-  const nextTheme = themes[(currentIndex + 1) % themes.length] as 'light' | 'dark' | 'system'
-  dsSetTheme(nextTheme)
-}
 </script>
 
 <template>
@@ -121,37 +117,15 @@ function cycleTheme() {
       :mobile-open="ui.sidebarMobileOpen" brand-name="AliveChMS" @navigate="handleNavigate"
       @collapse-toggle="ui.toggleSidebar()" @mobile-close="ui.closeMobileSidebar()">
       <template #footer>
-        <div class="ch-sidebar-footer-theme">
-          <button
-            class="ch-sidebar-item ch-sidebar-item--theme"
-            :class="{ 'ch-sidebar-item--collapsed': ui.sidebarCollapsed }"
-            :data-tooltip="ui.sidebarCollapsed ? themeLabel : undefined"
-            :aria-label="'Theme toggle'"
-            :title="ui.sidebarCollapsed ? themeLabel : undefined"
-            type="button"
-            @click="cycleTheme"
-          >
-            <span class="ch-sidebar-item__icon">
-              <component :is="themeIcon" :size="18" />
-            </span>
-            <span class="ch-sidebar-item__label">{{ themeLabel }}</span>
-          </button>
-        </div>
+        <div class="ch-sidebar-footer-theme"></div>
 
-        <button
-          class="ch-sidebar-item ch-sidebar-item--logout"
-          :class="{ 'ch-sidebar-item--collapsed': ui.sidebarCollapsed }"
-          :data-tooltip="ui.sidebarCollapsed ? 'Logout' : undefined"
-          :aria-label="'Logout'"
-          :title="ui.sidebarCollapsed ? 'Logout' : undefined"
-          type="button"
-          @click="handleLogout"
-        >
-          <span class="ch-sidebar-item__icon">
-            <LogOut :size="18" />
-          </span>
-          <span class="ch-sidebar-item__label">Logout</span>
-        </button>
+        <ChSidebarItem
+          :item="{ label: 'Logout', to: '/logout', icon: LogOut }"
+          :current-route="currentRoute"
+          :collapsed="ui.sidebarCollapsed"
+          class="ch-sidebar-item--logout"
+          @navigate="handleNavigate"
+        />
       </template>
     </ChSidebar>
 
@@ -173,6 +147,18 @@ function cycleTheme() {
       <main class="app-content">
         <RouterView />
       </main>
+      <!-- Shared confirm modal instance -->
+      <ChModal v-model:open="confirmModal.isOpen.value" :title="confirmModal.data.value?.title ?? 'Confirm'" size="sm">
+        <p>{{ confirmModal.data.value?.message }}</p>
+        <template #footer>
+          <ChButton variant="ghost" @click="confirmModal.close(false)">
+            {{ confirmModal.data.value?.cancelLabel ?? 'Cancel' }}
+          </ChButton>
+          <ChButton variant="danger" @click="confirmModal.close(true)">
+            {{ confirmModal.data.value?.confirmLabel ?? 'Confirm' }}
+          </ChButton>
+        </template>
+      </ChModal>
     </div>
   </div>
 </template>
@@ -247,16 +233,6 @@ function cycleTheme() {
 }
 
 /* Sidebar theme item — match other sidebar items */
-.ch-sidebar-item--theme {
-  width: 100%;
-  color: var(--ch-color-text) !important;
-}
-
-.ch-sidebar-item--theme:hover {
-  background-color: var(--ch-color-bg-subtle);
-  color: var(--ch-color-text) !important;
-}
-
 .ch-sidebar-footer-theme {
   padding-bottom: var(--ch-space-3);
 }

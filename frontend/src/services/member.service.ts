@@ -32,6 +32,15 @@ export const memberService = {
     return http.get<ApiResponse<{ data: Member[] }>>('member/recent').then((res) => res.data)
   },
 
+  /** Upcoming milestones (birthdays, anniversaries) */
+  upcoming(days = 30, limit = 10, page = 1, type?: 'birthdays' | 'anniversaries') {
+    const params: Record<string, unknown> = { days, limit, page }
+    if (type) params.type = type
+    return http.get<ApiResponse<any>>('member/upcoming', {
+      params,
+    }).then((res) => res.data)
+  },
+
   /** Membership statistics */
   getStats() {
     return http.get<ApiResponse<MemberStats>>('member/stats').then((res) => res.data)

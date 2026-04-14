@@ -122,6 +122,7 @@ export { useTableExport, type ExportFormat } from './composables/useTableExport'
 export { useToast } from './composables/useToast'
 export { useModal } from './composables/useModal'
 export { useStepperWizard } from './composables/useStepperWizard'
+export { confirm, confirmModal, type ConfirmOptions } from './composables/useConfirm'
 export {
   useValidation,
   useForm,

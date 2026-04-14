@@ -4,6 +4,7 @@ import { memberService } from '@/services/member.service'
 import { useToast } from '@/design-system'
 import type { Member } from '@/types/member'
 import { ArrowLeft, Pencil, Trash2, Phone, Mail, MapPin } from 'lucide-vue-next'
+import { normalizeProfileImage } from '@/utils/image'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -128,7 +129,7 @@ onMounted(loadMember)
         <div class="profile-header">
           <ChAvatar
             :name="`${member.MbrFirstName} ${member.MbrFamilyName}`"
-            :src="member.MbrProfilePicture || undefined"
+            :src="normalizeProfileImage(member.MbrProfilePicture)"
             size="xl"
           />
 

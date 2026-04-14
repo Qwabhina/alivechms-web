@@ -4,6 +4,7 @@ import { memberService } from '@/services/member.service'
 import { useToast } from '@/design-system'
 import type { Member, MemberFilters, MemberLookupData } from '@/types/member'
 import { UserPlus, Search, Trash2 } from 'lucide-vue-next'
+import { normalizeProfileImage } from '@/utils/image'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -224,8 +225,8 @@ onMounted(() => {
       <!-- Avatar cell -->
       <template #cell-avatar="{ row }">
         <ChAvatar
-          :name="`${(row as any).MbrFirstName} ${(row as any).MbrFamilyName}`"
-          :src="(row as any).MbrProfilePicture || undefined"
+            :name="(row as any).MbrFirstName + ' ' + (row as any).MbrFamilyName"
+            :src="normalizeProfileImage((row as any).MbrProfilePicture)"
           size="sm"
         />
       </template>

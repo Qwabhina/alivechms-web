@@ -45,6 +45,12 @@ const router = createRouter({
         {
           path: 'members',
           name: 'members',
+          component: () => import('@/views/members/MembersDashboardView.vue'),
+          meta: { permission: 'members.view' },
+        },
+        {
+          path: 'members/directory',
+          name: 'members-directory',
           component: () => import('@/views/members/MemberListView.vue'),
           meta: { permission: 'members.view' },
         },

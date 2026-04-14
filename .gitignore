@@ -1,6 +1,7 @@
 # Ignore Composer dependencies
 /vendor/
 /cache/
+/public/
 
 # Ignore environment configuration
 .env

@@ -456,6 +456,41 @@ class Member
         }
     }
 
+    
+    /**
+     * Return upcoming milestones (birthdays and registration anniversaries)
+     * within the next $days days. Limits each list to $limit.
+     *
+     * @param int $days
+     * @param int $limit
+     * @return array
+     */
+    public static function getUpcoming(int $days = 30, int $limit = 10, int $page = 1, ?string $type = null): array
+    {
+        $repo = new MemberRepository();
+        $offset = ($page - 1) * $limit;
+
+        if ($type === 'birthdays') {
+            $res = $repo->getUpcomingBirthdays($days, $limit, $offset);
+            return ['birthdays' => $res['data'], 'birthdays_total' => $res['total']];
+        }
+
+        if ($type === 'anniversaries') {
+            $res = $repo->getUpcomingAnniversaries($days, $limit, $offset);
+            return ['anniversaries' => $res['data'], 'anniversaries_total' => $res['total']];
+        }
+
+        $b = $repo->getUpcomingBirthdays($days, $limit, $offset);
+        $a = $repo->getUpcomingAnniversaries($days, $limit, $offset);
+
+        return [
+            'birthdays' => $b['data'],
+            'birthdays_total' => $b['total'],
+            'anniversaries' => $a['data'],
+            'anniversaries_total' => $a['total'],
+        ];
+    }
+
     /**
      * Soft delete a member
      */

@@ -311,6 +311,21 @@ class MemberRoutes extends BaseRoute
                 ResponseHelper::success(['data' => $members]);
             })(),
 
+            // UPCOMING MILESTONES (BIRTHDAYS + ANNIVERSARIES)
+            $method === 'GET' && $path === 'member/upcoming' => (function () {
+                self::authenticate();
+                self::authorize('members.view');
+
+                // optional query params
+                $days = isset($_GET['days']) ? (int) $_GET['days'] : 30;
+                $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 10;
+                $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+                $type = isset($_GET['type']) ? $_GET['type'] : null; // 'birthdays'|'anniversaries'|null
+
+                $result = Member::getUpcoming($days, $limit, $page, $type);
+                ResponseHelper::success($result);
+            })(),
+
             // MEMBER STATISTICS
             $method === 'GET' && $path === 'member/stats' => (function () {
                 self::authenticate();

@@ -12,6 +12,7 @@ import { dashboardService } from '@/services/dashboard.service'
 import { useToast } from '@/design-system'
 import type { DashboardOverview } from '@/types/operations'
 import { Users, Wallet, TrendingUp, CalendarDays, ArrowRight, DollarSign } from 'lucide-vue-next'
+import { normalizeProfileImage } from '@/utils/image'
 
 // ── Router & Toast ────────────────────────────────────────────────────────────
 const router = useRouter()
@@ -188,7 +189,7 @@ onMounted(async () => {
             <!-- Avatar -->
             <ChAvatar
               :name="`${member.MbrFirstName} ${member.MbrFamilyName}`"
-              :src="member.MbrProfilePicture || undefined"
+              :src="normalizeProfileImage(member.MbrProfilePicture)"
               size="sm"
             />
 
