@@ -112,9 +112,9 @@ async function handleSubmit() {
       if (form.branch_id) fd.append('branch_id', String(form.branch_id))
       if (phoneNumbers.length) fd.append('phone_numbers', JSON.stringify(phoneNumbers))
       fd.append('profile_picture', profileFile)
-      const { data } = await memberService.createWithPhoto(fd)
+      const res = await memberService.createWithPhoto(fd)
       toast.success('Member added successfully.')
-      router.push(`/members/${data.data!.mbr_id}`)
+      if (res?.data?.mbr_id) router.push(`/members/${res.data.mbr_id}`)
     } else {
       const payload: MemberCreate = {
         first_name: form.first_name,
@@ -131,9 +131,9 @@ async function handleSubmit() {
         branch_id: form.branch_id ?? undefined,
         phone_numbers: phoneNumbers.length ? phoneNumbers : undefined,
       }
-      const { data } = await memberService.create(payload)
+      const res = await memberService.create(payload)
       toast.success('Member added successfully.')
-      router.push(`/members/${data.data!.mbr_id}`)
+      if (res?.data?.mbr_id) router.push(`/members/${res.data.mbr_id}`)
     }
   } catch (err: unknown) {
     toast.error(getApiError(err, 'Failed to add member. Please try again.'))
@@ -146,8 +146,8 @@ async function handleSubmit() {
 
 async function loadLookupData() {
   try {
-    const { data } = await memberService.getLookupData()
-    lookupData.value = data.data!
+    const res = await memberService.getLookupData()
+    if (res?.data) lookupData.value = res.data
   } catch {
     toast.error('Failed to load form data.')
   }

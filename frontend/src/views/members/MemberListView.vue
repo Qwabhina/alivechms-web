@@ -96,9 +96,10 @@ async function loadMembers() {
       sort_by: sortBy.value,
       sort_dir: sortDir.value,
     }
-    const { data } = await memberService.getAll(page.value, 25, filters)
-    members.value = data.data
-    total.value = data.pagination.total
+    const res = await memberService.getAll(page.value, 25, filters)
+    if (!res?.data || !res.data.data) throw new Error('No members data')
+    members.value = res.data.data
+    total.value = res.data.pagination?.total ?? 0
   } catch {
     toast.error('Failed to load members.')
   } finally {
@@ -108,8 +109,8 @@ async function loadMembers() {
 
 async function loadLookupData() {
   try {
-    const { data } = await memberService.getLookupData()
-    lookupData.value = data.data!
+    const res = await memberService.getLookupData()
+    if (res?.data) lookupData.value = res.data
   } catch {
     /* silent */
   }

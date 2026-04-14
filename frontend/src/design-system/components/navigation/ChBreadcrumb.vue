@@ -33,8 +33,8 @@
  */
 
 import { computed, provide } from 'vue'
-import type { BreadcrumbSeparator, BreadcrumbItem } from '../../composables/useBreadcrumb.ts'
-import { BREADCRUMB_KEY } from '../../composables/useBreadcrumb.ts'
+import type { BreadcrumbSeparator, BreadcrumbItem } from '../../composables/useBreadcrumb'
+import { BREADCRUMB_KEY } from '../../composables/useBreadcrumb'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 

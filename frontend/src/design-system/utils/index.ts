@@ -272,7 +272,8 @@ export function formatCompactNumber(
  * formatDate(new Date(2025, 6, 14), 'DD/MM/YYYY') // '14/07/2025'
  * formatDate(new Date(2025, 6, 14, 9, 5), 'YYYY-MM-DD HH:mm') // '2025-07-14 09:05'
  */
-export function formatDate(date: Date | string | number, format: string): string {
+export function formatDate(date: Date | string | number | undefined, format: string): string {
+   if (date === undefined || date === null || date === '') return ''
    const d = new Date(date)
 
    const tokens: Record<string, string> = {

@@ -262,3 +262,9 @@ export { default as ChProgress } from './components/cues/ChProgress.vue'
 export { default as ChToast } from './components/cues/ChToast.vue'
 export { default as ChToastContainer } from './components/cues/ChToastContainer.vue'
 export { default as ChAlert } from './components/cues/ChAlert.vue'
+
+// Temporary compatibility export: some generated auto-imports or legacy code
+// reference `userid` from the design-system. Export a harmless stub to avoid
+// rollup warnings while the root cause is investigated and auto-imports are
+// regenerated. Remove this once all auto-import declarations are clean.
+export const userid: unknown = undefined

@@ -54,9 +54,14 @@ const isDeleting = ref(false)
 async function loadMember() {
   isLoading.value = true
   try {
-    const id = Number(route.params.id)
-    const { data } = await memberService.getById(id)
-    member.value = data.data!
+      const id = Number(route.params.id)
+      const res = await memberService.getById(id)
+      if (!res?.data) {
+        toast.error('Failed to load member profile.')
+        router.push('/members')
+        return
+      }
+      member.value = res.data
   } catch (err: unknown) {
     if (isNotFound(err)) {
       toast.error('Member not found.')

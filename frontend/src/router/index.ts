@@ -67,6 +67,84 @@ const router = createRouter({
           meta: { permission: 'members.edit' },
         },
 
+        /* Families */
+        {
+          path: 'families',
+          name: 'families',
+          component: () => import('@/views/families/FamilyListView.vue'),
+          meta: { permission: 'members.view' },
+        },
+        {
+          path: 'families/create',
+          name: 'families-create',
+          component: () => import('@/views/families/FamilyCreateView.vue'),
+          meta: { permission: 'members.edit' },
+        },
+        {
+          path: 'families/:id',
+          name: 'families-detail',
+          component: () => import('@/views/families/FamilyDetailView.vue'),
+          meta: { permission: 'members.view' },
+        },
+        {
+          path: 'families/:id/edit',
+          name: 'families-edit',
+          component: () => import('@/views/families/FamilyEditView.vue'),
+          meta: { permission: 'members.edit' },
+        },
+
+        /* Groups */
+        {
+          path: 'groups',
+          name: 'groups',
+          component: () => import('@/views/groups/GroupListView.vue'),
+          meta: { permission: 'groups.view' },
+        },
+        {
+          path: 'groups/create',
+          name: 'groups-create',
+          component: () => import('@/views/groups/GroupCreateView.vue'),
+          meta: { permission: 'groups.create' },
+        },
+        {
+          path: 'groups/:id',
+          name: 'groups-detail',
+          component: () => import('@/views/groups/GroupDetailView.vue'),
+          meta: { permission: 'groups.view' },
+        },
+        {
+          path: 'groups/:id/edit',
+          name: 'groups-edit',
+          component: () => import('@/views/groups/GroupEditView.vue'),
+          meta: { permission: 'groups.edit' },
+        },
+
+        /* Events */
+        {
+          path: 'events',
+          name: 'events',
+          component: () => import('@/views/events/EventListView.vue'),
+          meta: { permission: 'events.view' },
+        },
+        {
+          path: 'events/create',
+          name: 'events-create',
+          component: () => import('@/views/events/EventCreateView.vue'),
+          meta: { permission: 'events.create' },
+        },
+        {
+          path: 'events/:id',
+          name: 'events-detail',
+          component: () => import('@/views/events/EventDetailView.vue'),
+          meta: { permission: 'events.view' },
+        },
+        {
+          path: 'events/:id/edit',
+          name: 'events-edit',
+          component: () => import('@/views/events/EventEditView.vue'),
+          meta: { permission: 'events.edit' },
+        },
+
         /* Finance — Contributions */
         {
           path: 'finance/contributions',

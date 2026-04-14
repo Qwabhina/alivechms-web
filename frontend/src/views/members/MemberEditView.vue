@@ -102,8 +102,14 @@ async function loadData() {
       memberService.getLookupData(),
     ])
 
-    const m = memberRes.data.data!
-    lookupData.value = lookupRes.data.data!
+    const m = memberRes?.data
+    const lu = lookupRes?.data
+    if (!m || !lu) {
+      toast.error('Failed to load member data.')
+      router.push('/members')
+      return
+    }
+    lookupData.value = lu
 
     // Track current name for display
     currentMemberName.value = `${m.MbrFirstName} ${m.MbrFamilyName}`
@@ -129,7 +135,7 @@ async function loadData() {
 
     // Populate phones
     if (m.phones && m.phones.length > 0) {
-      phones.value = m.phones.map((p) => ({
+      phones.value = m.phones.map((p: any) => ({
         number: p.PhoneNumber,
         type_id: p.PhoneTypeID ?? null,
         is_primary: p.IsPrimary === 1,

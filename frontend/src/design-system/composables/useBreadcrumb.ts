@@ -12,9 +12,11 @@ export type BreadcrumbSeparator = '/' | '>' | 'chevron' | 'arrow'
 /** A single breadcrumb item descriptor */
 export interface BreadcrumbItem {
   /** Display text */
-  label: string
+  label?: string
   /** Link URL — omit for the current (last) item */
   href?: string
+  /** Vue Router `to` target — convenience for views that use router links */
+  to?: string
   /** Optional SVG path for an icon rendered before the label */
   icon?: string
 }

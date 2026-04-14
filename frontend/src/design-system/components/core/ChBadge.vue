@@ -47,7 +47,7 @@ import { computed } from 'vue'
  * Semantic color variants for the badge.
  * Each maps to a background + text color pair from the design tokens.
  */
-type Variant = 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info'
+type Variant = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info'
 
 /** Three sizes for use in different density contexts */
 type Size = 'sm' | 'md' | 'lg'

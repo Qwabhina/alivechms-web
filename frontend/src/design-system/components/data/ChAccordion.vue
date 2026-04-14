@@ -48,8 +48,8 @@
  */
 
 import { computed, provide, ref, watch } from 'vue'
-import { ACCORDION_KEY } from '../../composables/useAccordion.ts'
-import type { AccordionValue } from '../../composables/useAccordion.ts'
+import { ACCORDION_KEY } from '../../composables/useAccordion'
+import type { AccordionValue } from '../../composables/useAccordion'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 

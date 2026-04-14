@@ -22,7 +22,7 @@
  */
 
 import { inject } from 'vue'
-import { BREADCRUMB_KEY, defaultBreadcrumbContext } from '../../composables/useBreadcrumb.ts'
+import { BREADCRUMB_KEY, defaultBreadcrumbContext } from '../../composables/useBreadcrumb'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 

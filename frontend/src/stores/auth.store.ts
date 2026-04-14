@@ -64,13 +64,17 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const { data: res } = await authService.login({ userid, passkey, remember })
-      const payload = res.data!
+      const payload = res?.data
+      if (!payload) {
+        error.value = 'Login failed'
+        return false
+      }
 
       accessToken.value = payload.access_token
       refreshToken.value = payload.refresh_token ?? ''
       csrfToken.value = payload.csrf_token
       user.value = payload.user
-      permissions.value = payload.user.permissions ?? []
+      permissions.value = payload.user?.permissions ?? []
 
       return true
     } catch (err) {
@@ -89,7 +93,8 @@ export const useAuthStore = defineStore('auth', () => {
   async function tryRestoreSession(): Promise<boolean> {
     try {
       const { data: res } = await authService.refresh()
-      const payload = res.data!
+      const payload = res?.data
+      if (!payload) return false
 
       accessToken.value = payload.access_token
       csrfToken.value = payload.csrf_token

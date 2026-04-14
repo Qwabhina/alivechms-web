@@ -88,14 +88,15 @@ onMounted(async () => {
       memberService.getAll(1, 100),
     ])
 
-    lookupData.value = lookupRes.data.data as FinanceLookupData
+    lookupData.value = lookupRes?.data?.data as FinanceLookupData
 
     // Pre-select the active fiscal year
     const currentFY = lookupData.value?.fiscal_years?.find((fy) => fy.Status === 'Active')
     if (currentFY) form.fiscal_year_id = currentFY.id
 
     // Populate member select options
-    memberOptions.value = membersRes.data.data.map((m) => ({
+    const mems = membersRes?.data?.data ?? []
+    memberOptions.value = mems.map((m) => ({
       value: m.MbrID,
       label: `${m.MbrFirstName} ${m.MbrFamilyName}`,
     }))

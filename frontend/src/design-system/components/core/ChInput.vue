@@ -50,7 +50,7 @@ import { computed, ref, useSlots } from 'vue'
  * We intentionally exclude `checkbox`, `radio`, `file`, `range`, `color`, etc.
  * — those are distinct components (ChCheckbox, ChRadio, etc.)
  */
-type InputType = 'text' | 'email' | 'password' | 'number' | 'tel' | 'url' | 'search'
+type InputType = 'text' | 'email' | 'password' | 'number' | 'tel' | 'url' | 'search' | 'date' | 'time'
 
 /** Three sizes matching the rest of the design system */
 type Size = 'sm' | 'md' | 'lg'
@@ -62,7 +62,7 @@ interface Props {
    * Accepts `string | number` since number inputs return numbers natively,
    * but we always emit strings for consistency.
    */
-  modelValue?:   string | number
+  modelValue?:   string | number | null | undefined
 
   /** HTML input type. Defaults to 'text'. */
   type?:         InputType
