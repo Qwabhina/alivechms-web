@@ -5,7 +5,7 @@
 
 import { onMounted, computed } from 'vue'
 import { usePublicSettingsStore } from '@/stores/publicSettings.store'
-import { useTheme as useDesignTheme } from '@/design-system/composables/useTheme'
+import { useTheme as useDesignTheme } from '@/design-system'
 
 /** Initialize theme wiring between store and design-system */
 export function useTheme() {
