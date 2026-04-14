@@ -6,14 +6,21 @@
  * 
  * Re-designed to be heavily inspired by the V1 aesthetic and structure.
  */
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+import { usePublicSettingsStore } from '@/stores/publicSettings.store'
 import { LogIn, Eye, EyeOff, Church, User, Lock, ShieldCheck } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const publicSettings = usePublicSettingsStore()
+
+/* ── Load public settings on mount ───────────────────────────────────── */
+onMounted(() => {
+  publicSettings.loadSettings()
+})
 
 /* ── Form state ──────────────────────────────────────────────────────── */
 const userid = ref('')
@@ -61,10 +68,17 @@ async function handleLogin() {
         <!-- Branding header inside the card -->
         <div class="logo-container">
           <div class="logo-icon-wrapper">
-            <Church :size="32" class="logo-icon" />
+            <!-- Show church logo if available, fallback to icon -->
+            <img
+              v-if="publicSettings.churchLogo"
+              :src="publicSettings.churchLogo"
+              :alt="publicSettings.churchName || 'Church Logo'"
+              class="logo-image"
+            />
+            <Church v-else :size="32" class="logo-icon" />
           </div>
-          <h1 class="brand-title">AliveChMS</h1>
-          <p class="brand-subtitle">Church Management System</p>
+          <h1 class="brand-title">{{ publicSettings.churchName }}</h1>
+          <p class="brand-subtitle">{{ publicSettings.churchMotto }}</p>
         </div>
 
         <!-- Error alert -->
@@ -122,7 +136,7 @@ async function handleLogin() {
         <div class="footer-text">
           <small class="footer-content">
             <ShieldCheck :size="14" class="footer-icon" />
-            Secure Login &middot; &copy; {{ new Date().getFullYear() }} AliveChMS
+            Secure Login &middot; &copy; {{ new Date().getFullYear() }} {{ publicSettings.churchName }}
           </small>
         </div>
       </ChCard>
@@ -164,6 +178,14 @@ async function handleLogin() {
     border-radius: var(--ch-radius-lg);
   color: var(--ch-color-primary);
   margin-bottom: var(--ch-space-3);
+  overflow: hidden;
+}
+
+.logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: var(--ch-space-1);
 }
 
 .brand-title {

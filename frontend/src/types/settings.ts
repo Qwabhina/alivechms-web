@@ -17,6 +17,7 @@ export interface PublicSettings {
   timezone: string
   language: string
   items_per_page: number
+
 }
 
 /* ---------- All Settings (Admin) ---------- */

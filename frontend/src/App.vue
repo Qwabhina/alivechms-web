@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
+import { useTheme } from '@/composables/useTheme'
+
+// Initialize theme globally
+useTheme()
 </script>
 
 <template>

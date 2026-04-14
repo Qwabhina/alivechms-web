@@ -7,8 +7,17 @@ import { settingsService } from '@/services/settings.service'
 import { useToast } from '@/design-system'
 import type { Setting } from '@/types/settings'
 import { Settings, Save } from 'lucide-vue-next'
+import { useTheme } from '@/composables/useTheme'
+import { computed } from 'vue'
 
 const toast = useToast()
+
+// Theme controls (design-system / localStorage)
+const { theme: currentTheme, setTheme } = useTheme()
+const themeModel = computed<string>({
+  get: () => (currentTheme).value ?? 'system',
+  set: (v: string) => setTheme(v as 'light' | 'dark' | 'system'),
+})
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -140,23 +149,51 @@ onMounted(loadSettings)
 
     <!-- ── Settings Layout ────────────────────────────────────────────────── -->
     <div v-else-if="Object.keys(settingsByCategory).length > 0" class="settings-layout">
-      <!-- Left: Category sidebar -->
+      <!-- Left: Category sidebar as a card -->
       <aside class="settings-nav">
-        <p class="settings-nav__label">Categories</p>
-        <button
-          v-for="cat in Object.keys(settingsByCategory)"
-          :key="cat"
-          class="settings-nav__item"
-          :class="{ 'settings-nav__item--active': activeCategory === cat }"
-          type="button"
-          @click="activeCategory = cat"
-        >
-          {{ cat }}
-        </button>
+        <ChCard shadow="sm">
+          <template #header>
+            <span class="card-label">Categories</span>
+          </template>
+          <div class="settings-nav-card">
+            <div class="settings-nav__list">
+              <button
+                v-for="cat in Object.keys(settingsByCategory)"
+                :key="cat"
+                class="settings-nav__item"
+                :class="{ 'settings-nav__item--active': activeCategory === cat }"
+                type="button"
+                @click="activeCategory = cat"
+              >
+                {{ cat }}
+              </button>
+            </div>
+          </div>
+        </ChCard>
+
+        <!-- Theme selector placed beneath categories to avoid distracting main content -->
+        <ChCard class="settings-theme-card--aside" shadow="sm">
+          <template #header>
+            <span class="card-label">Theme</span>
+          </template>
+          <div class="settings-fields">
+            <div class="settings-field">
+              <ChFormField :label="'UI Theme'" :hint="'Local preference (light, dark, system)'">
+                <div class="radio-group">
+                  <ChRadio v-model="themeModel" value="light" label="Light" />
+                  <ChRadio v-model="themeModel" value="dark" label="Dark" />
+                  <ChRadio v-model="themeModel" value="system" label="System (Auto)" />
+                </div>
+              </ChFormField>
+            </div>
+          </div>
+        </ChCard>
       </aside>
 
       <!-- Right: Settings form -->
       <div class="settings-content">
+        
+
         <ChCard v-if="activeCategory" shadow="sm">
           <template #header>
             <span class="card-label">{{ activeCategory }}</span>
@@ -215,6 +252,8 @@ onMounted(loadSettings)
                   "
                 />
               </div>
+
+              <!-- Theme is managed by the design system (localStorage 'ch-theme') -->
 
               <!-- ── Text / Generic Input ──────────────────────────────── -->
               <div v-else class="settings-field">
@@ -323,14 +362,9 @@ onMounted(loadSettings)
 .settings-nav {
   position: sticky;
   top: var(--ch-space-6);
-  background-color: var(--ch-color-surface);
-  border: 1px solid var(--ch-color-border);
-  border-radius: var(--ch-radius-lg);
-  padding: var(--ch-space-3);
-  box-shadow: var(--ch-shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: var(--ch-space-1);
+  gap: var(--ch-space-3);
 }
 
 .settings-nav__label {
@@ -380,6 +414,15 @@ onMounted(loadSettings)
   color: var(--ch-color-primary);
 }
 
+/* When the nav is wrapped in a ChCard, adjust inner list spacing */
+.settings-nav .settings-nav-card {
+  padding: var(--ch-space-3) 0 var(--ch-space-3) var(--ch-space-3);
+}
+
+.settings-theme-card--aside {
+  margin-top: var(--ch-space-4);
+}
+
 /* ─── Settings content area ───────────────────────────────────────────────── */
 .settings-content {
   display: flex;
@@ -403,7 +446,7 @@ onMounted(loadSettings)
 
 /* ─── Individual setting field ────────────────────────────────────────────── */
 .settings-field {
-  /* No extra styles needed — ChFormField handles layout */
+  display: block;
 }
 
 /* Switch fields need a bit of extra padding for visual breathing room */
@@ -442,5 +485,29 @@ onMounted(loadSettings)
   display: flex;
   justify-content: flex-end;
   padding-top: var(--ch-space-2);
+}
+
+/* ─── Theme selector dropdown ───────────────────────────────────────────── */
+.theme-select {
+  width: 100%;
+  padding: var(--ch-space-2) var(--ch-space-3);
+  font-size: var(--ch-text-sm);
+  font-family: inherit;
+  color: var(--ch-color-text);
+  background-color: var(--ch-color-surface);
+  border: 1px solid var(--ch-color-border);
+  border-radius: var(--ch-radius-md);
+  cursor: pointer;
+  transition: border-color var(--ch-duration-fast) var(--ch-ease-out);
+}
+
+.theme-select:hover {
+  border-color: var(--ch-color-border-strong);
+}
+
+.theme-select:focus {
+  outline: none;
+  border-color: var(--ch-color-primary);
+  box-shadow: 0 0 0 3px var(--ch-color-primary-subtle);
 }
 </style>

@@ -66,7 +66,48 @@ class SettingsHelper
          $settings = Settings::getAll();
 
          foreach ($settings as $setting) {
-            self::$cache[$setting['key']] = $setting['value'];
+            if (!is_array($setting)) {
+               continue;
+            }
+
+            // Support two shapes: ['key'=>'k','value'=>v] (API payloads)
+            // and ['SettingKey'=>..., 'SettingValue'=>..., 'SettingType'=>...] (DB rows)
+            if (isset($setting['key'])) {
+               $k = $setting['key'];
+               $v = $setting['value'] ?? null;
+            } elseif (isset($setting['SettingKey'])) {
+               $k = $setting['SettingKey'];
+               $raw = $setting['SettingValue'] ?? null;
+               $type = $setting['SettingType'] ?? 'string';
+
+               // Basic casting to match Settings::castValue behaviour
+               switch ($type) {
+                  case 'boolean':
+                     $v = filter_var($raw, FILTER_VALIDATE_BOOLEAN);
+                     break;
+                  case 'number':
+                     if (is_numeric($raw)) {
+                        $v = (strpos((string) $raw, '.') !== false) ? (float) $raw : (int) $raw;
+                     } else {
+                        $v = 0;
+                     }
+                     break;
+                  case 'json':
+                  case 'array':
+                     $v = json_decode((string) $raw, true);
+                     break;
+                  case 'string':
+                  default:
+                     $v = $raw;
+               }
+            } else {
+               // Unknown shape — skip to avoid notices
+               continue;
+            }
+
+            if ($k !== null) {
+               self::$cache[$k] = $v;
+            }
          }
       } catch (Exception $e) {
          Helpers::logError("Settings load error: " . $e->getMessage());
