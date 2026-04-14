@@ -287,7 +287,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: var(--ch-space-6);
-  max-width: 1200px;
+  /* max-width: 1200px; */
 }
 
 /* ── Page heading ─────────────────────────────────────────────────────────── */
@@ -329,9 +329,10 @@ onMounted(async () => {
 /* ── Stat cards grid ──────────────────────────────────────────────────────── */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--ch-space-5);
 }
+
 
 /* ── Bottom two-column grid ───────────────────────────────────────────────── */
 .bottom-grid {

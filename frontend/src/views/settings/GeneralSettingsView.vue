@@ -304,7 +304,7 @@ onMounted(loadSettings)
   display: flex;
   flex-direction: column;
   gap: var(--ch-space-6);
-  max-width: 1040px;
+  /* max-width: 1040px; */
 }
 
 /* ─── Header ──────────────────────────────────────────────────────────────── */

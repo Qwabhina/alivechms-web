@@ -202,41 +202,6 @@ const currentRoute = computed(() => route.path)
   color: var(--ch-color-danger) !important;
 }
 
-/* ── Theme toggle button ──────────────────────────────────────────────── */
-.theme-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ch-space-1_5);
-  padding: var(--ch-space-2) var(--ch-space-3);
-  border: 1px solid var(--ch-color-border);
-  border-radius: var(--ch-radius-md);
-  background: transparent;
-  color: var(--ch-color-text);
-  cursor: pointer;
-  font-size: var(--ch-text-sm);
-  transition: all var(--ch-duration-fast) var(--ch-ease-out);
-}
-
-.theme-toggle:hover {
-  background-color: var(--ch-color-surface);
-  border-color: var(--ch-color-border-strong);
-}
-
-.theme-label {
-  font-weight: var(--ch-font-medium);
-}
-
-@media (max-width: 640px) {
-  .theme-label {
-    display: none;
-  }
-}
-
-/* Sidebar theme item — match other sidebar items */
-.ch-sidebar-footer-theme {
-  padding-bottom: var(--ch-space-3);
-}
-
 /* ── Mobile ───────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .app-main {
