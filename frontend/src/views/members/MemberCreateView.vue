@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { memberService } from '@/services/member.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { MemberCreate, MemberLookupData } from '@/types/member'
 import { ArrowLeft, UserPlus, Plus, Trash2 } from 'lucide-vue-next'
 
@@ -158,18 +158,14 @@ onMounted(loadLookupData)
 
 <template>
   <div class="view">
-    <!-- ── Page header ───────────────────────────────────────────────────── -->
-    <div class="view-header">
-      <ChButton variant="ghost" size="sm" @click="router.push('/members')">
-        <template #icon><ArrowLeft :size="16" /></template>
-        Members
-      </ChButton>
-
-      <div class="view-header__title-block">
-        <h1 class="view-title">Add New Member</h1>
-        <p class="view-subtitle">Register a new member into the church directory.</p>
-      </div>
-    </div>
+    <ChPageHeader title="Add New Member" subtitle="Register a new member into the church directory.">
+      <template #leading>
+        <ChButton variant="ghost" size="sm" @click="router.push('/members')">
+          <template #icon><ArrowLeft :size="16" /></template>
+          Members
+        </ChButton>
+      </template>
+    </ChPageHeader>
 
     <form class="form-layout" @submit.prevent="handleSubmit">
       <!-- ── Personal Information ──────────────────────────────────────── -->

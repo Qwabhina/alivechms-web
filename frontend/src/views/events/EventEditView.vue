@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { eventService } from '@/services/event.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { EventDetail, EventUpdateInput } from '@/types'
 
 const route = useRoute()
@@ -79,13 +79,13 @@ onMounted(loadEvent)
 
 <template>
   <div class="event-edit">
-    <ChCard>
-      <template #header>
-        <div class="page-header">
-          <ChBreadcrumb :items="[{ label: 'Events', to: '/events' }, { label: event?.EventTitle || 'Edit Event' }]" />
-          <h1 class="page-title">Edit Event</h1>
-        </div>
+    <ChPageHeader title="Edit Event">
+      <template #leading>
+        <ChBreadcrumb :items="[{ label: 'Events', to: '/events' }, { label: event?.EventTitle || 'Edit Event' }]" />
       </template>
+    </ChPageHeader>
+
+    <ChCard>
 
       <div v-if="loading" class="loading-state"><ChSpinner size="lg" /><span>Loading event...</span></div>
 

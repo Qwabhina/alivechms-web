@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { familyService } from '@/services/family.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { Family, FamilyListFilters } from '@/types'
 
 const router = useRouter()
@@ -136,22 +136,19 @@ onMounted(() => {
 
 <template>
   <div class="family-list">
-    <ChCard>
-      <template #header>
-        <div class="page-header">
-          <div class="header-content">
-            <h1 class="page-title">Families</h1>
-            <p class="page-subtitle">Manage church families and their members</p>
-          </div>
-          <ChButton
-            variant="primary"
-            left-icon="plus"
-            @click="navigateToCreate"
-          >
-            Create Family
-          </ChButton>
-        </div>
+    <ChPageHeader title="Families" subtitle="Manage church families and their members">
+      <template #actions>
+        <ChButton
+          variant="primary"
+          left-icon="plus"
+          @click="navigateToCreate"
+        >
+          Create Family
+        </ChButton>
       </template>
+    </ChPageHeader>
+
+    <ChCard>
 
       <!-- Filters -->
       <div class="filters-section">

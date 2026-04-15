@@ -33,7 +33,7 @@ const navItems = computed<NavItem[]>(() => {
     items.push({ label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard })
   }
   if (auth.hasPermission('members.view')) {
-    items.push({ label: 'Members', to: '/members', icon: Users })
+    items.push({ label: 'Members &  People', to: '/members', icon: Users })
   }
   if (auth.hasPermission('members.view')) {
     items.push({ label: 'Families', to: '/families', icon: UserCircle })
@@ -139,7 +139,11 @@ const currentRoute = computed(() => route.path)
         @menu-click="ui.toggleSidebar()"
       >
         <template #title>
-          <h1 class="ch-topbar__title">{{ route.meta?.title as string || '' }}</h1>
+           <ChPageHeader :title="route.meta?.title as string || ''" class="ch-topbar__page-header" >
+            <template #icon>
+              <component :is="route.meta?.icon" :size="20" />            
+            </template>
+          </ChPageHeader>
         </template>
       </ChTopbar>
 

@@ -4,7 +4,7 @@
  * Category-based settings editor with boolean toggles, logo upload, and text inputs.
  */
 import { settingsService } from '@/services/settings.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { Setting } from '@/types/settings'
 import { Settings, Save } from 'lucide-vue-next'
 import { useTheme } from '@/composables/useTheme'
@@ -127,20 +127,17 @@ onMounted(loadSettings)
 
 <template>
   <div class="view">
-    <!-- ── Page Header ──────────────────────────────────────────────────────── -->
-    <div class="view-header">
-      <div>
-        <h1 class="view-title">
-          <Settings :size="22" class="view-title__icon" aria-hidden="true" />
-          Settings
-        </h1>
-        <p class="view-subtitle">Configure your church management system.</p>
-      </div>
-      <ChButton variant="primary" :loading="isSaving" @click="saveSettings">
-        <template #icon><Save :size="16" /></template>
-        Save Changes
-      </ChButton>
-    </div>
+    <ChPageHeader title="Settings" subtitle="Configure your church management system.">
+      <template #icon>
+        <Settings :size="22" class="view-title__icon" aria-hidden="true" />
+      </template>
+      <template #actions>
+        <ChButton variant="primary" :loading="isSaving" @click="saveSettings">
+          <template #icon><Save :size="16" /></template>
+          Save Changes
+        </ChButton>
+      </template>
+    </ChPageHeader>
 
     <!-- ── Loading ────────────────────────────────────────────────────────── -->
     <div v-if="isLoading" class="loading-wrap">
@@ -305,36 +302,6 @@ onMounted(loadSettings)
   flex-direction: column;
   gap: var(--ch-space-6);
   /* max-width: 1040px; */
-}
-
-/* ─── Header ──────────────────────────────────────────────────────────────── */
-.view-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--ch-space-4);
-}
-
-.view-title {
-  display: flex;
-  align-items: center;
-  gap: var(--ch-space-2);
-  font-size: var(--ch-text-2xl);
-  font-weight: var(--ch-font-bold);
-  font-family: var(--ch-font-display);
-  color: var(--ch-color-text);
-  margin: 0;
-}
-
-.view-title__icon {
-  color: var(--ch-color-primary);
-  flex-shrink: 0;
-}
-
-.view-subtitle {
-  font-size: var(--ch-text-sm);
-  color: var(--ch-color-text-muted);
-  margin: var(--ch-space-1) 0 0;
 }
 
 /* ─── Loading ─────────────────────────────────────────────────────────────── */

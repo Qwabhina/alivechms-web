@@ -9,9 +9,9 @@
 
 import { useRouter } from 'vue-router'
 import { dashboardService } from '@/services/dashboard.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { DashboardOverview } from '@/types/operations'
-import { Users, Wallet, TrendingUp, CalendarDays, ArrowRight, DollarSign } from 'lucide-vue-next'
+import { Users, Wallet, TrendingUp, CalendarDays, ArrowRight, DollarSign, LayoutDashboardIcon } from 'lucide-vue-next'
 import { normalizeProfileImage } from '@/utils/image'
 
 // ── Router & Toast ────────────────────────────────────────────────────────────
@@ -88,14 +88,11 @@ onMounted(async () => {
 
 <template>
   <div class="dashboard">
-    <!-- ── Page heading ───────────────────────────────────────────────── -->
-    <div class="dashboard__header">
-      <div>
-        <h1 class="dashboard__title">Dashboard</h1>
-        <p class="dashboard__subtitle">Your church at a glance.</p>
-      </div>
-    </div>
-
+    <ChPageHeader title="Dashboard" subtitle="Your church at a glance." titleTag="h2">
+      <template #icon>
+        <LayoutDashboardIcon :size="22" aria-hidden="true" />
+      </template>
+    </ChPageHeader>
     <!-- ── Error alert ────────────────────────────────────────────────── -->
     <Transition name="alert-fade">
       <ChAlert

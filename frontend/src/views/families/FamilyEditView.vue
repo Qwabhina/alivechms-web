@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { familyService } from '@/services/family.service'
 import { memberService } from '@/services/member.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { FamilyDetail, FamilyUpdateInput } from '@/types'
 
 const route = useRoute()
@@ -119,20 +119,18 @@ onMounted(() => {
 
 <template>
   <div class="family-edit">
-    <ChCard>
-      <template #header>
-        <div class="page-header">
-          <div class="header-content">
-            <ChBreadcrumb
-              :items="[
-                { label: 'Families', to: '/families' },
-                { label: family?.FamilyName || 'Edit Family' },
-              ]"
-            />
-            <h1 class="page-title">Edit Family</h1>
-          </div>
-        </div>
+    <ChPageHeader title="Edit Family">
+      <template #leading>
+        <ChBreadcrumb
+          :items="[
+            { label: 'Families', to: '/families' },
+            { label: family?.FamilyName || 'Edit Family' },
+          ]"
+        />
       </template>
+    </ChPageHeader>
+
+    <ChCard>
 
       <div v-if="loading" class="loading-state">
         <ChSpinner size="lg" />

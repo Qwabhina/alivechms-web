@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { groupService } from '@/services/group.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { GroupDetail, GroupUpdateInput } from '@/types'
 
 const route = useRoute()
@@ -73,13 +73,13 @@ onMounted(loadGroup)
 
 <template>
   <div class="group-edit">
-    <ChCard>
-      <template #header>
-        <div class="page-header">
-          <ChBreadcrumb :items="[{ label: 'Groups', to: '/groups' }, { label: group?.GroupName || 'Edit Group' }]" />
-          <h1 class="page-title">Edit Group</h1>
-        </div>
+    <ChPageHeader title="Edit Group">
+      <template #leading>
+        <ChBreadcrumb :items="[{ label: 'Groups', to: '/groups' }, { label: group?.GroupName || 'Edit Group' }]" />
       </template>
+    </ChPageHeader>
+
+    <ChCard>
 
       <div v-if="loading" class="loading-state"><ChSpinner size="lg" /><span>Loading group...</span></div>
 

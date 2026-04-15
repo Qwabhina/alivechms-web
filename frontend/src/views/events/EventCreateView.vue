@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { eventService } from '@/services/event.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { EventCreateInput } from '@/types'
 
 const router = useRouter()
@@ -47,13 +47,13 @@ function handleCancel() {
 
 <template>
   <div class="event-create">
-    <ChCard>
-      <template #header>
-        <div class="page-header">
-          <ChBreadcrumb :items="[{ label: 'Events', to: '/events' }, { label: 'Create Event' }]" />
-          <h1 class="page-title">Create Event</h1>
-        </div>
+    <ChPageHeader title="Create Event">
+      <template #leading>
+        <ChBreadcrumb :items="[{ label: 'Events', to: '/events' }, { label: 'Create Event' }]" />
       </template>
+    </ChPageHeader>
+
+    <ChCard>
 
       <form @submit.prevent="handleSubmit">
         <div class="form-section">

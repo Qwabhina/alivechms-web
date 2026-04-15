@@ -43,6 +43,12 @@
  */
 
 import { computed } from 'vue'
+import {
+  MenuIcon,
+  SearchIcon,
+  BellIcon,
+  ChevronDown
+} from 'lucide-vue-next'
 
 /** Shape of the user object shown in the topbar right area */
 export interface TopbarUser {
@@ -155,14 +161,7 @@ const userInitials = computed(() => {
         @click="emit('menu-click')"
       >
         <!-- Three-line hamburger icon (pure CSS/SVG, no library) -->
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <path
-            d="M3 5h14M3 10h14M3 15h14"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-          />
-        </svg>
+        <MenuIcon :size="20"/>
       </button>
 
       <!--
@@ -214,10 +213,7 @@ const userInitials = computed(() => {
         type="button"
         @click="emit('search-click')"
       >
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.5" />
-          <path d="M13 13L16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-        </svg>
+        <SearchIcon :size="20" />
       </button>
 
       <!--
@@ -232,15 +228,7 @@ const userInitials = computed(() => {
         type="button"
         @click="emit('notifications-click')"
       >
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path
-            d="M9 2.5A5.5 5.5 0 003.5 8v3.5L2 13h14l-1.5-1.5V8A5.5 5.5 0 009 2.5z"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linejoin="round"
-          />
-          <path d="M7 13.5a2 2 0 004 0" stroke="currentColor" stroke-width="1.5" />
-        </svg>
+        <BellIcon :size="20" />
 
         <!-- Badge — only renders when there are unread notifications -->
         <span v-if="hasNotifications" class="ch-topbar__notif-badge" aria-hidden="true">
@@ -281,15 +269,7 @@ const userInitials = computed(() => {
         </span>
 
         <!-- Chevron indicator -->
-        <svg class="ch-topbar__user-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path
-            d="M2.5 4.5L6 8L9.5 4.5"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
+        <ChevronDown v-if="user?.name" :size="16" class="ch-topbar__user-chevron" />
       </button>
     </div>
   </header>

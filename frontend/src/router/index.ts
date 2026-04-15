@@ -9,6 +9,15 @@
 
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { registerGuards } from './guards'
+import {
+  LayoutDashboard,
+  Users,
+  UserCircle,
+  Wallet,
+  CalendarDays,
+  Settings,
+  LogOut,
+} from 'lucide-vue-next'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -38,7 +47,7 @@ const router = createRouter({
           path: 'dashboard',
           name: 'dashboard',
           component: () => import('@/views/dashboard/DashboardView.vue'),
-          meta: { permission: 'reports.view' },
+          meta: { permission: 'reports.view'},
         },
 
         /* Members */

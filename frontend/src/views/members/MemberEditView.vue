@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
 import { memberService } from '@/services/member.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { MemberLookupData, MemberUpdate } from '@/types/member'
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-vue-next'
 import { normalizeProfileImage } from '@/utils/image'
@@ -226,22 +226,14 @@ onMounted(loadData)
 
 <template>
   <div class="view">
-    <!-- ── Page header ───────────────────────────────────────────────────── -->
-    <div class="view-header">
-      <ChButton variant="ghost" size="sm" @click="router.push(`/members/${memberId}`)">
-        <template #icon><ArrowLeft :size="16" /></template>
-        View Profile
-      </ChButton>
-
-      <div class="view-header__title-block">
-        <h1 class="view-title">Edit Member</h1>
-        <p v-if="currentMemberName" class="view-subtitle">
-          Editing profile for
-          <strong class="view-subtitle__name">{{ currentMemberName }}</strong>
-        </p>
-        <p v-else class="view-subtitle">Update membership details and contact information.</p>
-      </div>
-    </div>
+    <ChPageHeader title="Edit Member" subtitle="Update membership details and contact information.">
+      <template #leading>
+        <ChButton variant="ghost" size="sm" @click="router.push(`/members/${memberId}`)">
+          <template #icon><ArrowLeft :size="16" /></template>
+          View Profile
+        </ChButton>
+      </template>
+    </ChPageHeader>
 
     <!-- ── Loading skeleton ──────────────────────────────────────────────── -->
     <template v-if="isLoading">

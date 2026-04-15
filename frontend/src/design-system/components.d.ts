@@ -36,6 +36,7 @@ declare module 'vue' {
     ChIcon: typeof import('./components/core/ChIcon.vue')['default']
     ChInput: typeof import('./components/core/ChInput.vue')['default']
     ChModal: typeof import('./components/forms/ChModal.vue')['default']
+    ChPageHeader: typeof import('./components/core/ChPageHeader.vue')['default']
     ChPagination: typeof import('./components/data/ChPagination.vue')['default']
     ChPopover: typeof import('./components/core/ChPopover.vue')['default']
     ChProgress: typeof import('./components/cues/ChProgress.vue')['default']

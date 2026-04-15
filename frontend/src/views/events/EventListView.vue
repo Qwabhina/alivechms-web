@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { eventService } from '@/services/event.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { ChurchEvent, EventListFilters } from '@/types'
 
 const router = useRouter()
@@ -133,16 +133,13 @@ onMounted(() => {
 
 <template>
   <div class="event-list">
-    <ChCard>
-      <template #header>
-        <div class="page-header">
-          <div class="header-content">
-            <h1 class="page-title">Events</h1>
-            <p class="page-subtitle">Manage church events and services</p>
-          </div>
-          <ChButton variant="primary" left-icon="plus" @click="navigateToCreate">Create Event</ChButton>
-        </div>
+    <ChPageHeader title="Events" subtitle="Manage church events and services">
+      <template #actions>
+        <ChButton variant="primary" left-icon="plus" @click="navigateToCreate">Create Event</ChButton>
       </template>
+    </ChPageHeader>
+
+    <ChCard>
 
       <div class="filters-section">
         <div class="search-bar">

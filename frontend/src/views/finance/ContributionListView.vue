@@ -6,7 +6,7 @@
 import { useRouter } from 'vue-router'
 import { contributionService, lookupService } from '@/services/finance.service'
 import type { FinanceLookupData } from '@/services/finance.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { Contribution, ContributionFilters, ContributionStats } from '@/types/finance'
 import { Plus, Trash2, Eye, TrendingUp, Wallet, BarChart2 } from 'lucide-vue-next'
 
@@ -168,17 +168,14 @@ onMounted(() => {
 
 <template>
   <div class="view">
-    <!-- ── Page Header ──────────────────────────────────────────────────────── -->
-    <div class="view-header">
-      <div>
-        <h1 class="view-title">Contributions</h1>
-        <p class="view-subtitle">Track and manage church finances.</p>
-      </div>
-      <ChButton variant="primary" @click="router.push('/finance/contributions/create')">
-        <template #icon><Plus :size="18" /></template>
-        Record Contribution
-      </ChButton>
-    </div>
+    <ChPageHeader title="Contributions" subtitle="Track and manage church finances.">
+      <template #actions>
+        <ChButton variant="primary" @click="router.push('/finance/contributions/create')">
+          <template #icon><Plus :size="18" /></template>
+          Record Contribution
+        </ChButton>
+      </template>
+    </ChPageHeader>
 
     <!-- ── Stats Row ────────────────────────────────────────────────────────── -->
     <div class="stats-row">

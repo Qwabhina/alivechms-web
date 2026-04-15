@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { memberService } from '@/services/member.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { Member, MemberFilters, MemberLookupData } from '@/types/member'
 import { UserPlus, Search, Trash2 } from 'lucide-vue-next'
 import { normalizeProfileImage } from '@/utils/image'
@@ -174,17 +174,14 @@ onMounted(() => {
 
 <template>
   <div class="view">
-    <!-- ── Page header ───────────────────────────────────────────────────── -->
-    <div class="view-header">
-      <div>
-        <h1 class="view-title">Members</h1>
-        <p class="view-subtitle">Manage your church membership directory.</p>
-      </div>
-      <ChButton variant="primary" @click="router.push('/members/create')">
-        <template #icon><UserPlus :size="18" /></template>
-        Add Member
-      </ChButton>
-    </div>
+    <ChPageHeader title="Members" subtitle="Manage your church membership directory.">
+      <template #actions>
+        <ChButton variant="primary" @click="router.push('/members/create')">
+          <template #icon><UserPlus :size="18" /></template>
+          Add Member
+        </ChButton>
+      </template>
+    </ChPageHeader>
 
     <!-- ── Filter bar ────────────────────────────────────────────────────── -->
     <div class="filter-bar">

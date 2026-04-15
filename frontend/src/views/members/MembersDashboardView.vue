@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChStatCard, ChButton, ChSpinner, ChAvatar } from '@/design-system'
+import { ChPageHeader, ChStatCard, ChButton, ChSpinner, ChAvatar } from '@/design-system'
 import { normalizeProfileImage } from '@/utils/image'
 import { Users, UserCheck, UserMinus, Home } from 'lucide-vue-next'
 import ChChart from '@/design-system/components/data/ChChart.vue'
@@ -164,16 +164,12 @@ const chartAgeOptions = computed<ChartOptions>(() => ({ ...chartOptionsBase }))
 
 <template>
   <div class="view">
-    <header class="view-header">
-      <div>
-        <h2 class="view-title">Members</h2>
-        <p class="view-subtitle">Overview and quick actions for the members module.</p>
-      </div>
-      <div class="view-actions">
+    <ChPageHeader title="Members" subtitle="Overview and quick actions for the members module." titleTag="h2">
+      <template #actions>
         <ChButton @click="goToCreate">Create Member</ChButton>
         <ChButton variant="ghost" @click="goToDirectory">View Directory</ChButton>
-      </div>
-    </header>
+      </template>
+    </ChPageHeader>
 
     <div class="stat-grid">
       <ChStatCard label="Total Members" :value="totalMembers" variant="primary">
@@ -291,9 +287,6 @@ const chartAgeOptions = computed<ChartOptions>(() => ({ ...chartOptionsBase }))
 .card-spinner { padding:16px; display:flex; justify-content:center }
 .empty { padding:12px; color:var(--ch-color-text-muted) }
   .view { padding: 16px 12px }
-  .view-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px }
-  .view-title { margin:0 }
-  .view-subtitle { margin:0; color:var(--ch-color-text-muted) }
 
   .charts-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-bottom:16px }
   .bottom-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap:12px }

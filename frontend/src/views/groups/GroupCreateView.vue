@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { groupService } from '@/services/group.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { GroupCreateInput } from '@/types'
 
 const router = useRouter()
@@ -48,18 +48,18 @@ function handleCancel() {
 
 <template>
   <div class="group-create">
-    <ChCard>
-      <template #header>
-        <div class="page-header">
-          <ChBreadcrumb
-            :items="[
-              { label: 'Groups', to: '/groups' },
-              { label: 'Create Group' },
-            ]"
-          />
-          <h1 class="page-title">Create Group</h1>
-        </div>
+    <ChPageHeader title="Create Group">
+      <template #leading>
+        <ChBreadcrumb
+          :items="[
+            { label: 'Groups', to: '/groups' },
+            { label: 'Create Group' },
+          ]"
+        />
       </template>
+    </ChPageHeader>
+
+    <ChCard>
 
       <form @submit.prevent="handleSubmit">
         <div class="form-section">

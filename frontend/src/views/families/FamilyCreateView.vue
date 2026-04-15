@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { familyService } from '@/services/family.service'
 import { memberService } from '@/services/member.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { FamilyCreateInput } from '@/types'
 
 const router = useRouter()
@@ -81,20 +81,18 @@ function handleCancel() {
 
 <template>
   <div class="family-create">
-    <ChCard>
-      <template #header>
-        <div class="page-header">
-          <div class="header-content">
-            <ChBreadcrumb
-              :items="[
-                { label: 'Families', to: '/families' },
-                { label: 'Create Family' },
-              ]"
-            />
-            <h1 class="page-title">Create Family</h1>
-          </div>
-        </div>
+    <ChPageHeader title="Create Family">
+      <template #leading>
+        <ChBreadcrumb
+          :items="[
+            { label: 'Families', to: '/families' },
+            { label: 'Create Family' },
+          ]"
+        />
       </template>
+    </ChPageHeader>
+
+    <ChCard>
 
       <form @submit.prevent="handleSubmit">
         <div class="form-section">

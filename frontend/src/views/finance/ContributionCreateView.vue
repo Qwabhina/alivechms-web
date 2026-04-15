@@ -7,7 +7,7 @@ import { useRouter } from 'vue-router'
 import { contributionService, lookupService } from '@/services/finance.service'
 import type { FinanceLookupData } from '@/services/finance.service'
 import { memberService } from '@/services/member.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { ContributionCreate } from '@/types/finance'
 import { ArrowLeft, DollarSign } from 'lucide-vue-next'
 
@@ -110,14 +110,14 @@ onMounted(async () => {
 
 <template>
   <div class="view">
-    <!-- ── Header ──────────────────────────────────────────────────────────── -->
-    <div class="view-header">
-      <ChButton variant="ghost" size="sm" @click="router.push('/finance/contributions')">
-        <template #icon><ArrowLeft :size="16" /></template>
-        Contributions
-      </ChButton>
-      <h1 class="view-title">Record Contribution</h1>
-    </div>
+    <ChPageHeader title="Record Contribution">
+      <template #leading>
+        <ChButton variant="ghost" size="sm" @click="router.push('/finance/contributions')">
+          <template #icon><ArrowLeft :size="16" /></template>
+          Contributions
+        </ChButton>
+      </template>
+    </ChPageHeader>
 
     <!-- ── Loading ────────────────────────────────────────────────────────── -->
     <div v-if="isLoading" class="loading-wrap">
