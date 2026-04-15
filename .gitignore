@@ -36,3 +36,4 @@ xampp-control.ini
 /uploads/**/*
 !/uploads/**/.gitkeep
 /core/cache
+/public
