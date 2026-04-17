@@ -25,7 +25,6 @@ const router = useRouter()
 const route = useRoute()
 
 /* ── Nav items ─────────────────────────────────────────────────────────── */
-// Filtered based on user permissions
 const navItems = computed<NavItem[]>(() => {
   const items: NavItem[] = []
 
@@ -57,9 +56,6 @@ const navItems = computed<NavItem[]>(() => {
     items.push({ label: 'Settings', to: '/settings', icon: Settings })
   }
 
-  // Logout is intentionally not part of the main nav list; it's rendered
-  // separately in the sidebar footer for visual separation.
-
   return items
 })
 
@@ -69,12 +65,10 @@ async function handleLogout() {
   router.push('/login')
 }
 
-// Use shared confirm modal
 import { confirmModal, confirm } from '@/design-system/composables/useConfirm'
 
 /* ── Sidebar navigation handler ────────────────────────────────────────── */
 async function handleNavigate(to: string) {
-  // Intercept the Logout pseudo-route to run the logout flow
   if (to === '/logout') {
     ui.closeMobileSidebar()
     const ok = await confirm({
@@ -91,7 +85,7 @@ async function handleNavigate(to: string) {
   ui.closeMobileSidebar()
 }
 
-/* ── Topbar user object (ChTopbar shape) ───────────────────────────────── */
+/* ── Topbar user object ─────────────────────────────────────────────────── */
 import { normalizeProfileImage } from '@/utils/image'
 
 const topbarUser = computed(() =>
@@ -106,19 +100,24 @@ const topbarUser = computed(() =>
 
 /* ── Current route for ChSidebarItem active state ──────────────────────── */
 const currentRoute = computed(() => route.path)
-
 </script>
 
 <template>
   <div class="app-layout" :class="{ 'app-layout--collapsed': ui.sidebarCollapsed }">
 
     <!-- ── Sidebar ────────────────────────────────────────────────────── -->
-    <ChSidebar :nav-items="navItems" :current-route="currentRoute" :collapsed="ui.sidebarCollapsed"
-      :mobile-open="ui.sidebarMobileOpen" brand-name="AliveChMS" @navigate="handleNavigate"
-      @collapse-toggle="ui.toggleSidebar()" @mobile-close="ui.closeMobileSidebar()">
+    <ChSidebar
+      :nav-items="navItems"
+      :current-route="currentRoute"
+      :collapsed="ui.sidebarCollapsed"
+      :mobile-open="ui.sidebarMobileOpen"
+      brand-name="AliveChMS"
+      @navigate="handleNavigate"
+      @collapse-toggle="ui.toggleSidebar()"
+      @mobile-close="ui.closeMobileSidebar()"
+    >
       <template #footer>
         <div class="ch-sidebar-footer-theme"></div>
-
         <ChSidebarItem
           :item="{ label: 'Logout', to: '/logout', icon: LogOut }"
           :current-route="currentRoute"
@@ -132,27 +131,38 @@ const currentRoute = computed(() => route.path)
     <!-- ── Main content area ───────────────────────────────────────────── -->
     <div class="app-main">
 
-      <!-- ChTopbar — design system top navigation bar -->
+      <!-- ChTopbar — the #title slot renders a lean icon + label only.
+           Full ChPageHeader (with subtitle, actions, etc.) lives in each view. -->
       <ChTopbar
         :user="topbarUser"
         :sidebar-collapsed="ui.sidebarCollapsed"
         @menu-click="ui.toggleSidebar()"
       >
         <template #title>
-           <ChPageHeader :title="route.meta?.title as string || ''" class="ch-topbar__page-header" >
-            <template #icon>
-              <component :is="route.meta?.icon" :size="20" />            
-            </template>
-          </ChPageHeader>
+          <div v-if="route.meta.title" class="topbar-page-title">
+            <component
+              :is="route.meta.icon"
+              v-if="route.meta.icon"
+              :size="18"
+              class="topbar-page-title__icon"
+              aria-hidden="true"
+            />
+            <span class="topbar-page-title__text">{{ route.meta.title }}</span>
+          </div>
         </template>
       </ChTopbar>
 
-      <!-- Page content -->
+      <!-- Page content — each view owns its own ChPageHeader -->
       <main class="app-content">
         <RouterView />
       </main>
+
       <!-- Shared confirm modal instance -->
-      <ChModal v-model:open="confirmModal.isOpen.value" :title="confirmModal.data.value?.title ?? 'Confirm'" size="sm">
+      <ChModal
+        v-model:open="confirmModal.isOpen.value"
+        :title="confirmModal.data.value?.title ?? 'Confirm'"
+        size="sm"
+      >
         <p>{{ confirmModal.data.value?.message }}</p>
         <template #footer>
           <ChButton variant="ghost" @click="confirmModal.close(false)">
@@ -174,7 +184,6 @@ const currentRoute = computed(() => route.path)
   min-height: 100vh;
 }
 
-/* Main area sits to the right of the fixed sidebar */
 .app-main {
   flex: 1;
   margin-left: 240px; /* matches .ch-sidebar width */
@@ -189,13 +198,33 @@ const currentRoute = computed(() => route.path)
   margin-left: 64px; /* matches .ch-sidebar--collapsed width */
 }
 
-/* Page content padding */
 .app-content {
   flex: 1;
   padding: var(--ch-space-6);
 }
 
-/* ── Logout button — styled as a danger sidebar item ─────────────────── */
+/* ── Topbar title — icon + text, no ChPageHeader chrome ──────────────── */
+.topbar-page-title {
+  display: flex;
+  align-items: center;
+  gap: var(--ch-space-2);
+}
+
+.topbar-page-title__icon {
+  color: var(--ch-color-text-muted);
+  flex-shrink: 0;
+}
+
+.topbar-page-title__text {
+  font-size: var(--ch-text-base);
+  font-weight: var(--ch-font-semibold);
+  color: var(--ch-color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Logout button ───────────────────────────────────────────────────── */
 .ch-sidebar-item--logout {
   color: var(--ch-color-danger) !important;
   width: 100%;

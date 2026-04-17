@@ -282,33 +282,9 @@ onMounted(() => {
 
 <style scoped>
 .family-list {
-  padding: var(--ch-space-6);
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--ch-space-6);
-}
-
-.header-content {
   display: flex;
   flex-direction: column;
-  gap: var(--ch-space-1);
-}
-
-.page-title {
-  font-size: var(--ch-font-size-xl);
-  font-weight: var(--ch-font-weight-semibold);
-  color: var(--ch-color-text);
-  margin: 0;
-}
-
-.page-subtitle {
-  font-size: var(--ch-font-size-sm);
-  color: var(--ch-color-text-secondary);
-  margin: 0;
+  gap: var(--ch-space-6);
 }
 
 .filters-section {
@@ -336,13 +312,13 @@ onMounted(() => {
 }
 
 .family-name {
-  font-weight: var(--ch-font-weight-medium);
+  font-weight: var(--ch-font-medium);
   color: var(--ch-color-text);
 }
 
 .family-head {
-  font-size: var(--ch-font-size-xs);
-  color: var(--ch-color-text-secondary);
+  font-size: var(--ch-text-xs);
+  color: var(--ch-color-text-muted);
 }
 
 .location-cell {
@@ -351,11 +327,11 @@ onMounted(() => {
 }
 
 .region {
-  color: var(--ch-color-text-secondary);
+  color: var(--ch-color-text-muted);
 }
 
 .no-data {
-  color: var(--ch-color-text-tertiary);
+  color: var(--ch-color-text-subtle);
 }
 
 .action-buttons {

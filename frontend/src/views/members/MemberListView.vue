@@ -294,28 +294,6 @@ onMounted(() => {
   max-width: 1200px;
 }
 
-/* ── Header ─────────────────────────────────────────────────────────────── */
-.view-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--ch-space-4);
-}
-
-.view-title {
-  font-size: var(--ch-text-2xl);
-  font-weight: var(--ch-font-bold);
-  font-family: var(--ch-font-display);
-  color: var(--ch-color-text);
-  margin: 0;
-}
-
-.view-subtitle {
-  font-size: var(--ch-text-sm);
-  color: var(--ch-color-text-muted);
-  margin: var(--ch-space-1) 0 0;
-}
-
 /* ── Filter bar ─────────────────────────────────────────────────────────── */
 .filter-bar {
   display: flex;
