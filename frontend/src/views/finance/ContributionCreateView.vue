@@ -279,7 +279,8 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: var(--ch-space-5);
-  max-width: 720px;
+  max-width: 860px;
+  margin: 0 auto;
 }
 
 /* ─── Header ──────────────────────────────────────────────────────────────── */

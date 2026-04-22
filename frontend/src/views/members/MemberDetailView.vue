@@ -325,6 +325,7 @@ onMounted(loadMember)
   flex-direction: column;
   gap: var(--ch-space-5);
   max-width: 900px;
+  margin: 0 auto;
 }
 
 /* ── Top nav row ─────────────────────────────────────────────────────────── */

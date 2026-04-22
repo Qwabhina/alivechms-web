@@ -549,6 +549,7 @@ onMounted(loadData)
   flex-direction: column;
   gap: var(--ch-space-6);
   max-width: 860px;
+  margin: 0 auto;
 }
 
 /* ── Header ──────────────────────────────────────────────────────────────── */

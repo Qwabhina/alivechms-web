@@ -291,7 +291,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--ch-space-6);
-  max-width: 1200px;
+  margin: 0 auto;
+
 }
 
 /* ── Filter bar ─────────────────────────────────────────────────────────── */

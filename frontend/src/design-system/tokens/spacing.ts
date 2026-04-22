@@ -105,13 +105,6 @@ export const shadows = {
  */
 export const transitions = {
   // Durations
-  // 'duration-instant':  '0ms',   // Instant feedback
-  // 'duration-fast':     '50ms',  // Extremely snappy
-  // 'duration-normal':   '100ms', // Default component transitions
-  // 'duration-moderate': '150ms', // Menus, tooltips
-  // 'duration-slow':     '200ms', // Modal open/close
-  // 'duration-slower':   '300ms', // Complex animations
-  // 'duration-slowest':  '400ms',
   'duration-instant': '100ms', // Near-instant feedback (toggle switches)
   'duration-fast': '200ms', // ★ Default hover state transitions
   'duration-normal': '250ms', // ★ Default component transitions (open/close)
@@ -121,13 +114,6 @@ export const transitions = {
   'duration-slowest': '750ms', // Rare — large layout shifts
 
   // Easings
-  // 'ease-linear':  'linear',
-  // 'ease-in':      'cubic-bezier(0.4, 0, 1, 1)',
-  // 'ease-out':     'cubic-bezier(0, 0, 0.2, 1)',
-  // 'ease-in-out':  'cubic-bezier(0.4, 0, 0.2, 1)',
-  // 'ease-spring':  'cubic-bezier(0.175, 0.885, 0.32, 1.275)', // Snappy spring
-  // 'ease-bounce':  'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
-  // 'ease-smooth':  'cubic-bezier(0.23, 1, 0.32, 1)',
   'ease-linear': 'linear', // Constant speed — progress bars
   'ease-in': 'cubic-bezier(0.4, 0, 1, 1)', // Accelerates into end
   'ease-out': 'cubic-bezier(0, 0, 0.2, 1)', // ★ Decelerates to rest (most UI)
