@@ -227,7 +227,7 @@ function handleKeydown(e: KeyboardEvent) {
 .ch-card {
   background-color: var(--ch-color-surface);
   border-radius: var(--ch-radius-lg);
-  overflow: hidden;
+  /* overflow: hidden; */
 
   transition:
     box-shadow   var(--ch-duration-fast) var(--ch-ease-out),
