@@ -153,6 +153,10 @@ export interface EventCreateInput {
   branch_id?: number
   group_id?: number
   max_attendees?: number
+  event_status?: EventStatus
+  recurring_type?: RecurringType
+  recurring_end_date?: string
+  template_id?: number
 }
 
 export interface EventUpdateInput extends Partial<EventCreateInput> {
@@ -167,6 +171,10 @@ export interface EventListFilters {
   search?: string
   sort_by?: string
   sort_dir?: 'ASC' | 'DESC'
+  event_status?: EventStatus
+  event_type?: string
+  upcoming_only?: boolean
+  past_only?: boolean
 }
 
 export interface BulkAttendanceInput {
@@ -176,6 +184,116 @@ export interface BulkAttendanceInput {
     attended: boolean
     notes?: string
   }>
+}
+
+/* ---------- Enhanced Event Types ---------- */
+
+export type EventStatus = 'draft' | 'published' | 'cancelled' | 'completed'
+export type RecurringType = 'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly'
+export type EventViewMode = 'list' | 'calendar' | 'grid'
+
+export interface EventRegistration {
+  RegistrationID: number
+  EventID: number
+  MemberID: number
+  MemberName: string
+  Email?: string
+  Phone?: string
+  RegisteredAt: string
+  Status: 'registered' | 'cancelled' | 'waitlisted'
+  CheckedInAt?: string
+}
+
+export interface EventVolunteer {
+  VolunteerID: number
+  EventID: number
+  MemberID: number
+  MemberName: string
+  Role: string
+  AssignedAt: string
+  Status: 'assigned' | 'confirmed' | 'cancelled'
+}
+
+export interface EventWaitlist {
+  WaitlistID: number
+  EventID: number
+  MemberID: number
+  MemberName: string
+  AddedAt: string
+  Position: number
+}
+
+export interface EventTemplate {
+  TemplateID: number
+  TemplateName: string
+  EventType: string
+  DefaultDuration: number
+  DefaultLocation?: string
+  DefaultMaxAttendees?: number
+  Description?: string
+  IsActive: boolean
+}
+
+export interface EventConflict {
+  EventID: number
+  EventTitle: string
+  EventDate: string
+  StartTime: string
+  EndTime: string
+  Location: string
+  ConflictType: 'time' | 'location'
+}
+
+export interface EventCheckIn {
+  CheckInID: number
+  EventID: number
+  MemberID: number
+  MemberName: string
+  CheckInTime: string
+  CheckedInBy: number
+  Status: 'checked-in' | 'checked-out'
+}
+
+export interface EventResource {
+  ResourceID: number
+  EventID: number
+  ResourceName: string
+  ResourceType: 'document' | 'link' | 'image'
+  FilePath?: string
+  Url?: string
+  Description?: string
+  UploadedAt: string
+}
+
+export interface EventListFilters {
+  branch_id?: number
+  group_id?: number
+  start_date?: string
+  end_date?: string
+  search?: string
+  sort_by?: string
+  sort_dir?: 'ASC' | 'DESC'
+  event_status?: EventStatus
+  event_type?: string
+  upcoming_only?: boolean
+  past_only?: boolean
+}
+
+export interface EventCreateInput {
+  event_title: string
+  event_description?: string | null
+  event_date: string
+  start_time?: string | null
+  end_time?: string | null
+  location?: string | null
+  event_type?: string | null
+  branch_id?: number
+  group_id?: number
+  max_attendees?: number
+  event_status?: EventStatus
+  recurring_type?: RecurringType
+  recurring_end_date?: string
+  template_id?: number
 }
 
 /* ---------- Extended Group Types ---------- */

@@ -111,7 +111,7 @@ const router = createRouter({
         {
           path: 'families',
           name: 'families',
-          component: () => import('@/views/families/FamilyListView.vue'),
+          component: () => import('@/views/families/FamilyDirectoryView.vue'),
           meta: {
             permission: 'members.view',
             title: 'Families',
@@ -153,7 +153,7 @@ const router = createRouter({
         {
           path: 'groups',
           name: 'groups',
-          component: () => import('@/views/groups/GroupListView.vue'),
+          component: () => import('@/views/groups/GroupDirectoryView.vue'),
           meta: {
             permission: 'groups.view',
             title: 'Groups',
@@ -195,7 +195,7 @@ const router = createRouter({
         {
           path: 'events',
           name: 'events',
-          component: () => import('@/views/events/EventListView.vue'),
+          component: () => import('@/views/events/EventDirectoryView.vue'),
           meta: {
             permission: 'events.view',
             title: 'Events',
@@ -251,6 +251,68 @@ const router = createRouter({
           meta: {
             permission: 'contributions.create',
             title: 'Record Contribution',
+            icon: Wallet,
+          },
+        },
+        {
+          path: 'finance/contributions/:id',
+          name: 'contributions-detail',
+          component: () => import('@/views/finance/ContributionDetailView.vue'),
+          meta: {
+            permission: 'finances.view',
+            title: 'Contribution Details',
+            icon: Wallet,
+          },
+        },
+        {
+          path: 'finance/contributions/:id/edit',
+          name: 'contributions-edit',
+          component: () => import('@/views/finance/ContributionEditView.vue'),
+          meta: {
+            permission: 'contributions.edit',
+            title: 'Edit Contribution',
+            icon: Wallet,
+          },
+        },
+
+        /* Finance — Expenses */
+        {
+          path: 'finance/expenses',
+          name: 'expenses',
+          component: () => import('@/views/finance/ExpenseListView.vue'),
+          meta: {
+            permission: 'finances.view',
+            title: 'Expenses',
+            icon: Wallet,
+          },
+        },
+        {
+          path: 'finance/expenses/create',
+          name: 'expenses-create',
+          component: () => import('@/views/finance/ExpenseCreateView.vue'),
+          meta: {
+            permission: 'expenses.create',
+            title: 'Record Expense',
+            icon: Wallet,
+          },
+        },
+        {
+          path: 'finance/expenses/:id',
+          name: 'expenses-detail',
+          component: () => import('@/views/finance/ExpenseDetailView.vue'),
+          meta: {
+            permission: 'finances.view',
+            title: 'Expense Details',
+            icon: Wallet,
+          },
+        },
+        {
+          path: 'finance/expenses/:id/edit',
+          name: 'expenses-edit',
+          component: () => import('@/views/finance/ExpenseEditView.vue'),
+          meta: {
+            permission: 'expenses.edit',
+            title: 'Edit Expense',
             icon: Wallet,
           },
         },

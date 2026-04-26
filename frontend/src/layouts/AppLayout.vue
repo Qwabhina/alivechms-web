@@ -17,6 +17,9 @@ import {
   CalendarDays,
   Settings,
   LogOut,
+  UsersRound,
+  PiggyBank,
+  Receipt,
 } from 'lucide-vue-next'
 
 const auth = useAuthStore()
@@ -31,27 +34,46 @@ const navItems = computed<NavItem[]>(() => {
   if (auth.hasPermission('reports.view')) {
     items.push({ label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard })
   }
+
+  // Members Section
   if (auth.hasPermission('members.view')) {
-    items.push({ label: 'Members &  People', to: '/members', icon: Users })
+    items.push({
+      label: 'Members',
+      icon: Users,
+      children: [
+        { label: 'Members & People', to: '/members', icon: Users },
+        { label: 'Families', to: '/families', icon: UserCircle },
+      ],
+    })
   }
-  if (auth.hasPermission('members.view')) {
-    items.push({ label: 'Families', to: '/families', icon: UserCircle })
-  }
+
+  // Groups Section
   if (auth.hasPermission('groups.view')) {
-    items.push({ label: 'Groups', to: '/groups', icon: Users })
+    items.push({ label: 'Groups', to: '/groups', icon: UsersRound })
   }
+
+  // Events Section
   if (auth.hasPermission('events.view')) {
     items.push({ label: 'Events', to: '/events', icon: CalendarDays })
   }
+
+  // Finance Section with children
   if (auth.hasPermission('finances.view') || auth.hasPermission('contributions.view')) {
+    const financeChildren = []
+    if (auth.hasPermission('contributions.view')) {
+      financeChildren.push({ label: 'Contributions', to: '/finance/contributions', icon: PiggyBank })
+    }
+    if (auth.hasPermission('finances.view')) {
+      financeChildren.push({ label: 'Expenses', to: '/finance/expenses', icon: Receipt })
+    }
     items.push({
       label: 'Finance',
       icon: Wallet,
-      children: (auth.hasPermission('finances.view')
-        ? [{ label: 'Contributions', to: '/finance/contributions' }]
-        : []),
+      children: financeChildren,
     })
   }
+
+  // Settings Section
   if (auth.hasPermission('settings.view')) {
     items.push({ label: 'Settings', to: '/settings', icon: Settings })
   }
