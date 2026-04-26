@@ -10,9 +10,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
 import { ChSidebar, ChSidebarItem, ChModal, ChButton, type NavItem } from '@/design-system'
 import {
-  LayoutDashboard,
   Users,
-  UserCircle,
   Wallet,
   CalendarDays,
   Settings,
@@ -20,7 +18,8 @@ import {
   UsersRound,
   PiggyBank,
   Receipt,
-} from 'lucide-vue-next'
+  Gauge,
+} from '@lucide/vue'
 
 const auth = useAuthStore()
 const ui = useUiStore()
@@ -32,19 +31,24 @@ const navItems = computed<NavItem[]>(() => {
   const items: NavItem[] = []
 
   if (auth.hasPermission('reports.view')) {
-    items.push({ label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard })
+    items.push({ label: 'Dashboard', to: '/dashboard', icon: Gauge })
   }
 
   // Members Section
   if (auth.hasPermission('members.view')) {
     items.push({
-      label: 'Members',
-      icon: Users,
+      label: 'Members & People',
+      icon: UsersRound,
       children: [
-        { label: 'Members & People', to: '/members', icon: Users },
-        { label: 'Families', to: '/families', icon: UserCircle },
+        { label: 'Members', to: '/members', icon: Users },
+        { label: 'Directory', to: '/members/directory', icon: Contact },
       ],
     })
+  }
+
+  // Family Section
+  if (auth.hasPermission('members.view')) {
+    items.push({ label: 'Families', to: '/families', icon: Users })
   }
 
   // Groups Section
@@ -60,7 +64,7 @@ const navItems = computed<NavItem[]>(() => {
   // Finance Section with children
   if (auth.hasPermission('finances.view') || auth.hasPermission('contributions.view')) {
     const financeChildren = []
-    if (auth.hasPermission('contributions.view')) {
+    if (auth.hasPermission('finances.view')) {
       financeChildren.push({ label: 'Contributions', to: '/finance/contributions', icon: PiggyBank })
     }
     if (auth.hasPermission('finances.view')) {
@@ -109,6 +113,7 @@ async function handleNavigate(to: string) {
 
 /* ── Topbar user object ─────────────────────────────────────────────────── */
 import { normalizeProfileImage } from '@/utils/image'
+import { Contact } from '@lucide/vue'
 
 const topbarUser = computed(() =>
   auth.user
