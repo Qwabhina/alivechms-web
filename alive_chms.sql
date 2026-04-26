@@ -3,10 +3,11 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 09, 2026 at 01:04 PM
+-- Generation Time: Apr 26, 2026 at 12:40 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
+SET FOREIGN_KEY_CHECKS=0;
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
@@ -20,6 +21,57 @@ SET time_zone = "+00:00";
 --
 -- Database: `alive_chms`
 --
+
+DELIMITER $$
+--
+-- Procedures
+--
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_user_permissions` (IN `p_user_id` INT)   BEGIN
+    SELECT DISTINCT p.PermissionName
+    FROM permission p
+    INNER JOIN role_permission rp ON p.PermissionID = rp.PermissionID
+    INNER JOIN church_role cr ON rp.RoleID = cr.RoleID AND cr.IsActive = 1
+    INNER JOIN member_role mr ON cr.RoleID = mr.RoleID 
+        AND mr.MbrID = p_user_id 
+        AND mr.IsActive = 1
+        AND (mr.StartDate IS NULL OR mr.StartDate <= CURDATE())
+        AND (mr.EndDate IS NULL OR mr.EndDate >= CURDATE())
+    WHERE p.IsActive = 1
+    ORDER BY p.PermissionName;
+END$$
+
+--
+-- Functions
+--
+CREATE DEFINER=`root`@`localhost` FUNCTION `fn_generate_member_unique_id` (`p_registration_date` DATE) RETURNS VARCHAR(20) CHARSET utf8mb4 COLLATE utf8mb4_general_ci DETERMINISTIC BEGIN
+    DECLARE v_year VARCHAR(2);
+    DECLARE v_month VARCHAR(2);
+    DECLARE v_prefix VARCHAR(6);
+    DECLARE v_serial INT DEFAULT 0;
+    DECLARE v_unique_id VARCHAR(20) DEFAULT NULL;
+    DECLARE v_existing_id VARCHAR(20) DEFAULT NULL;
+    
+    -- Extract month and year from registration date
+    SET v_month = LPAD(MONTH(p_registration_date), 2, '0');
+    SET v_year = RIGHT(YEAR(p_registration_date), 2);
+    SET v_prefix = CONCAT('MBR', v_month, v_year);
+    
+    -- Find the highest existing serial number system-wide
+    SELECT MAX(CAST(SUBSTRING(MbrUniqueID, 8, 4) AS UNSIGNED))
+    INTO v_serial
+    FROM churchmember
+    WHERE MbrUniqueID LIKE 'MBR%';
+    
+    -- If no existing IDs found, start from 0 (will be incremented to 1)
+    SET v_serial = IFNULL(v_serial, 0);
+    
+    -- Generate the new ID with incremented serial
+    SET v_unique_id = CONCAT(v_prefix, '-', LPAD(v_serial + 1, 4, '0'));
+    
+    RETURN v_unique_id;
+END$$
+
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -403,7 +455,7 @@ CREATE TABLE `contribution` (
   `Deleted` tinyint(1) DEFAULT 0,
   `DeletedAt` timestamp NULL DEFAULT NULL,
   `DeletedBy` int(11) DEFAULT NULL
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -544,7 +596,7 @@ CREATE TABLE `expense` (
   `Deleted` tinyint(1) DEFAULT 0,
   `DeletedAt` timestamp NULL DEFAULT NULL,
   `DeletedBy` int(11) DEFAULT NULL
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -953,7 +1005,7 @@ CREATE TABLE `pledge` (
   `FiscalYearID` int(11) DEFAULT NULL,
   `CreatedBy` int(11) NOT NULL,
   `CreatedAt` timestamp NOT NULL DEFAULT current_timestamp()
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -989,7 +1041,7 @@ CREATE TABLE `pledge_payment` (
   `Notes` text DEFAULT NULL,
   `RecordedBy` int(11) NOT NULL,
   `RecordedAt` timestamp NOT NULL DEFAULT current_timestamp()
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -2595,6 +2647,7 @@ ALTER TABLE `visitor_visit`
   ADD CONSTRAINT `fk_visit_event` FOREIGN KEY (`EventID`) REFERENCES `church_event` (`EventID`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_visit_recorded_by` FOREIGN KEY (`RecordedBy`) REFERENCES `churchmember` (`MbrID`),
   ADD CONSTRAINT `fk_visit_visitor` FOREIGN KEY (`VisitorID`) REFERENCES `visitor` (`VisitorID`) ON DELETE CASCADE;
+SET FOREIGN_KEY_CHECKS=1;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
