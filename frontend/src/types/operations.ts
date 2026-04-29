@@ -672,7 +672,7 @@ export interface RoleWithPermissions extends Role {
   permissions: Permission[]
 }
 
-export interface UserRole {
+export interface UserRoleT {
   UserRoleID: number
   UserID: number
   RoleID: number

@@ -19,6 +19,12 @@ import {
   PiggyBank,
   Receipt,
   Gauge,
+  UserCog,
+  Shield,
+  Home,
+  Building2,
+  ListTodo,
+  FolderTree,
 } from '@lucide/vue'
 
 const auth = useAuthStore()
@@ -41,24 +47,50 @@ const navItems = computed<NavItem[]>(() => {
       icon: UsersRound,
       children: [
         { label: 'Members', to: '/members', icon: Users },
-        { label: 'Directory', to: '/members/directory', icon: Contact },
+        { label: 'Member Directory', to: '/members/directory', icon: Contact },
+        { label: 'Families', to: '/families/directory', icon: Home },
       ],
     })
   }
 
-  // Family Section
-  if (auth.hasPermission('members.view')) {
-    items.push({ label: 'Families', to: '/families', icon: Users })
+  // Users Section (Members with system access)
+  if (auth.hasPermission('reports.view') || auth.hasPermission('roles.view')) {
+    const userChildren = []
+    if (auth.hasPermission('reports.view')) {
+      userChildren.push({ label: 'System Users', to: '/users', icon: UserCog })
+    }
+    if (auth.hasPermission('reports.view')) {
+      userChildren.push({ label: 'Roles & Permissions', to: '/users/roles', icon: Shield })
+    }
+    items.push({
+      label: 'User Management',
+      icon: UserCog,
+      children: userChildren,
+    })
   }
 
   // Groups Section
   if (auth.hasPermission('groups.view')) {
-    items.push({ label: 'Groups', to: '/groups', icon: UsersRound })
+    items.push({
+      label: 'Groups',
+      icon: UsersRound,
+      children: [
+        { label: 'Groups', to: '/groups', icon: UsersRound },
+        { label: 'Group Directory', to: '/groups/directory', icon: Building2 },
+      ],
+    })
   }
 
   // Events Section
   if (auth.hasPermission('events.view')) {
-    items.push({ label: 'Events', to: '/events', icon: CalendarDays })
+    items.push({
+      label: 'Events',
+      icon: CalendarDays,
+      children: [
+        { label: 'Events', to: '/events', icon: CalendarDays },
+        { label: 'Event Directory', to: '/events/directory', icon: ListTodo },
+      ],
+    })
   }
 
   // Finance Section with children
@@ -79,7 +111,15 @@ const navItems = computed<NavItem[]>(() => {
 
   // Settings Section
   if (auth.hasPermission('settings.view')) {
-    items.push({ label: 'Settings', to: '/settings', icon: Settings })
+    items.push({
+      label: 'Settings',
+      icon: Settings,
+      children: [
+        { label: 'General Settings', to: '/settings', icon: Settings },
+        { label: 'Branches', to: '/settings/branches', icon: Building2 },
+        { label: 'Lookups', to: '/settings/lookups', icon: FolderTree },
+      ],
+    })
   }
 
   return items

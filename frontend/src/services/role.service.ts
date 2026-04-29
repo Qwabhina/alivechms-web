@@ -9,6 +9,8 @@ import type {
   Permission,
   RoleCreateInput,
   RoleUpdateInput,
+} from '@/types/role'
+import type {
   AssignRoleInput,
   ApiResponse,
   PaginatedResponse,

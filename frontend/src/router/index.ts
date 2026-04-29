@@ -18,6 +18,8 @@ import {
   Wallet,
   CalendarDays,
   Settings,
+  UserCog,
+  Shield,
 } from 'lucide-vue-next'
 
 const router = createRouter({
@@ -104,6 +106,28 @@ const router = createRouter({
             permission: 'members.edit',
             title: 'Edit Member',
             icon: Users,
+          },
+        },
+
+        /* Users */
+        {
+          path: 'users',
+          name: 'users',
+          component: () => import('@/views/users/UserListView.vue'),
+          meta: {
+            permission: 'reports.view',
+            title: 'User Management',
+            icon: UserCog,
+          },
+        },
+        {
+          path: 'users/roles',
+          name: 'user-roles',
+          component: () => import('@/views/users/UserRolesView.vue'),
+          meta: {
+            permission: 'reports.view',
+            title: 'Roles & Permissions',
+            icon: Shield,
           },
         },
 
