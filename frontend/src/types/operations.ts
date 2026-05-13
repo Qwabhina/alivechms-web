@@ -3,7 +3,7 @@
  * @description Types for Events, Groups, Volunteers, Documents, Dashboard.
  */
 
-import type { Role, Permission } from './auth'
+import type { Role, Permission } from './role'
 import type { Branch } from './settings'
 
 export interface ChurchEvent {

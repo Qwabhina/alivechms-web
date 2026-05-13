@@ -31,18 +31,18 @@ const form = reactive<ContributionUpdate>({
   member_id: 0,
   contribution_type_id: 0,
   amount: 0,
-  contribution_date: '',
+  date: '',
   payment_method_id: undefined,
   fiscal_year_id: undefined,
-  receipt_number: '',
-  notes: '',
+  description: '',
+  branch_id: undefined,
 })
 
 /** Date picker binding */
 const contributionDate = ref<Date>(new Date())
 
 watch(contributionDate, (d) => {
-  form.contribution_date = d ? d.toISOString().slice(0, 10) : ''
+  form.date = d ? d.toISOString().slice(0, 10) : ''
 })
 
 // ── Data loaders ──────────────────────────────────────────────────────────────
@@ -63,11 +63,11 @@ async function loadData() {
       form.member_id = contribRes.data.data.MbrID
       form.contribution_type_id = contribRes.data.data.ContributionTypeID
       form.amount = contribRes.data.data.ContributionAmount
-      form.contribution_date = contribRes.data.data.ContributionDate
+      form.date = contribRes.data.data.ContributionDate
       form.payment_method_id = contribRes.data.data.PaymentMethodID || undefined
       form.fiscal_year_id = contribRes.data.data.FiscalYearID || undefined
-      form.receipt_number = contribRes.data.data.ReceiptNumber || ''
-      form.notes = contribRes.data.data.Notes || ''
+      form.description = contribRes.data.data.PaymentReference || contribRes.data.data.Notes || ''
+      form.branch_id = contribRes.data.data.BranchID || undefined
       
       // Set date picker
       contributionDate.value = new Date(contribRes.data.data.ContributionDate)
@@ -110,11 +110,11 @@ async function handleSubmit() {
       member_id: form.member_id,
       contribution_type_id: form.contribution_type_id,
       amount: Number(form.amount),
-      contribution_date: form.contribution_date,
+      date: form.date,
       payment_method_id: form.payment_method_id || undefined,
       fiscal_year_id: form.fiscal_year_id || undefined,
-      receipt_number: form.receipt_number || undefined,
-      notes: form.notes || undefined,
+      description: form.description || undefined,
+      branch_id: form.branch_id,
     }
     
     await contributionService.update(contributionId, payload)
@@ -252,17 +252,13 @@ onMounted(() => {
               />
             </ChFormField>
 
-            <!-- Receipt Number -->
-            <ChFormField
-              label="Receipt Number"
-              input-id="receipt-input"
-              hint="Leave blank to auto-generate."
-              class="form-grid__full"
-            >
-              <ChInput
-                id="receipt-input"
-                v-model="form.receipt_number"
-                placeholder="e.g. RCP-2024-001"
+            <!-- Branch -->
+            <ChFormField label="Branch" input-id="branch-select">
+              <ChSelect
+                id="branch-select"
+                v-model="form.branch_id"
+                :options="lookupData?.branches?.map((b) => ({ value: b.id, label: b.name })) ?? []"
+                placeholder="Select branch (optional)"
               />
             </ChFormField>
           </div>
@@ -270,21 +266,20 @@ onMounted(() => {
 
         <ChDivider />
 
-        <!-- ── Section: Notes ─────────────────────────────────────────────── -->
+        <!-- ── Section: Description ─────────────────────────────────────────────── -->
         <div class="form-section">
-          <h2 class="form-section__title">Notes</h2>
+          <h2 class="form-section__title">Description / Notes</h2>
 
           <ChFormField
-            label="Additional Notes"
-            input-id="notes-input"
-            hint="Any context about this contribution."
+            label="Description"
+            input-id="description-input"
+            class="form-grid__full"
           >
             <ChTextarea
-              id="notes-input"
-              v-model="form.notes"
-              placeholder="Add any relevant notes here…"
+              id="description-input"
+              v-model="form.description"
+              placeholder="Additional information about this contribution..."
               :rows="3"
-              resize="vertical"
             />
           </ChFormField>
         </div>

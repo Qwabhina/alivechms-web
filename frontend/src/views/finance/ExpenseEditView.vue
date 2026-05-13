@@ -28,12 +28,12 @@ const categories = ref<ExpenseCategory[]>([])
 // ── Form ──────────────────────────────────────────────────────────────────────
 
 const form = reactive<ExpenseUpdateInput>({
-  expense_id: expenseId,
-  expense_category_id: 0,
+  category_id: 0,
   fiscal_year_id: undefined,
   amount: 0,
   expense_date: '',
-  description: '',
+  title: '',
+  purpose: '',
   branch_id: undefined,
 })
 
@@ -59,10 +59,11 @@ async function loadData() {
     if (expenseRes?.data) {
       expense.value = expenseRes.data
       // Populate form
-      form.expense_category_id = expenseRes.data.ExpenseCategoryID
+      form.category_id = expenseRes.data.ExpenseCategoryID
       form.amount = expenseRes.data.Amount
       form.expense_date = expenseRes.data.ExpenseDate
-      form.description = expenseRes.data.Description || ''
+      form.title = expenseRes.data.ExpTitle || expenseRes.data.Description || ''
+      form.purpose = expenseRes.data.ExpDescription || expenseRes.data.Description || ''
       form.fiscal_year_id = expenseRes.data.FiscalYearID || undefined
       
       // Set date picker
@@ -91,24 +92,23 @@ async function loadData() {
 // ── Submit ────────────────────────────────────────────────────────────────────
 
 async function handleSubmit() {
-  if (!form.expense_category_id || !form.amount || !form.description) {
+  if (!form.category_id || !form.amount || !form.title) {
     toast.warning('Please fill in all required fields.')
     return
   }
 
   isSubmitting.value = true
   try {
-    const payload: ExpenseUpdateInput = {
-      expense_id: expenseId,
-      expense_category_id: form.expense_category_id,
+    await expenseService.update(expenseId, {
+      category_id: form.category_id,
       amount: Number(form.amount),
       expense_date: form.expense_date,
-      description: form.description,
+      title: form.title,
+      purpose: form.purpose || undefined,
       fiscal_year_id: form.fiscal_year_id || undefined,
       branch_id: form.branch_id || undefined,
-    }
+    })
     
-    await expenseService.update(expenseId, payload)
     toast.success('Expense updated successfully.')
     router.push(`/finance/expenses/${expenseId}`)
   } catch (err: unknown) {
@@ -153,6 +153,19 @@ onMounted(() => {
           <h2 class="form-section__title">Expense Details</h2>
 
           <div class="form-grid">
+            <!-- Title -->
+            <ChFormField
+              label="Title"
+              input-id="title-input"
+              :required="true"
+            >
+              <ChInput
+                id="title-input"
+                v-model="form.title"
+                placeholder="e.g. Office Supplies, Vehicle Maintenance"
+              />
+            </ChFormField>
+
             <!-- Category -->
             <ChFormField
               label="Category"
@@ -161,7 +174,7 @@ onMounted(() => {
             >
               <ChSelect
                 id="category-select"
-                v-model="form.expense_category_id"
+                v-model="form.category_id"
                 :options="
                   categories.map((c) => ({
                     value: c.CategoryID,
@@ -206,16 +219,15 @@ onMounted(() => {
               />
             </ChFormField>
 
-            <!-- Description -->
+            <!-- Purpose -->
             <ChFormField
-              label="Description"
-              input-id="description-input"
-              :required="true"
+              label="Purpose / Description"
+              input-id="purpose-input"
               class="form-grid__full"
             >
               <ChTextarea
-                id="description-input"
-                v-model="form.description"
+                id="purpose-input"
+                v-model="form.purpose"
                 placeholder="Describe the expense..."
                 :rows="3"
                 resize="vertical"

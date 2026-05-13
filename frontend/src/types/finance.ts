@@ -8,31 +8,38 @@
 export interface Contribution {
   ContributionID: number
   MbrID: number
-  MemberName?: string
-  ContributionTypeID: number
-  ContributionTypeName?: string
   ContributionAmount: number
   ContributionDate: string
-  PaymentMethodID: number | null
-  PaymentMethodName?: string
-  FiscalYearID: number | null
-  FiscalYearName?: string
-  ReceiptNumber: string | null
-  Notes: string | null
-  CreatedBy: number | null
-  CreatedAt: string
+  ContributionTypeID: number
+  PaymentMethodID: number
+  PaymentReference?: string
+  ReceiptNumber?: string
+  Notes?: string
+  FiscalYearID?: number
+  BranchID?: number
+  RecordedBy: number
+  RecordedAt: string
+  CreatedAt?: string
   Deleted: number
+  // Joined fields
+  MbrFirstName?: string
+  MbrFamilyName?: string
+  MemberName: string
+  ContributionTypeName?: string
+  PaymentMethodName?: string
+  FiscalYearName?: string
+  BranchName?: string
 }
 
 export interface ContributionCreate {
   member_id: number
   contribution_type_id: number
   amount: number
-  contribution_date: string
+  date: string
   payment_method_id?: number
   fiscal_year_id?: number
-  receipt_number?: string
-  notes?: string
+  description?: string
+  branch_id?: number
 }
 
 export type ContributionUpdate = Partial<ContributionCreate>
@@ -151,6 +158,8 @@ export interface ContributionDetail extends Contribution {
 }
 
 export interface ExpenseDetail extends Expense {
+  ExpTitle?: string
+  ExpDescription?: string
   CreatedByName?: string
   ApprovedByName?: string
   ApprovedAt?: string
@@ -190,16 +199,23 @@ export interface BudgetDetail extends Budget {
 /* ---------- Additional Input Types ---------- */
 
 export interface ExpenseCreateInput {
-  expense_category_id: number
+  category_id: number
   fiscal_year_id?: number
   amount: number
   expense_date: string
-  description: string
+  title: string
+  purpose?: string
   branch_id?: number
 }
 
-export interface ExpenseUpdateInput extends Partial<ExpenseCreateInput> {
-  expense_id: number
+export interface ExpenseUpdateInput {
+  category_id?: number
+  fiscal_year_id?: number
+  amount?: number
+  expense_date?: string
+  title?: string
+  purpose?: string
+  branch_id?: number
 }
 
 export interface ExpenseReviewInput {

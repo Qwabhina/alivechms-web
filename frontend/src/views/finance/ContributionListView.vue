@@ -51,7 +51,7 @@ const columns = [
   },
   { key: 'ContributionDate', label: 'Date', sortable: true, type: 'slot' as const },
   { key: 'PaymentMethodName', label: 'Method' },
-  { key: 'ReceiptNumber', label: 'Receipt' },
+  { key: 'PaymentReference', label: 'Reference' },
   { key: 'actions', label: '', type: 'slot' as const, exportable: false, align: 'right' as const },
 ]
 

@@ -8,7 +8,7 @@ import { contributionService, lookupService } from '@/services/finance.service'
 import type { FinanceLookupData } from '@/services/finance.service'
 import { useToast, confirm } from '@/design-system'
 import type { Contribution } from '@/types/finance'
-import { ArrowLeft, Edit, Trash2, DollarSign } from 'lucide-vue-next'
+import { ArrowLeft, Edit, Trash2, DollarSign, Printer } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,6 +22,7 @@ const loading = ref(true)
 const contribution = ref<Contribution | null>(null)
 const lookupData = ref<FinanceLookupData | null>(null)
 const isDeleting = ref(false)
+const isPrinting = ref(false)
 
 // ── Data loaders ──────────────────────────────────────────────────────────────
 
@@ -79,6 +80,83 @@ async function confirmDelete() {
   }
 }
 
+async function printReceipt() {
+  if (!contribution.value) return
+  
+  isPrinting.value = true
+  try {
+    // Use browser's print functionality for receipt
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      toast.error('Please allow popups to print receipt')
+      return
+    }
+    
+    const receiptHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Receipt #${contribution.value.ContributionID}</title>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 400px; margin: 20px auto; padding: 20px; border: 2px solid #333; }
+          .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+          .receipt-title { font-size: 24px; font-weight: bold; }
+          .receipt-number { font-size: 14px; color: #666; margin-top: 5px; }
+          .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+          .detail-label { font-weight: bold; }
+          .amount { font-size: 28px; font-weight: bold; text-align: center; padding: 20px; color: #2d5a3d; }
+          .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #666; }
+          @media print { body { border: none; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="receipt-title">OFFICIAL RECEIPT</div>
+          <div class="receipt-number">Receipt #${contribution.value.ContributionID}</div>
+        </div>
+        <div class="amount">${formatCurrency(contribution.value.ContributionAmount)}</div>
+        <div class="detail-row">
+          <span class="detail-label">Received From:</span>
+          <span>${contribution.value.MemberName || 'Unknown'}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Date:</span>
+          <span>${formatDate(contribution.value.ContributionDate)}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Type:</span>
+          <span>${contribution.value.ContributionTypeName || 'General'}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Payment Method:</span>
+          <span>${contribution.value.PaymentMethodID || 'Cash'}</span>
+        </div>
+        ${contribution.value.Notes ? `
+        <div class="detail-row">
+          <span class="detail-label">Notes:</span>
+          <span>${contribution.value.Notes}</span>
+        </div>
+        ` : ''}
+        <div class="footer">
+          Thank you for your contribution!<br>
+          Printed on ${new Date().toLocaleDateString('en-GB')}
+        </div>
+        <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }<\/script>
+      </body>
+      </html>
+    `
+    
+    printWindow.document.write(receiptHtml)
+    printWindow.document.close()
+    
+    toast.success('Receipt opened for printing')
+  } catch {
+    toast.error('Failed to print receipt')
+  } finally {
+    isPrinting.value = false
+  }
+}
+
 // ── Formatters ────────────────────────────────────────────────────────────────
 
 function formatCurrency(amount: number): string {
@@ -115,7 +193,7 @@ onMounted(() => {
 <template>
   <div class="view">
     <!-- ── Header ─────────────────────────────────────────────────────────────── -->
-    <ChPageHeader :title="contribution ? `Contribution #${contribution.ReceiptNumber || contribution.ContributionID}` : 'Contribution Details'">
+    <ChPageHeader :title="contribution ? `Contribution #${contribution.ContributionID}` : 'Contribution Details'">
       <template #leading>
         <ChButton variant="ghost" size="sm" @click="router.push('/finance/contributions')">
           <template #icon><ArrowLeft :size="16" /></template>
@@ -123,6 +201,10 @@ onMounted(() => {
         </ChButton>
       </template>
       <template #actions v-if="contribution && !loading">
+        <ChButton variant="secondary" :loading="isPrinting" @click="printReceipt">
+          <template #icon><Printer :size="18" /></template>
+          Print Receipt
+        </ChButton>
         <ChButton variant="outline" @click="navigateToEdit">
           <template #icon><Edit :size="18" /></template>
           Edit
@@ -166,7 +248,7 @@ onMounted(() => {
               { label: 'Contribution Date', value: formatDate(contribution.ContributionDate) },
               { label: 'Payment Method', value: contribution.PaymentMethodName || '—' },
               { label: 'Fiscal Year', value: contribution.FiscalYearName || '—' },
-              { label: 'Receipt Number', value: contribution.ReceiptNumber || '—' },
+              { label: 'Payment Reference', value: contribution.PaymentReference || '—' },
             ]"
           />
         </ChCard>

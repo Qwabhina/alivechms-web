@@ -25,11 +25,12 @@ const isSubmitting = ref(false)
 // ── Form ──────────────────────────────────────────────────────────────────────
 
 const form = reactive<ExpenseCreateInput>({
-  expense_category_id: 0,
+  category_id: 0,
   fiscal_year_id: undefined,
   amount: 0,
   expense_date: new Date().toISOString().slice(0, 10),
-  description: '',
+  title: '',
+  purpose: '',
   branch_id: undefined,
 })
 
@@ -43,7 +44,7 @@ watch(expenseDate, (d) => {
 // ── Submit ────────────────────────────────────────────────────────────────────
 
 async function handleSubmit() {
-  if (!form.expense_category_id || !form.amount || !form.description) {
+  if (!form.category_id || !form.amount || !form.title) {
     toast.warning('Please fill in all required fields.')
     return
   }
@@ -51,10 +52,11 @@ async function handleSubmit() {
   isSubmitting.value = true
   try {
     const payload: ExpenseCreateInput = {
-      expense_category_id: form.expense_category_id,
+      category_id: form.category_id,
       amount: Number(form.amount),
       expense_date: form.expense_date,
-      description: form.description,
+      title: form.title,
+      purpose: form.purpose || undefined,
       fiscal_year_id: form.fiscal_year_id || undefined,
       branch_id: form.branch_id || undefined,
     }
@@ -122,6 +124,19 @@ onMounted(async () => {
           <h2 class="form-section__title">Expense Details</h2>
 
           <div class="form-grid">
+            <!-- Title -->
+            <ChFormField
+              label="Title"
+              input-id="title-input"
+              :required="true"
+            >
+              <ChInput
+                id="title-input"
+                v-model="form.title"
+                placeholder="e.g. Office Supplies, Vehicle Maintenance"
+              />
+            </ChFormField>
+
             <!-- Category -->
             <ChFormField
               label="Category"
@@ -130,7 +145,7 @@ onMounted(async () => {
             >
               <ChSelect
                 id="category-select"
-                v-model="form.expense_category_id"
+                v-model="form.category_id"
                 :options="
                   categories.map((c) => ({
                     value: c.CategoryID,
@@ -175,17 +190,16 @@ onMounted(async () => {
               />
             </ChFormField>
 
-            <!-- Description -->
+            <!-- Purpose -->
             <ChFormField
-              label="Description"
-              input-id="description-input"
-              :required="true"
+              label="Purpose / Description"
+              input-id="purpose-input"
               class="form-grid__full"
             >
               <ChTextarea
-                id="description-input"
-                v-model="form.description"
-                placeholder="Describe the expense..."
+                id="purpose-input"
+                v-model="form.purpose"
+                placeholder="Additional information about this expense..."
                 :rows="3"
                 resize="vertical"
               />

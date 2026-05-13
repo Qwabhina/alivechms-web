@@ -74,21 +74,3 @@ export interface CsrfConfig {
     csrf_ttl: number
   }
 }
-
-/* ---------- Roles & Permissions ---------- */
-
-export interface Role {
-  RoleID: number
-  RoleName: string
-  RoleDescription: string | null
-  IsActive: number
-  CreatedAt: string
-}
-
-export interface Permission {
-  PermissionID: number
-  PermissionName: string
-  PermissionDescription: string | null
-  CategoryName: string | null
-  DisplayOrder: number
-}

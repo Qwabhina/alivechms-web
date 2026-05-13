@@ -152,7 +152,7 @@ async function handleLogin() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--ch-color-primary);
+  background-color: var(--ch-color-primary-subtle);
     padding: var(--ch-space-8);
     font-family: var(--ch-font-sans);
 }
