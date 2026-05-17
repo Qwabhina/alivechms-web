@@ -139,10 +139,11 @@ export const zIndex = {
   'z-raised': '10', // Slightly elevated (e.g. a focused input)
   'z-dropdown': '100', // Dropdowns, select menus, date pickers
   'z-sticky': '200', // Sticky headers, fixed sidebars
-  'z-overlay': '300', // Backdrop/scrim behind modals
-  'z-modal': '400', // Modal dialogs, drawers
-  'z-toast': '500', // Toast notifications (above modals)
-  'z-tooltip': '600', // Tooltips (always on top)
+  'z-popover': '300',   // Floating panels: popovers, flyouts (above sidebar, below overlay)
+  'z-overlay': '400', // Backdrop/scrim behind modals
+  'z-modal': '500', // Modal dialogs, drawers
+  'z-toast': '600', // Toast notifications (above modals)
+  'z-tooltip': '700', // Tooltips (always on top)
 } as const
 
 // ─── Exported Types ───────────────────────────────────────────────────────────

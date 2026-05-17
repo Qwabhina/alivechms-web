@@ -664,43 +664,6 @@ export interface AuditLogListFilters {
   sort_dir?: 'ASC' | 'DESC'
 }
 
-/* ---------- Role & Permission Types ---------- */
-
-/* Role & Permission types are imported from './auth' to avoid duplicate exports */
-
-export interface RoleWithPermissions extends Role {
-  permissions: Permission[]
-}
-
-export interface UserRoleT {
-  UserRoleID: number
-  UserID: number
-  RoleID: number
-  RoleName?: string
-  AssignedBy?: number
-  AssignedAt?: string
-}
-
-export interface RoleCreateInput {
-  role_name: string
-  description?: string
-  permission_ids: number[]
-}
-
-export interface RoleUpdateInput extends Partial<RoleCreateInput> {
-  role_id: number
-}
-
-export interface AssignRoleInput {
-  user_id: number
-  role_id: number
-}
-
-export interface PermissionMatrix {
-  role: Role
-  permissions: Record<string, boolean>
-}
-
 /* ---------- Membership Type ---------- */
 
 export interface MembershipType {

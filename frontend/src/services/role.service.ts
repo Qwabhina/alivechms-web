@@ -10,6 +10,7 @@ import type {
   RoleCreateInput,
   RoleUpdateInput,
 } from '@/types/role'
+
 import type {
   AssignRoleInput,
   ApiResponse,
@@ -18,7 +19,7 @@ import type {
 
 export const roleService = {
   // Roles
-  async list(): Promise<ApiResponse<Role[]>> {
+  async list(): Promise<ApiResponse<PaginatedResponse<Role>>> {
     return http.get('role/all').then((res) => res.data)
   },
 

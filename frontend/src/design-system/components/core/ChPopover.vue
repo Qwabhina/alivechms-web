@@ -34,6 +34,17 @@ interface Props {
   minWidth?: string
   /** Max width of popover. Default: '320px' */
   maxWidth?: string
+  /**
+  * Delay in ms before the popover opens on hover. Default: 0.
+  * Use ~150ms for sidebar flyouts to avoid accidental triggers.
+  */
+ hoverDelay?: number
+ /**
+  * When false, removes padding from the content area.
+  * Use for flyout nav panels where items carry their own padding.
+  * Default: true
+  */
+ contentPadding?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -46,6 +57,8 @@ const props = withDefaults(defineProps<Props>(), {
   class: '',
   minWidth: '200px',
   maxWidth: '320px',
+  hoverDelay: 0,
+  contentPadding: true,
 })
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
@@ -75,6 +88,10 @@ const actualPlacement = ref<Exclude<PopoverPlacement, 'auto'>>(
  * reactive dependencies — always produce the correct result.
  */
 const position = ref({ top: '0px', left: '0px' })
+
+// Used to debounce hover show/hide so the mouse can travel between
+// the trigger and the teleported panel without closing it.
+const hoverTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
@@ -193,14 +210,6 @@ function handleTriggerClick(e: MouseEvent) {
   }
 }
 
-function handleTriggerEnter() {
-  if (props.trigger === 'hover') showPopover()
-}
-
-function handleTriggerLeave() {
-  if (props.trigger === 'hover') hidePopover()
-}
-
 function handleTriggerFocus() {
   if (props.trigger === 'focus') showPopover()
 }
@@ -225,6 +234,45 @@ function handleScrollOrResize() {
   if (isOpen.value) updatePosition()
 }
 
+// ─── Hover helpers ────────────────────────────────────────────────────────
+
+function clearHoverTimer() {
+  if (hoverTimer.value !== null) {
+    clearTimeout(hoverTimer.value)
+    hoverTimer.value = null
+  }
+}
+
+function scheduleShow() {
+  clearHoverTimer()
+  hoverTimer.value = setTimeout(showPopover, props.hoverDelay)
+}
+
+function scheduleHide() {
+  clearHoverTimer()
+  // 100ms grace period — enough time for the mouse to travel
+  // from the trigger div to the teleported popover panel.
+  hoverTimer.value = setTimeout(hidePopover, 100)
+}
+
+function handleTriggerEnter() {
+  if (props.trigger === 'hover') scheduleShow()
+}
+
+function handleTriggerLeave() {
+  if (props.trigger === 'hover') scheduleHide()
+}
+
+// Called by the popover panel itself — cancels a pending hide when the
+// mouse moves from the trigger into the panel.
+function handlePopoverEnter() {
+  if (props.trigger === 'hover') clearHoverTimer()
+}
+
+function handlePopoverLeave() {
+  if (props.trigger === 'hover') scheduleHide()
+}
+
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
 onMounted(() => {
@@ -239,6 +287,7 @@ onUnmounted(() => {
   document.removeEventListener('keydown', handleEscape)
   window.removeEventListener('scroll', handleScrollOrResize, true)
   window.removeEventListener('resize', handleScrollOrResize)
+  clearHoverTimer()
 })
 
 // ─── Watch ────────────────────────────────────────────────────────────────────
@@ -291,12 +340,14 @@ watch(isOpen, async (newVal) => {
           ]"
           role="dialog"
           :aria-modal="modal ? 'true' : 'false'"
+          @mouseenter="handlePopoverEnter"
+          @mouseleave="handlePopoverLeave"
         >
           <div v-if="$slots.header" class="ch-popover__header">
             <slot name="header"></slot>
           </div>
 
-          <div class="ch-popover__content">
+          <div class="ch-popover__content" :class="{ 'ch-popover__content--flush': !contentPadding }">
             <slot></slot>
           </div>
 
@@ -347,6 +398,10 @@ watch(isOpen, async (newVal) => {
   /* No hardcoded max-height — consumers (e.g. ChDropdown) control their own
        scrolling via --ch-dropdown-max-height on the inner items list. */
   padding: var(--ch-space-3) var(--ch-space-4);
+}
+
+.ch-popover__content--flush {
+  padding: 0;
 }
 
 .ch-popover__footer {

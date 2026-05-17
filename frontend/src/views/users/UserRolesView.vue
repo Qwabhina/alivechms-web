@@ -86,7 +86,7 @@ async function loadRoles() {
   try {
     const response = await roleService.list()
     if (response?.data) {
-      roles.value = response.data || []
+      roles.value = response.data.data || []
     }
   } catch {
     toast.error('Failed to load roles')

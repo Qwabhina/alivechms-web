@@ -32,7 +32,9 @@
  * />
  */
 
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import type { Component } from 'vue'
+import ChPopover from '../core/ChPopover.vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,8 +59,7 @@ export interface NavItem {
    * Typed as `any` to be compatible with any icon library.
    * Usage: `import { UsersIcon } from 'lucide-vue-next'`
    */
-  // icon?:    any
-  icon?:    unknown
+  icon?:    Component
 
   /**
    * Optional badge value — shown as a count bubble on the right.
@@ -123,6 +124,19 @@ const emit = defineEmits<{
  */
 const isOpen = ref(hasActiveChild())
 
+// Re-evaluate open state when the route changes.
+// Opens the group if a child becomes active (e.g. browser back/forward,
+// programmatic navigation). Does not auto-close — the user may have
+// manually expanded this group.
+watch(
+  () => props.currentRoute,
+  () => {
+    if (!isOpen.value && hasActiveChild()) {
+      isOpen.value = true
+    }
+  }
+)
+
 // NOTE: Tooltip in collapsed mode is handled entirely via CSS ::after
 // pseudo-element on the button (using `data-tooltip` attribute). This is
 // more performant than a Vue-rendered tooltip — no reactive state needed,
@@ -160,11 +174,14 @@ const isGroupHighlighted = computed(() =>
 )
 
 /**
- * Badge display: only show if badge value is a positive number.
- * `badge === 0` is treated as "nothing to show" (not "zero unread").
+ * Badge display: only show if badge value is a positive number AND this
+ * is not a group item. Groups don't show badges — children carry their
+ * own badge values.
  */
 const showBadge = computed(() =>
-  typeof props.item.badge === 'number' && props.item.badge > 0
+  !isGroup.value &&
+  typeof props.item.badge === 'number' &&
+  props.item.badge > 0
 )
 
 /**
@@ -177,12 +194,15 @@ const badgeLabel = computed(() => {
 })
 
 /**
- * Left padding increases with depth to show hierarchy.
- * depth 0 = 0 extra padding (uses base item padding)
- * depth 1 = 12px additional left padding
- * depth 2 = 24px additional left padding (unlikely but supported)
+ * Returns the full paddingLeft value for nested items, or undefined for
+ * top-level items (which use the base padding from CSS).
+ * depth 1 = base 12px, depth 2 = base 24px, etc.
  */
-const depthPadding = computed(() => `${props.depth * 12}px`)
+const depthPaddingStyle = computed(() =>
+  props.depth > 0
+    ? `calc(var(--ch-space-4) ${props.depth * 12}px)`
+    : undefined
+)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -236,111 +256,131 @@ function handleClick() {
 </script>
 
 <template>
-  <li class="ch-sidebar-item-wrapper">
+    <li class="ch-sidebar-item-wrapper">
 
-    <!--
-      ─── Item Button ──────────────────────────────────────────────────────────
-      We use a `<button>` for all items (not `<a>`) because navigation is
-      handled by the parent via the `navigate` emit — we don't want native
-      anchor link behavior. The parent's router integration handles the actual
-      route change.
-
-      `data-tooltip` stores the label for the CSS tooltip in collapsed mode.
-      The tooltip itself is shown via CSS `::after` with `attr(data-tooltip)`.
-
-      `:style="{ paddingLeft: ... }"` adds depth-based indentation for children.
-    -->
-    <button
-      :class="[
-        'ch-sidebar-item',
-        {
-          'ch-sidebar-item--active':      isActive,
-          'ch-sidebar-item--group-active': isGroupHighlighted,
-          'ch-sidebar-item--collapsed':   collapsed,
-          'ch-sidebar-item--disabled':    item.disabled,
-          'ch-sidebar-item--depth':       depth > 0,
-        }
-      ]"
-      :style="{ paddingLeft: depth > 0 ? `calc(var(--ch-space-4) + ${depthPadding})` : undefined }"
-      :aria-current="isActive ? 'page' : undefined"
-      :aria-expanded="isGroup ? isOpen : undefined"
-      :disabled="item.disabled"
-      :data-tooltip="collapsed ? item.label : undefined"
-      type="button"
-      @click="handleClick"
-    >
-      <!-- Icon slot — always visible even in collapsed mode -->
-      <span v-if="item.icon" class="ch-sidebar-item__icon" aria-hidden="true">
-        <component :is="item.icon" :size="18" />
-      </span>
-
-      <!-- Fallback dot if no icon provided -->
-      <span v-else class="ch-sidebar-item__dot" aria-hidden="true" />
-
-
+  <!--
+    ─── Collapsed group: flyout popover ──────────────────────────────────────
+    When the sidebar is collapsed, group items can't expand inline (no room).
+    Instead, hovering opens a popover to the right showing the group label
+    as a header and its children as full nav items.
+  -->
+  <ChPopover
+    v-if="collapsed && isGroup"
+    class="ch-sidebar-flyout"
+    trigger="hover"
+    placement="right"
+    :hover-delay="150"
+    :content-padding="false"
+    min-width="180px"
+    max-width="240px"
+  >
+    <template #trigger>
       <!--
-        Label + badge — hidden in collapsed mode via CSS `display: none`.
-        The `v-show` here is not used intentionally; we use CSS to hide
-        these so transitions work smoothly with the sidebar width animation.
+        Icon-only button. aria-label replaces the visual label for AT.
+        aria-haspopup signals that activating this opens a panel.
+        data-tooltip is omitted — the popover header serves that role.
       -->
-      <span class="ch-sidebar-item__label">{{ item.label }}</span>
-
-      <!-- Badge count — shown for leaf items with a badge value -->
-      <span
-        v-if="showBadge && !isGroup"
-        class="ch-sidebar-item__badge"
-        :aria-label="`${item.badge} pending`"
+      <button
+        :class="[
+          'ch-sidebar-item',
+          'ch-sidebar-item--collapsed',
+          {
+            'ch-sidebar-item--group-active': isGroupHighlighted,
+            'ch-sidebar-item--disabled':    item.disabled,
+          },
+        ]"
+        :aria-label="item.label"
+        aria-haspopup="true"
+        :disabled="item.disabled"
+        type="button"
       >
-        {{ badgeLabel }}
-      </span>
+        <span v-if="item.icon" class="ch-sidebar-item__icon" aria-hidden="true">
+          <component :is="item.icon" :size="18" />
+        </span>
+        <span v-else class="ch-sidebar-item__dot" aria-hidden="true" />
+      </button>
+    </template>
 
-      <!--
-        Chevron for group items — rotates 180° when the group is open.
-        Uses a pure CSS transform so it animates smoothly.
-      -->
-      <span
-        v-if="isGroup"
-        :class="['ch-sidebar-item__chevron', { 'ch-sidebar-item__chevron--open': isOpen }]"
-        aria-hidden="true"
-      >
-        <!-- Inline SVG chevron — no icon library dependency for this micro-icon -->
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </span>
-    </button>
+    <!-- Group label — orients the user before they see the children -->
+    <template #header>
+      <span class="ch-sidebar-flyout__label">{{ item.label }}</span>
+    </template>
 
-    <!--
-      ─── Children (nested nav items) ─────────────────────────────────────────
-      Only rendered for group items. Hidden in collapsed sidebar mode.
-
-      `v-show` (not `v-if`) keeps the DOM nodes alive so open/close
-      can be animated with a CSS max-height transition.
-
-      The `<ul>` is the semantic container for a list of nav links.
-      `role="group"` + the parent's `aria-expanded` handles accessibility.
-    -->
-    <ul
-      v-if="isGroup && !collapsed"
-      v-show="isOpen"
-      class="ch-sidebar-item__children"
-      role="group"
-    >
-      <!--
-        Recursively render ChSidebarItem for each child.
-        `depth + 1` increases indentation for nested levels.
-        We bubble up the navigate event from children to the top-level sidebar.
-      -->
+    <!-- Children rendered as full (non-collapsed) nav items -->
+    <ul class="ch-sidebar-flyout__list" role="navigation" :aria-label="item.label">
       <ChSidebarItem
         v-for="child in item.children"
         :key="child.label"
         :item="child"
         :current-route="currentRoute"
-        :collapsed="collapsed"
-        :depth="depth + 1"
+        :collapsed="false"
+        :depth="0"
         @navigate="emit('navigate', $event)"
       />
     </ul>
+  </ChPopover>
+
+  <!--
+    ─── All other cases: standard button optional inline children ───────────
+    Leaf items, non-collapsed groups, and disabled items all render here.
+  -->
+  <template v-else>
+    <button
+      :class="[
+        'ch-sidebar-item',
+        {
+          'ch-sidebar-item--active':       isActive,
+          'ch-sidebar-item--group-active': isGroupHighlighted,
+          'ch-sidebar-item--collapsed':    collapsed,
+          'ch-sidebar-item--disabled':     item.disabled,
+          'ch-sidebar-item--depth':        depth > 0,
+        }
+      ]"
+      :style="{ paddingLeft: depthPaddingStyle }"
+      :aria-current="isActive ? 'page' : undefined"
+      :aria-expanded="isGroup ? isOpen : undefined"
+      :disabled="item.disabled"
+      :aria-label="collapsed ? item.label : undefined"
+      :data-tooltip="collapsed ? item.label : undefined"
+      type="button"
+      @click="handleClick"
+    >
+      <span v-if="item.icon" class="ch-sidebar-item__icon" aria-hidden="true">
+        <component :is="item.icon" :size="18" />
+      </span>
+      <span v-else class="ch-sidebar-item__dot" aria-hidden="true" />
+      <span class="ch-sidebar-item__label">{{ item.label }}</span>
+      <span v-if="showBadge" class="ch-sidebar-item__badge" :aria-label="`${item.badge} pending`">
+        {{ badgeLabel }}
+      </span>
+      <span
+        v-if="isGroup"
+        :class="['ch-sidebar-item__chevron', { 'ch-sidebar-item__chevron--open': isOpen }]"
+        aria-hidden="true"
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+    </button>
+    <ul
+      v-if="isGroup && !collapsed"
+      v-show="isOpen"
+      class="ch-sidebar-item__children"
+      role="group"
+      :aria-label="item.label"
+    >
+      <ChSidebarItem
+        v-for="navItem in item.children"
+        :key="navItem.label"
+        :item="navItem"
+        :current-route="currentRoute"
+        :collapsed="collapsed"
+        :depth="1"
+        @navigate="emit('navigate', $event)"
+      />
+    </ul>
+  </template>
   </li>
 </template>
 
@@ -542,6 +582,35 @@ function handleClick() {
   white-space: nowrap;
   pointer-events: none;         /* tooltip shouldn't interfere with clicking */
   z-index:    var(--ch-z-tooltip);
+
+  /* ─── Flyout wrapper ──────────────────────────────────────────────────────── */
+/*
+ * ChPopover's root is display: inline-block. We override it here so the
+ * trigger button fills the full sidebar width like every other item.
+ * This works because Vue attaches the parent's scoped data attribute to
+ * child component root elements, so scoped styles reach it.
+ */
+.ch-sidebar-flyout {
+  display: block;
+  width: 100%;
+}
+
+/* ─── Flyout popover content ──────────────────────────────────────────────── */
+
+.ch-sidebar-flyout__label {
+  font-size: var(--ch-text-xs);
+  font-weight: var(--ch-font-semibold);
+  color: var(--ch-color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--ch-tracking-wider);
+  font-family: var(--ch-font-sans);
+}
+
+.ch-sidebar-flyout__list {
+  list-style: none;
+  margin: 0;
+  padding: var(--ch-space-1) 0;
+}
 
   /* Subtle entrance animation */
   animation: ch-fade-in var(--ch-duration-fast) var(--ch-ease-out) both;

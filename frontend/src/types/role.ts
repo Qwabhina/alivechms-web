@@ -101,3 +101,28 @@ export interface PaginatedRoles {
   /** Pagination metadata */
   meta: Pagination
 }
+
+
+
+/* ---------- Role & Permission Types ---------- */
+
+/* Role & Permission types are imported from './auth' to avoid duplicate exports */
+
+export interface UserRoleT {
+  UserRoleID: number
+  UserID: number
+  RoleID: number
+  RoleName?: string
+  AssignedBy?: number
+  AssignedAt?: string
+}
+
+export interface AssignRoleInput {
+  user_id: number
+  role_id: number
+}
+
+export interface PermissionMatrix {
+  role: Role
+  permissions: Record<string, boolean>
+}
