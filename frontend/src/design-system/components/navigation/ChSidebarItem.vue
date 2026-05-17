@@ -200,7 +200,7 @@ const badgeLabel = computed(() => {
  */
 const depthPaddingStyle = computed(() =>
   props.depth > 0
-    ? `calc(var(--ch-space-4) ${props.depth * 12}px)`
+    ? `calc(var(--ch-space-4) + ${props.depth * 12}px)`
     : undefined
 )
 
@@ -583,6 +583,11 @@ function handleClick() {
   pointer-events: none;         /* tooltip shouldn't interfere with clicking */
   z-index:    var(--ch-z-tooltip);
 
+  /* Subtle entrance animation */
+  animation: ch-fade-in var(--ch-duration-fast) var(--ch-ease-out) both;
+}
+
+
   /* ─── Flyout wrapper ──────────────────────────────────────────────────────── */
 /*
  * ChPopover's root is display: inline-block. We override it here so the
@@ -610,9 +615,5 @@ function handleClick() {
   list-style: none;
   margin: 0;
   padding: var(--ch-space-1) 0;
-}
-
-  /* Subtle entrance animation */
-  animation: ch-fade-in var(--ch-duration-fast) var(--ch-ease-out) both;
 }
 </style>
