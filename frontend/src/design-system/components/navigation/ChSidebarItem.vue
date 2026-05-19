@@ -32,7 +32,7 @@
  * />
  */
 
-import { computed, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import ChPopover from '../core/ChPopover.vue'
 
@@ -115,33 +115,15 @@ const emit = defineEmits<{
   navigate: [to: string]
 }>()
 
-// ─── State ────────────────────────────────────────────────────────────────────
+// ─── Group coordination (injected from ChSidebar) ─────────────────────────
+// Only present when rendered inside a ChSidebar. The fallback (null) means
+// the component is being used standalone — coordination is simply skipped.
+const sidebarGroup = inject<{
+  openGroupLabel: ReturnType<typeof ref<string | null>>
+  setOpenGroup: (label: string | null) => void
+} | null>('ch-sidebar-open-group', null)
 
-/**
- * Controls whether the children of a group item are visible.
- * Starts expanded if any child is the current route (so the user
- * lands with the relevant section already open).
- */
-const isOpen = ref(hasActiveChild())
 
-// Re-evaluate open state when the route changes.
-// Opens the group if a child becomes active (e.g. browser back/forward,
-// programmatic navigation). Does not auto-close — the user may have
-// manually expanded this group.
-watch(
-  () => props.currentRoute,
-  () => {
-    if (!isOpen.value && hasActiveChild()) {
-      isOpen.value = true
-    }
-  }
-)
-
-// NOTE: Tooltip in collapsed mode is handled entirely via CSS ::after
-// pseudo-element on the button (using `data-tooltip` attribute). This is
-// more performant than a Vue-rendered tooltip — no reactive state needed,
-// no event handlers, and the CSS approach handles show/hide via :hover
-// with zero JS overhead.
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
@@ -204,6 +186,53 @@ const depthPaddingStyle = computed(() =>
     : undefined
 )
 
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+/**
+ * Controls whether the children of a group item are visible.
+ * Starts expanded if any child is the current route (so the user
+ * lands with the relevant section already open).
+ */
+const isOpen = ref(hasActiveChild())
+
+// If this group starts open (because a child is active), announce
+// itself immediately so other groups know to close.
+if (isOpen.value && isGroup.value && props.depth === 0) {
+  sidebarGroup?.setOpenGroup(props.item.label)
+}
+
+// Re-evaluate open state when the route changes.
+watch(
+  () => props.currentRoute,
+  () => {
+    if (!isOpen.value && hasActiveChild()) {
+      isOpen.value = true
+      if (isGroup.value && props.depth === 0) {
+        sidebarGroup?.setOpenGroup(props.item.label)
+      }
+    }
+  }
+)
+
+// Close this group when another top-level group announces itself as open.
+// Only applies to top-level groups (depth === 0) — nested groups within
+// a parent are independent and don't participate in this coordination.
+watch(
+  () => sidebarGroup?.openGroupLabel.value,
+  (activeLabel) => {
+    if (isGroup.value && props.depth === 0 && activeLabel !== props.item.label) {
+      isOpen.value = false
+    }
+  }
+)
+
+// NOTE: Tooltip in collapsed mode is handled entirely via CSS ::after
+// pseudo-element on the button (using `data-tooltip` attribute). This is
+// more performant than a Vue-rendered tooltip — no reactive state needed,
+// no event handlers, and the CSS approach handles show/hide via :hover
+// with zero JS overhead.
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
@@ -244,7 +273,13 @@ function handleClick() {
     // In collapsed mode, clicking a group doesn't expand it
     // (the sidebar is too narrow to show children)
     if (!props.collapsed) {
-      isOpen.value = !isOpen.value
+      const opening = !isOpen.value
+   isOpen.value = opening
+   if (opening && props.depth === 0) {
+     sidebarGroup?.setOpenGroup(props.item.label)
+   } else if (!opening && props.depth === 0) {
+     sidebarGroup?.setOpenGroup(null)
+   }
     }
     return
   }
@@ -252,6 +287,45 @@ function handleClick() {
   if (props.item.to) {
     emit('navigate', props.item.to)
   }
+}
+
+// ─── Group transition hooks ───────────────────────────────────────────────
+// Uses JS hooks instead of pure CSS so the height animates relative to
+// actual content height (scrollHeight), not a hardcoded max-height.
+// This keeps the timing consistent whether a group has 2 or 10 children.
+
+function onGroupEnter(el: Element) {
+  const htmlEl = el as HTMLElement
+  htmlEl.style.height = '0'
+  htmlEl.style.overflow = 'hidden'
+  // Reading offsetHeight forces a reflow so the browser registers
+  // height: 0 as the starting point before we set the target.
+  void htmlEl.offsetHeight
+  htmlEl.style.height = `${htmlEl.scrollHeight}px`
+}
+
+function onGroupAfterEnter(el: Element) {
+  // Clear inline styles so the element returns to normal flow.
+  // Leaving height set would break if children are added/removed later.
+  const htmlEl = el as HTMLElement
+  htmlEl.style.height = ''
+  htmlEl.style.overflow = ''
+}
+
+function onGroupLeave(el: Element) {
+  const htmlEl = el as HTMLElement
+  htmlEl.style.height = `${htmlEl.scrollHeight}px`
+  htmlEl.style.overflow = 'hidden'
+  // Same reflow trick — browser needs to register the starting height
+  // before animating to 0.
+  void htmlEl.offsetHeight
+  htmlEl.style.height = '0'
+}
+
+function onGroupAfterLeave(el: Element) {
+  const htmlEl = el as HTMLElement
+  htmlEl.style.height = ''
+  htmlEl.style.overflow = ''
 }
 </script>
 
@@ -363,23 +437,30 @@ function handleClick() {
         </svg>
       </span>
     </button>
-    <ul
-      v-if="isGroup && !collapsed"
-      v-show="isOpen"
-      class="ch-sidebar-item__children"
-      role="group"
-      :aria-label="item.label"
-    >
-      <ChSidebarItem
-        v-for="navItem in item.children"
-        :key="navItem.label"
-        :item="navItem"
-        :current-route="currentRoute"
-        :collapsed="collapsed"
-        :depth="1"
-        @navigate="emit('navigate', $event)"
-      />
-    </ul>
+    <Transition
+  name="ch-sidebar-group"
+  @enter="onGroupEnter"
+  @after-enter="onGroupAfterEnter"
+  @leave="onGroupLeave"
+  @after-leave="onGroupAfterLeave"
+>
+  <ul
+    v-if="isGroup && !collapsed && isOpen"
+    class="ch-sidebar-item__children"
+    role="group"
+    :aria-label="item.label"
+  >
+    <ChSidebarItem
+      v-for="navItem in item.children"
+      :key="navItem.label"
+      :item="navItem"
+      :current-route="currentRoute"
+      :collapsed="collapsed"
+      :depth="1"
+      @navigate="emit('navigate', $event)"
+    />
+  </ul>
+</Transition>
   </template>
   </li>
 </template>
@@ -523,17 +604,16 @@ function handleClick() {
 
 /* ─── Children list ───────────────────────────────────────────────────────── */
 .ch-sidebar-item__children {
-  /*
-   * Animate open/close with max-height transition.
-   * `max-height: 500px` is a safe upper bound for any group's children.
-   * When v-show hides this element, max-height transitions to 0
-   * (via `.ch-sidebar-item__children[style*="display: none"]` doesn't work
-   * cleanly, so we rely on Vue's v-show + CSS transition on the wrapper).
-   */
-  overflow:   hidden;
   padding:    var(--ch-space-1) 0;
   margin:     0;
   list-style: none;
+}
+
+/* ─── Group open/close transition ────────────────────────────────────────── */
+/* Height is set imperatively by the JS hooks — this only controls timing. */
+.ch-sidebar-group-enter-active,
+.ch-sidebar-group-leave-active {
+  transition: height var(--ch-duration-normal) var(--ch-ease-out);
 }
 
 /* ─── Collapsed Mode ──────────────────────────────────────────────────────── */

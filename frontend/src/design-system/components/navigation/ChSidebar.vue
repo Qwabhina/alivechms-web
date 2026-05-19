@@ -42,7 +42,7 @@
  * </ChSidebar>
  */
 
-import { computed } from 'vue'
+import { computed, provide, ref } from 'vue'
 import ChSidebarItem from './ChSidebarItem.vue'
 import type { NavItem } from './ChSidebarItem.vue'
 
@@ -72,7 +72,20 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   collapsed: false,
   mobileOpen: false,
-  brandName: 'App',
+  brandName: 'AliveChMS',
+})
+
+// ─── Group coordination ───────────────────────────────────────────────────
+// Tracks which top-level group is currently open. Provided to all
+// descendant ChSidebarItem instances via inject so siblings auto-close
+// when a new group is opened. null means no group is open.
+const openGroupLabel = ref<string | null>(null)
+
+provide('ch-sidebar-open-group', {
+  openGroupLabel,
+  setOpenGroup: (label: string | null) => {
+    openGroupLabel.value = label
+  },
 })
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
