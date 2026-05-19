@@ -132,7 +132,7 @@ export const transitions = {
  *   base → raised → dropdown → sticky → overlay → modal → toast → tooltip
  *
  * Each layer is spaced 100 apart, leaving room to insert something
- * between layers (e.g. z-index: 150 fits between sticky and overlay).
+ * between layers (e.g. z-index: 250 fits between sticky and overlay).
  */
 export const zIndex = {
   'z-base': '0', // Normal document flow
