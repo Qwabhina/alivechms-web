@@ -4,7 +4,7 @@ A robust, enterprise-grade church management system refactored for scalability, 
 
 ---
 
-## 🏗 Architecture & Refactoring (Feb 2026)
+### Architecture & Refactoring (Feb 2026)
 
 This project has undergone a major architectural transformation (Phases 1-6) to adopt modern PHP standards and design patterns.
 

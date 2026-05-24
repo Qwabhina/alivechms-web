@@ -3,7 +3,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { memberService } from '@/services/member.service'
 import { useToast } from '@/design-system'
 import type { Member } from '@/types/member'
-import { ArrowLeft, Pencil, Trash2, Phone, Mail, MapPin } from 'lucide-vue-next'
+import { ArrowLeft, Pencil, Trash2, Phone, Mail, MapPin } from '@lucide/vue'
+import { normalizeProfileImage } from '@/utils/image'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -54,9 +55,14 @@ const isDeleting = ref(false)
 async function loadMember() {
   isLoading.value = true
   try {
-    const id = Number(route.params.id)
-    const { data } = await memberService.getById(id)
-    member.value = data.data!
+      const id = Number(route.params.id)
+      const res = await memberService.getById(id)
+      if (!res?.data) {
+        toast.error('Failed to load member profile.')
+        router.push('/members')
+        return
+      }
+      member.value = res.data
   } catch (err: unknown) {
     if (isNotFound(err)) {
       toast.error('Member not found.')
@@ -123,7 +129,7 @@ onMounted(loadMember)
         <div class="profile-header">
           <ChAvatar
             :name="`${member.MbrFirstName} ${member.MbrFamilyName}`"
-            :src="member.MbrProfilePicture || undefined"
+            :src="normalizeProfileImage(member.MbrProfilePicture)"
             size="xl"
           />
 
@@ -319,6 +325,7 @@ onMounted(loadMember)
   flex-direction: column;
   gap: var(--ch-space-5);
   max-width: 900px;
+  margin: 0 auto;
 }
 
 /* ── Top nav row ─────────────────────────────────────────────────────────── */

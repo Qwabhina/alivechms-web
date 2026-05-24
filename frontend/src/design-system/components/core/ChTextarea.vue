@@ -70,7 +70,7 @@ interface Props {
    * The controlled value — bind with v-model.
    * The component never mutates this directly; it always emits upward.
    */
-  modelValue?:  string
+  modelValue?:  string | null | undefined
 
   /** Placeholder text shown when the textarea is empty */
   placeholder?: string

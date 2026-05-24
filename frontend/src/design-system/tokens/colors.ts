@@ -340,16 +340,16 @@ export function createDarkSemanticColors(p: Palette) {
     // Using brand-tinted darks makes the dark theme feel intentional and premium
     // rather than generic. The page bg IS the brand's darkest shade.
     // Elevation scale: primary950 (deepest) → primary900 → primary800 (most raised)
-    'color-bg': p.primary950, // #000148 — deep navy page bg
-    'color-bg-subtle': p.primary900, // #00026d — slightly elevated sections
-    'color-bg-muted': p.primary800, // #0c1084 — muted/disabled sections
-    'color-surface': p.primary900, // #00026d — card/panel surfaces
-    'color-surface-raised': p.primary800, // #0c1084 — elevated cards/dropdowns
-    'color-surface-overlay': p.primary800, // #0c1084 — modals/popovers
+    'color-bg': p.neutral950, 
+    'color-bg-subtle': p.neutral900, 
+    'color-bg-muted': p.neutral800, 
+    'color-surface': p.neutral900, 
+    'color-surface-raised': p.neutral800, 
+    'color-surface-overlay': p.neutral800, 
 
     // ── Borders ───────────────────────────────────────────────────────────────
-    'color-border': p.primary700, // subtle navy border
-    'color-border-strong': p.primary300, // lighter navy — softer than pure white
+    'color-border': p.neutral700, // subtle navy border
+    'color-border-strong': p.neutral300, // lighter navy — softer than pure white
     'color-border-focus': p.secondary400, // amber focus ring — highly visible on dark
 
     // ── Typography ────────────────────────────────────────────────────────────
@@ -397,13 +397,10 @@ export function createDarkSemanticColors(p: Palette) {
     'color-tooltip-fg': p.neutral900,
 
     // ── Overlay ───────────────────────────────────────────────────────────────
-    'color-overlay': 'rgb(0 0 0 / 0.65)', // more opaque in dark mode
+    'color-overlay': 'rgb(0 0 0 / 0.75)', // more opaque in dark mode
 
     // ── Shadows ───────────────────────────────────────────────────────────────
-    // Inverted for dark navy surfaces: near-white with low opacity preserves
-    // the brutalism hard-edge aesthetic while remaining visible on dark backgrounds.
-    // rgba(0,0,0,0.75) on #000148 is effectively invisible — this fixes that.
-    'color-shadow': 'rgba(255, 255, 255, 0.25)',
+    'color-shadow': 'rgba(0, 0, 0, 0.25)',
 
     // ── Chart Palette (adjusted for dark backgrounds) ─────────────────────────
     'color-chart-1': p.primary300, // lighter navy — readable on dark bg

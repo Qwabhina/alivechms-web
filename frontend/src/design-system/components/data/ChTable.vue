@@ -51,10 +51,11 @@
  * </ChTable>
  */
 
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import ChBadge             from '../core/ChBadge.vue'
 import ChAvatar            from '../core/ChAvatar.vue'
 import ChButton            from '../core/ChButton.vue'
+import ChPagination        from './ChPagination.vue'
 import ChTableExportDialog from './ChTableExportDialog.vue'
 import type { ExportDialogResult } from './ChTableExportDialog.vue'
 import { useTableExport }  from '../../composables/useTableExport'
@@ -129,7 +130,7 @@ interface Props {
    * Without it, "all data" falls back to current page rows.
    * @example :fetch-all-rows="() => api.members.getAll()"
    */
-  fetchAllRows?: () => Promise<Record<string, unknown>[]>
+  fetchAllRows?: () => Promise<T[]>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -147,34 +148,30 @@ const props = withDefaults(defineProps<Props>(), {
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
 const emit = defineEmits<{
-  sort:              [key: string, direction: SortDir]
+  sort: [key: string | null, direction: SortDir]
   'update:page':     [page: number]
   'update:selected': [rows: T[]]
   'row-click':       [row: T]
 }>()
 
 // ─── Export composable ────────────────────────────────────────────────────────
-const { exportData, isExporting, exportError } = useTableExport()
+const { exportData, isExporting, exportError, clearError } = useTableExport()
 
 // ─── Local state ──────────────────────────────────────────────────────────────
 const exportDialogOpen = ref(false)
 const sortKey          = ref<string | null>(null)
 const sortDir          = ref<SortDir>(null)
-const selectedKeys     = ref<Set<unknown>>(new Set())
+const selectedKeys     = reactive<Set<unknown>>(new Set())
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
-const totalPages = computed(() =>
-  props.total ? Math.ceil(props.total / props.pageSize) : 0
-)
-
 const allSelected = computed(() =>
   props.rows.length > 0 &&
-  props.rows.every(r => selectedKeys.value.has(r[props.rowKey as keyof T]))
+  props.rows.every(r => selectedKeys.has(r[props.rowKey as keyof T]))
 )
 
 const someSelected = computed(() =>
   !allSelected.value &&
-  props.rows.some(r => selectedKeys.value.has(r[props.rowKey as keyof T]))
+  props.rows.some(r => selectedKeys.has(r[props.rowKey as keyof T]))
 )
 
 /**
@@ -186,17 +183,6 @@ const exportableColumns = computed(() =>
     .filter(c => c.exportable !== false)
     .map(c => ({ key: String(c.key), label: c.label }))
 )
-
-const pageNumbers = computed(() => {
-  const total = totalPages.value, cur = props.page
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
-  const pages: (number | 0)[] = [1]
-  if (cur > 3) pages.push(0)
-  for (let i = Math.max(2, cur - 1); i <= Math.min(total - 1, cur + 1); i++) pages.push(i)
-  if (cur < total - 2) pages.push(0)
-  pages.push(total)
-  return pages
-})
 
 const skeletonArray = computed(() => Array.from({ length: props.skeletonRows }))
 
@@ -210,36 +196,34 @@ function handleSort(colKey: string) {
     sortKey.value = colKey
     sortDir.value = 'asc'
   }
-  emit('sort', sortKey.value ?? colKey, sortDir.value)
+  // Emit null, null when sort is cleared so the parent can unambiguously
+  // detect the "no active sort" state without guessing from a stale key.
+  emit('sort', sortKey.value, sortDir.value)
 }
 
 function toggleSelectAll() {
   if (allSelected.value) {
-    props.rows.forEach(r => selectedKeys.value.delete(r[props.rowKey as keyof T]))
+    props.rows.forEach(r => selectedKeys.delete(r[props.rowKey as keyof T]))
   } else {
-    props.rows.forEach(r => selectedKeys.value.add(r[props.rowKey as keyof T]))
+    props.rows.forEach(r => selectedKeys.add(r[props.rowKey as keyof T]))
   }
   emitSelected()
 }
 
 function toggleRow(row: T) {
   const k = row[props.rowKey as keyof T]
-  if (selectedKeys.value.has(k)) {
-    selectedKeys.value.delete(k)
+  if (selectedKeys.has(k)) {
+    selectedKeys.delete(k)
   } else {
-    selectedKeys.value.add(k)
+    selectedKeys.add(k)
   }
   emitSelected()
 }
 
-function isSelected(row: T) { return selectedKeys.value.has(row[props.rowKey as keyof T]) }
+function isSelected(row: T) { return selectedKeys.has(row[props.rowKey as keyof T]) }
 
 function emitSelected() {
-  emit('update:selected', props.rows.filter(r => selectedKeys.value.has(r[props.rowKey as keyof T])))
-}
-
-function goToPage(p: number) {
-  if (p >= 1 && p <= totalPages.value && p !== props.page) emit('update:page', p)
+  emit('update:selected', props.rows.filter(r => selectedKeys.has(r[props.rowKey as keyof T])))
 }
 
 /** Reads nested value via dot-notation key e.g. 'family.name' */
@@ -269,7 +253,7 @@ async function handleExport(config: ExportDialogResult) {
 
   if (config.scope === 'all') {
     if (props.fetchAllRows) {
-      rows = await props.fetchAllRows()
+      rows = await props.fetchAllRows() as Record<string, unknown>[]
     } else {
       console.warn(
         '[ChTable] Export scope is "all" but fetchAllRows prop was not provided. ' +
@@ -326,7 +310,7 @@ async function handleExport(config: ExportDialogResult) {
             <button
               class="ch-table-error-dismiss"
               aria-label="Dismiss error"
-              @click="exportError = null"
+              @click="clearError()"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M9 3L3 9M3 3l6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
@@ -416,11 +400,10 @@ async function handleExport(config: ExportDialogResult) {
           <template v-if="loading">
             <tr v-for="(_, i) in skeletonArray" :key="`sk-${i}`" class="ch-table__row">
               <td v-if="selectable" class="ch-table__td">
-                <div class="ch-table__skeleton" style="width:16px;height:16px;border-radius:4px" />
+                <ChSkeleton shape="block" width="16px" height="16px" />
               </td>
-              <td v-for="col in columns" :key="String(col.key)" class="ch-table__td">
-                <div class="ch-table__skeleton"
-                     :style="{ width: `${50 + ((i + columns.indexOf(col)) % 4) * 12}%` }" />
+              <td v-for="(col, j) in columns" :key="String(col.key)" class="ch-table__td">
+                <ChSkeleton shape="line" :width="`${50 + ((i + j) % 4) * 12}%`" />
               </td>
             </tr>
           </template>
@@ -511,43 +494,13 @@ async function handleExport(config: ExportDialogResult) {
     </div>
 
     <!-- ── Pagination ── -->
-    <div
-      v-if="total && totalPages > 1"
-      class="ch-table-pagination"
-      role="navigation"
-      aria-label="Table pagination"
-    >
-      <span class="ch-table-pagination__summary">
-        {{ ((page - 1) * pageSize + 1).toLocaleString() }}–{{ Math.min(page * pageSize, total!).toLocaleString() }}
-        of {{ total!.toLocaleString() }}
-      </span>
-
-      <div class="ch-table-pagination__pages">
-        <ChButton variant="ghost" size="sm" :disabled="page <= 1"
-                  :icon-only="true" aria-label="Previous page"
-                  @click="goToPage(page - 1)">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </ChButton>
-
-        <template v-for="(p, i) in pageNumbers" :key="i">
-          <span v-if="p === 0" class="ch-table-pagination__ellipsis" aria-hidden="true">…</span>
-          <ChButton v-else :variant="p === page ? 'primary' : 'ghost'" size="sm"
-                    :aria-label="`Page ${p}`" :aria-current="p === page ? 'page' : undefined"
-                    @click="goToPage(p)">{{ p }}</ChButton>
-        </template>
-
-        <ChButton variant="ghost" size="sm" :disabled="page >= totalPages"
-                  :icon-only="true" aria-label="Next page"
-                  @click="goToPage(page + 1)">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </ChButton>
-      </div>
-    </div>
-
+    <ChPagination
+  v-if="total"
+  :page="page"
+  :total="total"
+  :page-size="pageSize"
+  @update:page="emit('update:page', $event)"
+/>
     <!-- ── Export config dialog ── -->
     <!--
       Mounted only when exportable is true. Internally uses <Teleport to="body">
@@ -731,25 +684,4 @@ async function handleExport(config: ExportDialogResult) {
   font-size: var(--ch-text-sm); color: var(--ch-color-text-muted); text-align: center;
 }
 
-/* ─── Skeleton ────────────────────────────────────────────────────────────── */
-.ch-table__skeleton {
-  height:          14px;
-  border-radius: var(--ch-radius-sm);
-  background:      linear-gradient(90deg,
-    var(--ch-color-bg-muted) 0%, var(--ch-color-bg-subtle) 50%, var(--ch-color-bg-muted) 100%);
-  background-size: 200% 100%;
-  animation:       ch-shimmer 1.4s var(--ch-ease-in-out) infinite;
-}
-
-/* ─── Pagination ──────────────────────────────────────────────────────────── */
-.ch-table-pagination {
-  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
-  gap: var(--ch-space-3);
-}
-.ch-table-pagination__summary { font-size: var(--ch-text-sm); color: var(--ch-color-text-muted); }
-.ch-table-pagination__pages   { display: flex; align-items: center; gap: var(--ch-space-1); }
-.ch-table-pagination__ellipsis {
-  padding: 0 var(--ch-space-1); color: var(--ch-color-text-subtle);
-  font-size: var(--ch-text-sm); user-select: none;
-}
 </style>

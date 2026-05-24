@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { memberService } from '@/services/member.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { Member, MemberFilters, MemberLookupData } from '@/types/member'
-import { UserPlus, Search, Trash2 } from 'lucide-vue-next'
+import { UserPlus, Search, Trash2 } from '@lucide/vue'
+import { normalizeProfileImage } from '@/utils/image'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -96,9 +97,10 @@ async function loadMembers() {
       sort_by: sortBy.value,
       sort_dir: sortDir.value,
     }
-    const { data } = await memberService.getAll(page.value, 25, filters)
-    members.value = data.data
-    total.value = data.pagination.total
+    const res = await memberService.getAll(page.value, 25, filters)
+    if (!res?.data || !res.data.data) throw new Error('No members data')
+    members.value = res.data.data
+    total.value = res.data.pagination?.total ?? 0
   } catch {
     toast.error('Failed to load members.')
   } finally {
@@ -108,8 +110,8 @@ async function loadMembers() {
 
 async function loadLookupData() {
   try {
-    const { data } = await memberService.getLookupData()
-    lookupData.value = data.data!
+    const res = await memberService.getLookupData()
+    if (res?.data) lookupData.value = res.data
   } catch {
     /* silent */
   }
@@ -172,17 +174,14 @@ onMounted(() => {
 
 <template>
   <div class="view">
-    <!-- ── Page header ───────────────────────────────────────────────────── -->
-    <div class="view-header">
-      <div>
-        <h1 class="view-title">Members</h1>
-        <p class="view-subtitle">Manage your church membership directory.</p>
-      </div>
-      <ChButton variant="primary" @click="router.push('/members/create')">
-        <template #icon><UserPlus :size="18" /></template>
-        Add Member
-      </ChButton>
-    </div>
+    <ChPageHeader title="Members" subtitle="Manage your church membership directory.">
+      <template #actions>
+        <ChButton variant="primary" @click="router.push('/members/create')">
+          <template #icon><UserPlus :size="18" /></template>
+          Add Member
+        </ChButton>
+      </template>
+    </ChPageHeader>
 
     <!-- ── Filter bar ────────────────────────────────────────────────────── -->
     <div class="filter-bar">
@@ -223,8 +222,8 @@ onMounted(() => {
       <!-- Avatar cell -->
       <template #cell-avatar="{ row }">
         <ChAvatar
-          :name="`${(row as any).MbrFirstName} ${(row as any).MbrFamilyName}`"
-          :src="(row as any).MbrProfilePicture || undefined"
+            :name="(row as any).MbrFirstName + ' ' + (row as any).MbrFamilyName"
+            :src="normalizeProfileImage((row as any).MbrProfilePicture)"
           size="sm"
         />
       </template>
@@ -292,29 +291,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--ch-space-6);
-  max-width: 1200px;
-}
+  margin: 0 auto;
 
-/* ── Header ─────────────────────────────────────────────────────────────── */
-.view-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--ch-space-4);
-}
-
-.view-title {
-  font-size: var(--ch-text-2xl);
-  font-weight: var(--ch-font-bold);
-  font-family: var(--ch-font-display);
-  color: var(--ch-color-text);
-  margin: 0;
-}
-
-.view-subtitle {
-  font-size: var(--ch-text-sm);
-  color: var(--ch-color-text-muted);
-  margin: var(--ch-space-1) 0 0;
 }
 
 /* ── Filter bar ─────────────────────────────────────────────────────────── */

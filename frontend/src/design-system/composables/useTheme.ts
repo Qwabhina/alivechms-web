@@ -276,7 +276,7 @@ export function useTheme() {
    * removeOverride('--ch-color-primary') // reverts to theme's primary color
    */
   function removeOverride(varName: string, target: HTMLElement = document.documentElement): void {
-    const { [varName]: _removed, ...rest } = _userOverrides.value
+    const { [varName]: _removed, ...rest } = _userOverrides.value as Record<string, string>
     _userOverrides.value = rest as ThemeOverrides
     _commit(target)
   }

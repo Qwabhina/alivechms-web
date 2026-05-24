@@ -633,26 +633,25 @@ function printTable(config: ExportConfig): ExportResult {
 
     document.body.appendChild(iframe)
 
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
-    if (!iframeDoc) throw new Error('Could not access iframe document')
+// Register onload BEFORE writing content — iframeDoc.close() can synchronously
+// fire the load event in some browsers, so late registration misses it.
+iframe.onload = () => {
+  iframe.contentWindow?.focus()
+  iframe.contentWindow?.print()
 
-    iframeDoc.open()
-    iframeDoc.write(htmlContent)
-    iframeDoc.close()
-
-    // Wait for iframe content to load before printing
-    iframe.onload = () => {
-      iframe.contentWindow?.focus() // required in some browsers
-      iframe.contentWindow?.print()
-
-      // Remove the iframe after the print dialog is dismissed
-      // setTimeout gives the browser time to queue the print job first
-      setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe)
-        }
-      }, 1000)
+  setTimeout(() => {
+    if (document.body.contains(iframe)) {
+      document.body.removeChild(iframe)
     }
+  }, 1000)
+}
+
+const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+if (!iframeDoc) throw new Error('Could not access iframe document')
+
+iframeDoc.open()
+iframeDoc.write(htmlContent)
+iframeDoc.close()
 
     return { success: true }
   } catch (e) {
@@ -719,9 +718,14 @@ export function useTableExport() {
     return result
   }
 
-  return {
-    exportData,
-    isExporting,
-    exportError,
-  }
+  function clearError() {
+  exportError.value = null
+}
+
+return {
+  exportData,
+  isExporting,
+  exportError,
+  clearError,
+}
 }

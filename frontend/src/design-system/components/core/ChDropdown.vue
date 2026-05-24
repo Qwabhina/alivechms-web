@@ -17,7 +17,7 @@
  */
 
 import { computed, nextTick, ref, useSlots, watch } from 'vue'
-import { Search, CircleHelp } from 'lucide-vue-next'
+import { Search, CircleHelp } from '@lucide/vue'
 import ChPopover, { type PopoverPlacement } from './ChPopover.vue'
 import ChInput from './ChInput.vue'
 import ChDropdownItem from './ChDropdownItem.vue'

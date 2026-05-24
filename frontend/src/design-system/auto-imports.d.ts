@@ -54,14 +54,15 @@ declare global {
   const triggerRef: typeof import('vue').triggerRef
   const unref: typeof import('vue').unref
   const useAttrs: typeof import('vue').useAttrs
+  const useConfirm: typeof import('@/design-system').useConfirm
   const useCssModule: typeof import('vue').useCssModule
   const useCssVars: typeof import('vue').useCssVars
+  const useDesignTheme: typeof import('@/design-system').useDesignTheme
   const useGrouping: typeof import('@/design-system').useGrouping
   const useId: typeof import('vue').useId
   const useModel: typeof import('vue').useModel
   const useSlots: typeof import('vue').useSlots
   const useTemplateRef: typeof import('vue').useTemplateRef
-  const userid: typeof import('@/design-system').userid
   const watch: typeof import('vue').watch
   const watchEffect: typeof import('vue').watchEffect
   const watchPostEffect: typeof import('vue').watchPostEffect

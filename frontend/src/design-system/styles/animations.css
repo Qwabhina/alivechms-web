@@ -273,5 +273,5 @@
 }
 
 .ch-animate-shake {
-  animation: shake 0.5s;
+  animation: ch-animate-shake 0.5s;
 }

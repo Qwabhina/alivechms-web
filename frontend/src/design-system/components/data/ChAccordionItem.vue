@@ -34,7 +34,7 @@
  */
 
 import { computed, inject } from 'vue'
-import { ACCORDION_KEY, defaultAccordionContext } from '../../composables/useAccordion.ts'
+import { ACCORDION_KEY, defaultAccordionContext } from '../../composables/useAccordion'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 

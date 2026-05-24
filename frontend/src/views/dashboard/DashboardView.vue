@@ -9,9 +9,10 @@
 
 import { useRouter } from 'vue-router'
 import { dashboardService } from '@/services/dashboard.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { DashboardOverview } from '@/types/operations'
-import { Users, Wallet, TrendingUp, CalendarDays, ArrowRight, DollarSign } from 'lucide-vue-next'
+import { Users, Wallet, TrendingUp, CalendarDays, ArrowRight, DollarSign, LayoutDashboardIcon } from '@lucide/vue'
+import { normalizeProfileImage } from '@/utils/image'
 
 // ── Router & Toast ────────────────────────────────────────────────────────────
 const router = useRouter()
@@ -87,14 +88,11 @@ onMounted(async () => {
 
 <template>
   <div class="dashboard">
-    <!-- ── Page heading ───────────────────────────────────────────────── -->
-    <div class="dashboard__header">
-      <div>
-        <h1 class="dashboard__title">Dashboard</h1>
-        <p class="dashboard__subtitle">Your church at a glance.</p>
-      </div>
-    </div>
-
+    <ChPageHeader title="Dashboard" subtitle="Your church at a glance." titleTag="h2">
+      <template #icon>
+        <LayoutDashboardIcon :size="22" aria-hidden="true" />
+      </template>
+    </ChPageHeader>
     <!-- ── Error alert ────────────────────────────────────────────────── -->
     <Transition name="alert-fade">
       <ChAlert
@@ -188,7 +186,7 @@ onMounted(async () => {
             <!-- Avatar -->
             <ChAvatar
               :name="`${member.MbrFirstName} ${member.MbrFamilyName}`"
-              :src="member.MbrProfilePicture || undefined"
+              :src="normalizeProfileImage(member.MbrProfilePicture)"
               size="sm"
             />
 
@@ -286,7 +284,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: var(--ch-space-6);
-  max-width: 1200px;
+  /* max-width: 1200px; */
 }
 
 /* ── Page heading ─────────────────────────────────────────────────────────── */
@@ -328,9 +326,10 @@ onMounted(async () => {
 /* ── Stat cards grid ──────────────────────────────────────────────────────── */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--ch-space-5);
 }
+
 
 /* ── Bottom two-column grid ───────────────────────────────────────────────── */
 .bottom-grid {

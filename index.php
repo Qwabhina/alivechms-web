@@ -42,8 +42,17 @@ date_default_timezone_set('Africa/Accra');
 require_once __DIR__ . '/vendor/autoload.php';
 
 // Load environment
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
-$dotenv->load();
+try {
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+    $dotenv->load();
+} catch (Dotenv\Exception\InvalidPathException $e) {
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'error' => 'Environment file .env not found. Copy .env.example to .env and configure it.'
+    ]);
+    exit;
+}
 
 // Set environment variable for Apache .htaccess (for HTTPS enforcement)
 $appEnv = $_ENV['APP_ENV'] ?? 'development';

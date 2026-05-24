@@ -8,14 +8,24 @@ import { computed } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
-import { ChSidebar, type NavItem } from '@/design-system'
+import { ChSidebar, ChSidebarItem, ChModal, ChButton, type NavItem } from '@/design-system'
 import {
-  LayoutDashboard,
   Users,
   Wallet,
+  CalendarDays,
   Settings,
   LogOut,
-} from 'lucide-vue-next'
+  UsersRound,
+  PiggyBank,
+  Receipt,
+  Gauge,
+  UserCog,
+  Shield,
+  Home,
+  Building2,
+  ListTodo,
+  FolderTree,
+} from '@lucide/vue'
 
 const auth = useAuthStore()
 const ui = useUiStore()
@@ -23,30 +33,93 @@ const router = useRouter()
 const route = useRoute()
 
 /* ── Nav items ─────────────────────────────────────────────────────────── */
-// Filtered based on user permissions
 const navItems = computed<NavItem[]>(() => {
   const items: NavItem[] = []
 
   if (auth.hasPermission('reports.view')) {
-    items.push({ label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard })
+    items.push({ label: 'Dashboard', to: '/dashboard', icon: Gauge })
   }
+
+  // Members Section
   if (auth.hasPermission('members.view')) {
-    items.push({ label: 'Members', to: '/members', icon: Users })
-  }
-  if (auth.hasPermission('finances.view') || auth.hasPermission('contributions.view')) {
     items.push({
-      label: 'Finance',
-      // icon: Wallet,
-      children: (auth.hasPermission('finances.view')
-        ? [{ label: 'Contributions', to: '/finance/contributions', icon: Wallet },
-        { label: 'Expenses', to: '/finance/expenses' },
-        { label: 'Financial Reports', to: '/finance/reports' },
-        { label: 'Pledges', to: '/finance/pledges' }]
-        : []),
+      label: 'Members & People',
+      icon: UsersRound,
+      children: [
+        { label: 'Members', to: '/members', icon: Users },
+        { label: 'Member Directory', to: '/members/directory', icon: Contact },
+        { label: 'Families', to: '/families/directory', icon: Home },
+      ],
     })
   }
+
+  // Users Section (Members with system access)
+  if (auth.hasPermission('reports.view') || auth.hasPermission('roles.view')) {
+    const userChildren = []
+    if (auth.hasPermission('reports.view')) {
+      userChildren.push({ label: 'System Users', to: '/users', icon: UserCog })
+    }
+    if (auth.hasPermission('reports.view')) {
+      userChildren.push({ label: 'Roles & Permissions', to: '/users/roles', icon: Shield })
+    }
+    items.push({
+      label: 'User Management',
+      icon: UserCog,
+      children: userChildren,
+    })
+  }
+
+  // Groups Section
+  if (auth.hasPermission('groups.view')) {
+    items.push({
+      label: 'Groups',
+      icon: UsersRound,
+      children: [
+        { label: 'Groups', to: '/groups', icon: UsersRound },
+        { label: 'Group Directory', to: '/groups/directory', icon: Building2 },
+      ],
+    })
+  }
+
+  // Events Section
+  if (auth.hasPermission('events.view')) {
+    items.push({
+      label: 'Events',
+      icon: CalendarDays,
+      children: [
+        { label: 'Events', to: '/events', icon: CalendarDays },
+        { label: 'Event Directory', to: '/events/directory', icon: ListTodo },
+      ],
+    })
+  }
+
+  // Finance Section with children
+  if (auth.hasPermission('finances.view') || auth.hasPermission('contributions.view')) {
+    const financeChildren = []
+    if (auth.hasPermission('finances.view')) {
+      financeChildren.push({ label: 'Contributions', to: '/finance/contributions', icon: PiggyBank })
+    }
+    if (auth.hasPermission('finances.view')) {
+      financeChildren.push({ label: 'Expenses', to: '/finance/expenses', icon: Receipt })
+    }
+    items.push({
+      label: 'Finance',
+      icon: Wallet,
+      children: financeChildren,
+    })
+  }
+
+  // Settings Section
   if (auth.hasPermission('settings.view')) {
-    items.push({ label: 'Settings', to: '/settings', icon: Settings })
+    items.push({
+      label: 'Settings',
+      icon: Settings,
+      children: [
+        { label: 'General Settings', to: '/settings', icon: Settings },
+        { label: 'Branches', to: '/settings/branches', icon: Building2 },
+        { label: 'Lookups', to: '/settings/lookups', icon: FolderTree },
+      ],
+    })
   }
 
   return items
@@ -58,19 +131,36 @@ async function handleLogout() {
   router.push('/login')
 }
 
+import { confirmModal, confirm } from '@/design-system/composables/useConfirm'
+
 /* ── Sidebar navigation handler ────────────────────────────────────────── */
-function handleNavigate(to: string) {
+async function handleNavigate(to: string) {
+  if (to === '/logout') {
+    ui.closeMobileSidebar()
+    const ok = await confirm({
+      title: 'Confirm Logout',
+      message: 'Are you sure you want to sign out of your account?',
+      confirmLabel: 'Logout',
+      cancelLabel: 'Cancel',
+    })
+    if (ok) await handleLogout()
+    return
+  }
+
   router.push(to)
   ui.closeMobileSidebar()
 }
 
-/* ── Topbar user object (ChTopbar shape) ───────────────────────────────── */
+/* ── Topbar user object ─────────────────────────────────────────────────── */
+import { normalizeProfileImage } from '@/utils/image'
+import { Contact } from '@lucide/vue'
+
 const topbarUser = computed(() =>
   auth.user
     ? {
         name: auth.fullName || auth.user.Username,
         role: auth.user.MembershipStatus || undefined,
-        avatar: auth.user.MbrProfilePicture ?? undefined,
+        avatar: normalizeProfileImage(auth.user.MbrProfilePicture) ?? undefined,
       }
     : undefined,
 )
@@ -83,43 +173,73 @@ const currentRoute = computed(() => route.path)
   <div class="app-layout" :class="{ 'app-layout--collapsed': ui.sidebarCollapsed }">
 
     <!-- ── Sidebar ────────────────────────────────────────────────────── -->
-    <ChSidebar :nav-items="navItems" :current-route="currentRoute" :collapsed="ui.sidebarCollapsed"
-      :mobile-open="ui.sidebarMobileOpen" brand-name="AliveChMS" @navigate="handleNavigate"
-      @collapse-toggle="ui.toggleSidebar()" @mobile-close="ui.closeMobileSidebar()">
+    <ChSidebar
+      :nav-items="navItems"
+      :current-route="currentRoute"
+      :collapsed="ui.sidebarCollapsed"
+      :mobile-open="ui.sidebarMobileOpen"
+      brand-name="AliveChMS"
+      @navigate="handleNavigate"
+      @collapse-toggle="ui.toggleSidebar()"
+      @mobile-close="ui.closeMobileSidebar()"
+    >
       <template #footer>
-        <button
-          class="ch-sidebar-item ch-sidebar-item--logout"
-          :class="{ 'ch-sidebar-item--collapsed': ui.sidebarCollapsed }"
-          :data-tooltip="ui.sidebarCollapsed ? 'Logout' : undefined"
-          type="button"
-          @click="handleLogout"
-        >
-          <span class="ch-sidebar-item__icon">
-            <LogOut :size="18" />
-          </span>
-          <span class="ch-sidebar-item__label">Logout</span>
-        </button>
+        <div class="ch-sidebar-footer-theme"></div>
+        <ChSidebarItem
+          :item="{ label: 'Logout', to: '/logout', icon: LogOut }"
+          :current-route="currentRoute"
+          :collapsed="ui.sidebarCollapsed"
+          class="ch-sidebar-item--logout"
+          @navigate="handleNavigate"
+        />
       </template>
     </ChSidebar>
 
     <!-- ── Main content area ───────────────────────────────────────────── -->
     <div class="app-main">
 
-      <!-- ChTopbar — design system top navigation bar -->
+      <!-- ChTopbar — the #title slot renders a lean icon + label only.
+           Full ChPageHeader (with subtitle, actions, etc.) lives in each view. -->
       <ChTopbar
         :user="topbarUser"
         :sidebar-collapsed="ui.sidebarCollapsed"
         @menu-click="ui.toggleSidebar()"
       >
         <template #title>
-          <h1 class="ch-topbar__title">{{ route.meta?.title as string || '' }}</h1>
+          <div v-if="route.meta.title" class="topbar-page-title">
+            <component
+              :is="route.meta.icon"
+              v-if="route.meta.icon"
+              :size="18"
+              class="topbar-page-title__icon"
+              aria-hidden="true"
+            />
+            <span class="topbar-page-title__text">{{ route.meta.title }}</span>
+          </div>
         </template>
       </ChTopbar>
 
-      <!-- Page content -->
+      <!-- Page content — each view owns its own ChPageHeader -->
       <main class="app-content">
         <RouterView />
       </main>
+
+      <!-- Shared confirm modal instance -->
+      <ChModal
+        v-model:open="confirmModal.isOpen.value"
+        :title="confirmModal.data.value?.title ?? 'Confirm'"
+        size="sm"
+      >
+        <p>{{ confirmModal.data.value?.message }}</p>
+        <template #footer>
+          <ChButton variant="ghost" @click="confirmModal.close(false)">
+            {{ confirmModal.data.value?.cancelLabel ?? 'Cancel' }}
+          </ChButton>
+          <ChButton variant="danger" @click="confirmModal.close(true)">
+            {{ confirmModal.data.value?.confirmLabel ?? 'Confirm' }}
+          </ChButton>
+        </template>
+      </ChModal>
     </div>
   </div>
 </template>
@@ -131,7 +251,6 @@ const currentRoute = computed(() => route.path)
   min-height: 100vh;
 }
 
-/* Main area sits to the right of the fixed sidebar */
 .app-main {
   flex: 1;
   margin-left: 240px; /* matches .ch-sidebar width */
@@ -146,13 +265,33 @@ const currentRoute = computed(() => route.path)
   margin-left: 64px; /* matches .ch-sidebar--collapsed width */
 }
 
-/* Page content padding */
 .app-content {
   flex: 1;
   padding: var(--ch-space-6);
 }
 
-/* ── Logout button — styled as a danger sidebar item ─────────────────── */
+/* ── Topbar title — icon + text, no ChPageHeader chrome ──────────────── */
+.topbar-page-title {
+  display: flex;
+  align-items: center;
+  gap: var(--ch-space-2);
+}
+
+.topbar-page-title__icon {
+  color: var(--ch-color-text-muted);
+  flex-shrink: 0;
+}
+
+.topbar-page-title__text {
+  font-size: var(--ch-text-base);
+  font-weight: var(--ch-font-semibold);
+  color: var(--ch-color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Logout button ───────────────────────────────────────────────────── */
 .ch-sidebar-item--logout {
   color: var(--ch-color-danger) !important;
   width: 100%;

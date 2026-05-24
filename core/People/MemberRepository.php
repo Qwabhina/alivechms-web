@@ -296,4 +296,64 @@ class MemberRepository
          limit: $limit
       );
    }
+
+   /**
+    * Get upcoming birthdays within next $days days.
+    * Returns members with a computed `days_until` integer.
+    */
+   public function getUpcomingBirthdays(int $days = 30, int $limit = 10, int $offset = 0): array
+   {
+         $dobExpr = "((DAYOFYEAR(STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-', DATE_FORMAT(c.MbrDateOfBirth, '%m-%d')), '%Y-%m-%d')) - DAYOFYEAR(CURDATE()) + 365) % 365)";
+
+         $sql = "SELECT c.MbrID, c.MbrFirstName, c.MbrFamilyName, c.MbrProfilePicture,
+                         {$dobExpr} AS days_until
+                     FROM `churchmember` c
+                     WHERE c.Deleted = 0 AND c.MbrDateOfBirth IS NOT NULL
+                        AND {$dobExpr} BETWEEN 0 AND :days
+                     ORDER BY days_until ASC
+                     LIMIT :limit OFFSET :offset";
+
+      $data = $this->orm->runQuery($sql, [':days' => $days, ':limit' => $limit, ':offset' => $offset]);
+
+       $countSql = "SELECT COUNT(*) as total FROM (
+          SELECT 1 FROM `churchmember` c
+          WHERE c.Deleted = 0 AND c.MbrDateOfBirth IS NOT NULL
+            AND {$dobExpr} BETWEEN 0 AND :days
+       ) x";
+
+      $count = $this->orm->runQuery($countSql, [':days' => $days]);
+      $total = (int) ($count[0]['total'] ?? 0);
+
+      return ['data' => $data, 'total' => $total];
+   }
+
+   /**
+    * Get upcoming registration anniversaries within next $days days.
+    * Uses MbrRegistrationDate to compute anniversary day-of-year.
+    */
+   public function getUpcomingAnniversaries(int $days = 30, int $limit = 10, int $offset = 0): array
+   {
+         $regExpr = "((DAYOFYEAR(STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-', DATE_FORMAT(c.MbrRegistrationDate, '%m-%d')), '%Y-%m-%d')) - DAYOFYEAR(CURDATE()) + 365) % 365)";
+
+         $sql = "SELECT c.MbrID, c.MbrFirstName, c.MbrFamilyName, c.MbrProfilePicture,
+                         {$regExpr} AS days_until
+                     FROM `churchmember` c
+                     WHERE c.Deleted = 0 AND c.MbrRegistrationDate IS NOT NULL
+                        AND {$regExpr} BETWEEN 0 AND :days
+                     ORDER BY days_until ASC
+                     LIMIT :limit OFFSET :offset";
+
+      $data = $this->orm->runQuery($sql, [':days' => $days, ':limit' => $limit, ':offset' => $offset]);
+
+       $countSql = "SELECT COUNT(*) as total FROM (
+          SELECT 1 FROM `churchmember` c
+          WHERE c.Deleted = 0 AND c.MbrRegistrationDate IS NOT NULL
+            AND {$regExpr} BETWEEN 0 AND :days
+       ) x";
+
+      $count = $this->orm->runQuery($countSql, [':days' => $days]);
+      $total = (int) ($count[0]['total'] ?? 0);
+
+      return ['data' => $data, 'total' => $total];
+   }
 }

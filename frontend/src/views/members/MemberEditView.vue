@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
 import { memberService } from '@/services/member.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { MemberLookupData, MemberUpdate } from '@/types/member'
-import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, Save, Plus, Trash2 } from '@lucide/vue'
+import { normalizeProfileImage } from '@/utils/image'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -102,8 +103,14 @@ async function loadData() {
       memberService.getLookupData(),
     ])
 
-    const m = memberRes.data.data!
-    lookupData.value = lookupRes.data.data!
+    const m = memberRes?.data
+    const lu = lookupRes?.data
+    if (!m || !lu) {
+      toast.error('Failed to load member data.')
+      router.push('/members')
+      return
+    }
+    lookupData.value = lu
 
     // Track current name for display
     currentMemberName.value = `${m.MbrFirstName} ${m.MbrFamilyName}`
@@ -125,11 +132,11 @@ async function loadData() {
     dobDate.value = m.MbrDateOfBirth ? new Date(m.MbrDateOfBirth) : null
 
     // Store current profile picture URL for preview
-    currentProfilePicture.value = m.MbrProfilePicture
+    currentProfilePicture.value = normalizeProfileImage(m.MbrProfilePicture) ?? null
 
     // Populate phones
     if (m.phones && m.phones.length > 0) {
-      phones.value = m.phones.map((p) => ({
+      phones.value = m.phones.map((p: any) => ({
         number: p.PhoneNumber,
         type_id: p.PhoneTypeID ?? null,
         is_primary: p.IsPrimary === 1,
@@ -219,22 +226,14 @@ onMounted(loadData)
 
 <template>
   <div class="view">
-    <!-- ── Page header ───────────────────────────────────────────────────── -->
-    <div class="view-header">
-      <ChButton variant="ghost" size="sm" @click="router.push(`/members/${memberId}`)">
-        <template #icon><ArrowLeft :size="16" /></template>
-        View Profile
-      </ChButton>
-
-      <div class="view-header__title-block">
-        <h1 class="view-title">Edit Member</h1>
-        <p v-if="currentMemberName" class="view-subtitle">
-          Editing profile for
-          <strong class="view-subtitle__name">{{ currentMemberName }}</strong>
-        </p>
-        <p v-else class="view-subtitle">Update membership details and contact information.</p>
-      </div>
-    </div>
+    <ChPageHeader title="Edit Member" subtitle="Update membership details and contact information.">
+      <template #leading>
+        <ChButton variant="ghost" size="sm" @click="router.push(`/members/${memberId}`)">
+          <template #icon><ArrowLeft :size="16" /></template>
+          View Profile
+        </ChButton>
+      </template>
+    </ChPageHeader>
 
     <!-- ── Loading skeleton ──────────────────────────────────────────────── -->
     <template v-if="isLoading">
@@ -550,6 +549,7 @@ onMounted(loadData)
   flex-direction: column;
   gap: var(--ch-space-6);
   max-width: 860px;
+  margin: 0 auto;
 }
 
 /* ── Header ──────────────────────────────────────────────────────────────── */

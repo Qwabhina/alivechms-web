@@ -57,7 +57,7 @@ type OptionOrGroup = SelectOption | SelectGroup
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  modelValue:    SelectValue | MultiValue
+  modelValue:    SelectValue | MultiValue | undefined
   options:       OptionOrGroup[]
   placeholder?:  string
   multiple?:     boolean

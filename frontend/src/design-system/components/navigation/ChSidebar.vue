@@ -42,49 +42,13 @@
  * </ChSidebar>
  */
 
-import { computed } from 'vue'
-import type { Component } from 'vue'
+import { computed, provide, ref } from 'vue'
 import ChSidebarItem from './ChSidebarItem.vue'
+import type { NavItem } from './ChSidebarItem.vue'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface NavItem {
-  /** Display label — shown in full sidebar, used as tooltip in collapsed mode */
-  label: string
-
-  /**
-   * Route path this item links to.
-   * For group headers (items with `children`), this is optional —
-   * clicking the group just expands/collapses it, not navigates.
-   */
-  to?: string
-
-  /**
-   * Icon component — a Vue component (e.g. from lucide-vue-next).
-   * Usage: `import { UsersIcon } from 'lucide-vue-next'`
-   */
-  icon?: Component
-
-  /**
-   * Optional badge value — shown as a count bubble on the right.
-   * Common uses: unread message counts, pending approval counts.
-   * Pass a number; if 0 or undefined, no badge is shown.
-   */
-  badge?: number
-
-  /**
-   * Nested child navigation items.
-   * If provided, this item renders as a collapsible group.
-   * Groups cannot have a `to` route themselves.
-   */
-  children?: NavItem[]
-
-  /** When true, this item is permanently disabled — no hover, no click */
-  disabled?: boolean
-}
+export type { NavItem }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
-
 interface Props {
   /** Array of navigation items to render */
   navItems: NavItem[]
@@ -108,7 +72,20 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   collapsed: false,
   mobileOpen: false,
-  brandName: 'App',
+  brandName: 'AliveChMS',
+})
+
+// ─── Group coordination ───────────────────────────────────────────────────
+// Tracks which top-level group is currently open. Provided to all
+// descendant ChSidebarItem instances via inject so siblings auto-close
+// when a new group is opened. null means no group is open.
+const openGroupLabel = ref<string | null>(null)
+
+provide('ch-sidebar-open-group', {
+  openGroupLabel,
+  setOpenGroup: (label: string | null) => {
+    openGroupLabel.value = label
+  },
 })
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
@@ -157,16 +134,6 @@ function handleNavigate(to: string) {
     emit('mobile-close')
   }
 }
-
-/** Handles collapse toggle button click */
-function handleCollapseToggle() {
-  emit('collapse-toggle')
-}
-
-/** Handles mobile overlay click (close sidebar) */
-function handleMobileClose() {
-  emit('mobile-close')
-}
 </script>
 
 <template>
@@ -176,7 +143,7 @@ function handleMobileClose() {
     Uses Vue Transition for fade animation.
   -->
   <Transition name="ch-overlay">
-    <div v-if="mobileOpen" class="ch-sidebar-overlay" @click="handleMobileClose" />
+    <div v-if="mobileOpen" class="ch-sidebar-overlay" @click="$emit('mobile-close')" />
   </Transition>
 
   <!-- ─── Sidebar Container ──────────────────────────────────────────────────── -->
@@ -213,7 +180,7 @@ function handleMobileClose() {
         class="ch-sidebar__collapse-btn"
         :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         type="button"
-        @click="handleCollapseToggle"
+        @click="$emit('collapse-toggle')"
       >
         <svg
           width="14"
@@ -432,6 +399,7 @@ function handleMobileClose() {
   margin: 0 var(--ch-space-3);
   background: var(--ch-color-border);
   flex-shrink: 0;
+  border: none; /* reset browser default <hr> border */
 }
 
 /* ─── Scrollable Nav Area ─────────────────────────────────────────────────── */

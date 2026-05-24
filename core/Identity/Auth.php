@@ -59,7 +59,8 @@ class Auth
         return JWT::encode([
             'iat' => $issuedAt,
             'exp' => $issuedAt + $ttl,
-            'user_id' => $user['MbrID'],
+            'auth_user_id' => $user['UserID'],
+            'mbr_id' => $user['MbrID'],
             'username' => $user['Username'],
             'role' => $user['Role'] ?? [],
         ], $secret, 'HS256');
@@ -114,7 +115,7 @@ class Auth
         $roles = RBAC::getUserRoles((int) $user['MbrID']);
         $roleNames = array_column($roles, 'RoleName');
 
-        $userData = ['MbrID' => $user['MbrID'], 'Username' => $user['Username'], 'Role' => $roleNames];
+        $userData = ['UserID' => $user['UserID'], 'MbrID' => $user['MbrID'], 'Username' => $user['Username'], 'Role' => $roleNames];
         $refreshToken = self::generateRefreshToken($userData);
 
         $decoded = JWT::decode($refreshToken, new Key(self::$refreshSecretKey, 'HS256'));
@@ -160,10 +161,16 @@ class Auth
             ResponseHelper::error('Session expired or revoked');
         }
 
+        $user = $repo->findUserByUsername($decoded['username']);
+        if (!$user) {
+            $repo->revokeSession((int) $session['SessionID']);
+            ResponseHelper::error('User not found');
+        }
+
         $repo->revokeSession((int) $session['SessionID']); // Rotate refresh token
 
-        $roles = RBAC::getUserRoles((int) $decoded['user_id']);
-        $userData = ['MbrID' => $decoded['user_id'], 'Username' => $decoded['username'], 'Role' => array_column($roles, 'RoleName')];
+        $roles = RBAC::getUserRoles((int) $user['MbrID']);
+        $userData = ['UserID' => $user['UserID'], 'MbrID' => $user['MbrID'], 'Username' => $user['Username'], 'Role' => array_column($roles, 'RoleName')];
 
         $newRefreshToken = self::generateRefreshToken($userData);
         $newDecoded = JWT::decode($newRefreshToken, new Key(self::$refreshSecretKey, 'HS256'));
@@ -178,9 +185,13 @@ class Auth
 
         TokenManager::setRefreshTokenCookie($newRefreshToken);
 
+        $user['permissions'] = RBAC::getUserPermissions((int) $user['MbrID']);
+        unset($user['PasswordHash']);
+
         return [
             'access_token' => self::generateAccessToken($userData),
-            'csrf_token' => TokenManager::generateCsrfToken()
+            'csrf_token' => TokenManager::generateCsrfToken(),
+            'user' => $user
         ];
     }
 
@@ -201,20 +212,30 @@ class Auth
         $decoded = self::verify($token);
         if (!$decoded)
             throw new Exception('Invalid token');
-        return (int) $decoded['user_id'];
+        return (int) $decoded['auth_user_id'];
+    }
+
+    public static function getCurrentMemberId(): int
+    {
+        $token = self::getBearerToken();
+        if (!$token)
+            throw new Exception('Unauthorized');
+        $decoded = self::verify($token);
+        if (!$decoded)
+            throw new Exception('Invalid token');
+        return (int) $decoded['mbr_id'];
     }
 
     public static function getUserBranchId(): int
     {
-        $userId = self::getCurrentUserId();
         $user = (new AuthRepository())->findUserByUsername(self::verify(self::getBearerToken())['username']);
         return (int) $user['BranchID'];
     }
 
     public static function checkPermission(string $permission): void
     {
-        $userId = self::getCurrentUserId();
-        if (!RBAC::hasPermission($userId, $permission)) {
+        $mbrId = self::getCurrentMemberId();
+        if (!RBAC::hasPermission($mbrId, $permission)) {
             throw new Exception("Permission denied: $permission");
         }
     }

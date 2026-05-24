@@ -128,6 +128,12 @@ export interface LookupItem {
   DisplayOrder?: number
 }
 
+export interface LookupCategory {
+  id: string
+  name: string
+  items?: LookupItem[]
+}
+
 export interface BranchItem {
   id: number
   name: string
@@ -151,9 +157,15 @@ export interface MemberFilters {
 export interface Family {
   FamilyID: number
   FamilyName: string
-  FamilyHead: number | null
+  FamilyHead?: number | null
+  FamilyHeadID?: number | null
   FamilyHeadName?: string
   Address: string | null
+  City?: string
+  Region?: string
+  Country?: string
+  HomePhone?: string
   CreatedAt: string
+  UpdatedAt?: string
   MemberCount?: number
 }

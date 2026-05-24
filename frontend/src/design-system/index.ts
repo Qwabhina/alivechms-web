@@ -93,6 +93,7 @@ export { default as ChButton } from './components/core/ChButton.vue'
 export { default as ChInput } from './components/core/ChInput.vue'
 export { default as ChTextarea } from './components/core/ChTextarea.vue'
 export { default as ChCard } from './components/core/ChCard.vue'
+export { default as ChPageHeader } from './components/core/ChPageHeader.vue'
 export { default as ChBadge } from './components/core/ChBadge.vue'
 export { default as ChAvatar } from './components/core/ChAvatar.vue'
 export { default as ChDivider } from './components/core/ChDivider.vue'
@@ -101,7 +102,6 @@ export { default as ChPopover } from './components/core/ChPopover.vue'
 export { default as ChDropdown } from './components/core/ChDropdown.vue'
 export { default as ChDropdownItem } from './components/core/ChDropdownItem.vue'
 export { default as ChDropdownDivider } from './components/core/ChDropdownDivider.vue'
-export { default as ChIcon } from './components/core/ChIcon.vue'
 
 // Core component types
 export type { TooltipPlacement } from './components/core/ChTooltip.vue'
@@ -110,7 +110,6 @@ export type {
   DropdownItem as ChDropdownItemType,
   DropdownItemVariant,
 } from './components/core/ChDropdown.vue'
-export type { IconSize, IconColor, IconName } from './components/core/ChIcon.vue'
 
 // ─── Composables ────────────────────
 /**
@@ -122,6 +121,7 @@ export { useTableExport, type ExportFormat } from './composables/useTableExport'
 export { useToast } from './composables/useToast'
 export { useModal } from './composables/useModal'
 export { useStepperWizard } from './composables/useStepperWizard'
+export { confirm, confirmModal, type ConfirmOptions } from './composables/useConfirm'
 export {
   useValidation,
   useForm,
@@ -262,3 +262,9 @@ export { default as ChProgress } from './components/cues/ChProgress.vue'
 export { default as ChToast } from './components/cues/ChToast.vue'
 export { default as ChToastContainer } from './components/cues/ChToastContainer.vue'
 export { default as ChAlert } from './components/cues/ChAlert.vue'
+
+// Temporary compatibility export: some generated auto-imports or legacy code
+// reference `userid` from the design-system. Export a harmless stub to avoid
+// rollup warnings while the root cause is investigated and auto-imports are
+// regenerated. Remove this once all auto-import declarations are clean.
+export const userid: unknown = undefined

@@ -6,7 +6,7 @@
 import http from './http'
 import type { ApiResponse } from '@/types/api'
 import type { PublicSettings, Setting, SettingsUpdatePayload } from '@/types/settings'
-import type { Permission } from '@/types/auth'
+import type { Permission } from '@/types/role'
 
 export const settingsService = {
   /** Public settings (no auth required) */

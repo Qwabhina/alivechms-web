@@ -45,17 +45,25 @@ class ReportingRepository
         )[0];
     }
 
-    public function getRecentActivity(int $branchId, int $limit = 10): array
+    public function getActiveFiscalYearId(int $branchId): ?int
     {
-        $cutoff = date('Y-m-d', strtotime('-7 days'));
+        $res = $this->orm->runQuery("SELECT FiscalYearID FROM fiscal_year WHERE BranchID = :b1 AND Status = 'Active' LIMIT 1", [':b1' => $branchId]);
+        return isset($res[0]) ? (int)$res[0]['FiscalYearID'] : null;
+    }
+
+    public function getUpcomingEventsCount(int $branchId): int
+    {
+        $res = $this->orm->runQuery("SELECT COUNT(*) AS total FROM church_event WHERE BranchID = :b1 AND EventDateTime >= NOW()", [':b1' => $branchId]);
+        return isset($res[0]) ? (int)$res[0]['total'] : 0;
+    }
+
+    public function getRecentMembers(int $branchId, int $limit = 5): array
+    {
         return $this->orm->runQuery("
-            SELECT 'Member' as type, CONCAT(MbrFirstName, ' ', MbrFamilyName) as details, MbrRegistrationDate as ts
-            FROM churchmember WHERE BranchID = :b1 AND MbrRegistrationDate >= :c1 AND Deleted = 0
-            UNION ALL
-            SELECT 'Contribution', CONCAT('GHS ', ContributionAmount), ContributionDate
-            FROM contribution WHERE BranchID = :b2 AND ContributionDate >= :c2 AND Deleted = 0
-            ORDER BY ts DESC LIMIT :limit",
-            [':b1' => $branchId, ':c1' => $cutoff, ':b2' => $branchId, ':c2' => $cutoff, ':limit' => $limit]
+            SELECT MbrID, MbrFirstName, MbrFamilyName, MbrProfilePicture, MbrRegistrationDate
+            FROM churchmember WHERE BranchID = :b1 AND Deleted = 0
+            ORDER BY MbrRegistrationDate DESC LIMIT :limit",
+            [':b1' => $branchId, ':limit' => $limit]
         );
     }
 

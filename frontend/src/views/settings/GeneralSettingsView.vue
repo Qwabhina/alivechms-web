@@ -4,11 +4,20 @@
  * Category-based settings editor with boolean toggles, logo upload, and text inputs.
  */
 import { settingsService } from '@/services/settings.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { Setting } from '@/types/settings'
-import { Settings, Save } from 'lucide-vue-next'
+import { Settings, Save } from '@lucide/vue'
+import { useTheme } from '@/composables/useTheme'
+import { computed } from 'vue'
 
 const toast = useToast()
+
+// Theme controls (design-system / localStorage)
+const { theme: currentTheme, setTheme } = useTheme()
+const themeModel = computed<string>({
+  get: () => (currentTheme).value ?? 'system',
+  set: (v: string) => setTheme(v as 'light' | 'dark' | 'system'),
+})
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -118,20 +127,17 @@ onMounted(loadSettings)
 
 <template>
   <div class="view">
-    <!-- ── Page Header ──────────────────────────────────────────────────────── -->
-    <div class="view-header">
-      <div>
-        <h1 class="view-title">
-          <Settings :size="22" class="view-title__icon" aria-hidden="true" />
-          Settings
-        </h1>
-        <p class="view-subtitle">Configure your church management system.</p>
-      </div>
-      <ChButton variant="primary" :loading="isSaving" @click="saveSettings">
-        <template #icon><Save :size="16" /></template>
-        Save Changes
-      </ChButton>
-    </div>
+    <ChPageHeader title="Settings" subtitle="Configure your church management system.">
+      <template #icon>
+        <Settings :size="22" class="view-title__icon" aria-hidden="true" />
+      </template>
+      <template #actions>
+        <ChButton variant="primary" :loading="isSaving" @click="saveSettings">
+          <template #icon><Save :size="16" /></template>
+          Save Changes
+        </ChButton>
+      </template>
+    </ChPageHeader>
 
     <!-- ── Loading ────────────────────────────────────────────────────────── -->
     <div v-if="isLoading" class="loading-wrap">
@@ -140,23 +146,51 @@ onMounted(loadSettings)
 
     <!-- ── Settings Layout ────────────────────────────────────────────────── -->
     <div v-else-if="Object.keys(settingsByCategory).length > 0" class="settings-layout">
-      <!-- Left: Category sidebar -->
+      <!-- Left: Category sidebar as a card -->
       <aside class="settings-nav">
-        <p class="settings-nav__label">Categories</p>
-        <button
-          v-for="cat in Object.keys(settingsByCategory)"
-          :key="cat"
-          class="settings-nav__item"
-          :class="{ 'settings-nav__item--active': activeCategory === cat }"
-          type="button"
-          @click="activeCategory = cat"
-        >
-          {{ cat }}
-        </button>
+        <ChCard shadow="sm">
+          <template #header>
+            <span class="card-label">Categories</span>
+          </template>
+          <div class="settings-nav-card">
+            <div class="settings-nav__list">
+              <button
+                v-for="cat in Object.keys(settingsByCategory)"
+                :key="cat"
+                class="settings-nav__item"
+                :class="{ 'settings-nav__item--active': activeCategory === cat }"
+                type="button"
+                @click="activeCategory = cat"
+              >
+                {{ cat }}
+              </button>
+            </div>
+          </div>
+        </ChCard>
+
+        <!-- Theme selector placed beneath categories to avoid distracting main content -->
+        <ChCard class="settings-theme-card--aside" shadow="sm">
+          <template #header>
+            <span class="card-label">Theme</span>
+          </template>
+          <div class="settings-fields">
+            <div class="settings-field">
+              <ChFormField :label="'UI Theme'" :hint="'Local preference (light, dark, system)'">
+                <div class="radio-group">
+                  <ChRadio v-model="themeModel" value="light" label="Light" />
+                  <ChRadio v-model="themeModel" value="dark" label="Dark" />
+                  <ChRadio v-model="themeModel" value="system" label="System (Auto)" />
+                </div>
+              </ChFormField>
+            </div>
+          </div>
+        </ChCard>
       </aside>
 
       <!-- Right: Settings form -->
       <div class="settings-content">
+        
+
         <ChCard v-if="activeCategory" shadow="sm">
           <template #header>
             <span class="card-label">{{ activeCategory }}</span>
@@ -216,6 +250,8 @@ onMounted(loadSettings)
                 />
               </div>
 
+              <!-- Theme is managed by the design system (localStorage 'ch-theme') -->
+
               <!-- ── Text / Generic Input ──────────────────────────────── -->
               <div v-else class="settings-field">
                 <ChFormField
@@ -265,37 +301,7 @@ onMounted(loadSettings)
   display: flex;
   flex-direction: column;
   gap: var(--ch-space-6);
-  max-width: 1040px;
-}
-
-/* ─── Header ──────────────────────────────────────────────────────────────── */
-.view-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--ch-space-4);
-}
-
-.view-title {
-  display: flex;
-  align-items: center;
-  gap: var(--ch-space-2);
-  font-size: var(--ch-text-2xl);
-  font-weight: var(--ch-font-bold);
-  font-family: var(--ch-font-display);
-  color: var(--ch-color-text);
-  margin: 0;
-}
-
-.view-title__icon {
-  color: var(--ch-color-primary);
-  flex-shrink: 0;
-}
-
-.view-subtitle {
-  font-size: var(--ch-text-sm);
-  color: var(--ch-color-text-muted);
-  margin: var(--ch-space-1) 0 0;
+  /* max-width: 1040px; */
 }
 
 /* ─── Loading ─────────────────────────────────────────────────────────────── */
@@ -323,14 +329,9 @@ onMounted(loadSettings)
 .settings-nav {
   position: sticky;
   top: var(--ch-space-6);
-  background-color: var(--ch-color-surface);
-  border: 1px solid var(--ch-color-border);
-  border-radius: var(--ch-radius-lg);
-  padding: var(--ch-space-3);
-  box-shadow: var(--ch-shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: var(--ch-space-1);
+  gap: var(--ch-space-3);
 }
 
 .settings-nav__label {
@@ -380,6 +381,15 @@ onMounted(loadSettings)
   color: var(--ch-color-primary);
 }
 
+/* When the nav is wrapped in a ChCard, adjust inner list spacing */
+.settings-nav .settings-nav-card {
+  padding: var(--ch-space-3) 0 var(--ch-space-3) var(--ch-space-3);
+}
+
+.settings-theme-card--aside {
+  margin-top: var(--ch-space-4);
+}
+
 /* ─── Settings content area ───────────────────────────────────────────────── */
 .settings-content {
   display: flex;
@@ -403,7 +413,7 @@ onMounted(loadSettings)
 
 /* ─── Individual setting field ────────────────────────────────────────────── */
 .settings-field {
-  /* No extra styles needed — ChFormField handles layout */
+  display: block;
 }
 
 /* Switch fields need a bit of extra padding for visual breathing room */
@@ -442,5 +452,29 @@ onMounted(loadSettings)
   display: flex;
   justify-content: flex-end;
   padding-top: var(--ch-space-2);
+}
+
+/* ─── Theme selector dropdown ───────────────────────────────────────────── */
+.theme-select {
+  width: 100%;
+  padding: var(--ch-space-2) var(--ch-space-3);
+  font-size: var(--ch-text-sm);
+  font-family: inherit;
+  color: var(--ch-color-text);
+  background-color: var(--ch-color-surface);
+  border: 1px solid var(--ch-color-border);
+  border-radius: var(--ch-radius-md);
+  cursor: pointer;
+  transition: border-color var(--ch-duration-fast) var(--ch-ease-out);
+}
+
+.theme-select:hover {
+  border-color: var(--ch-color-border-strong);
+}
+
+.theme-select:focus {
+  outline: none;
+  border-color: var(--ch-color-primary);
+  box-shadow: 0 0 0 3px var(--ch-color-primary-subtle);
 }
 </style>

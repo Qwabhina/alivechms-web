@@ -83,11 +83,12 @@ class Settings
       $formattedValue = self::formatValue($value, $type);
 
       if (!empty($existing)) {
+         $existingSetting = $existing[0];
          $orm->update('system_setting', [
             'SettingValue' => $formattedValue,
             'SettingType' => $type,
-            'Category' => $category,
-            'Description' => $description,
+            'Category' => $category ?? $existingSetting['Category'],
+            'Description' => $description ?? $existingSetting['Description'],
             'UpdatedAt' => date('Y-m-d H:i:s')
          ], ['SettingKey' => $key]);
       } else {
@@ -147,14 +148,12 @@ class Settings
 
       return array_map(function ($setting) {
          return [
-            'id' => $setting['SettingID'],
-            'key' => $setting['SettingKey'],
-            'value' => self::castValue($setting['SettingValue'], $setting['SettingType']),
-            'type' => $setting['SettingType'],
-            'category' => $setting['Category'],
-            'description' => $setting['Description'],
-            'is_editable' => isset($setting['IsEditable']) ? (bool) $setting['IsEditable'] : true,
-            'updated_at' => $setting['UpdatedAt']
+            'SettingID' => (int) $setting['SettingID'],
+            'SettingKey' => $setting['SettingKey'],
+            'SettingValue' => $setting['SettingValue'],
+            'SettingType' => $setting['SettingType'],
+            'Category' => $setting['Category'] ?? 'General',
+            'Description' => $setting['Description'] ?? null,
          ];
       }, $settings);
    }
@@ -170,7 +169,7 @@ class Settings
       $grouped = [];
 
       foreach ($allSettings as $setting) {
-         $category = $setting['category'] ?? 'general';
+         $category = $setting['Category'] ?? 'General';
          if (!isset($grouped[$category])) {
             $grouped[$category] = [];
          }
@@ -273,6 +272,7 @@ class Settings
          ['key' => 'enable_audit_log', 'value' => 1, 'type' => 'boolean', 'category' => 'System', 'description' => 'Enable audit logging'],
          ['key' => 'max_login_attempts', 'value' => 5, 'type' => 'number', 'category' => 'System', 'description' => 'Maximum login attempts before lockout'],
          ['key' => 'lockout_duration', 'value' => 900, 'type' => 'number', 'category' => 'System', 'description' => 'Account lockout duration in seconds'],
+         ['key' => 'theme', 'value' => 'system', 'type' => 'string', 'category' => 'System', 'description' => 'UI theme preference (light/dark/system)'],
 
          // Backup Settings
          ['key' => 'backup_enabled', 'value' => 0, 'type' => 'boolean', 'category' => 'Backup', 'description' => 'Enable automatic backups'],

@@ -19,7 +19,7 @@ const designSystemResolver: ComponentResolver = (name) => {
 
 // Custom resolver for our composables
 const composableResolver = (name: string) => {
-  if (name.startsWith('use')) {
+  if (/^use[A-Z]\w*/.test(name)) {
     return {
       name,
       from: '@/design-system',

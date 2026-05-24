@@ -46,7 +46,7 @@
  */
 
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { Search, CircleHelp } from 'lucide-vue-next'
+import { Search, CircleHelp } from '@lucide/vue'
 import ChInput from '../core/ChInput.vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────

@@ -109,8 +109,8 @@ const iconPath = computed(() => ICONS[props.toast.variant] ?? ICONS.info)
   gap:           var(--ch-space-3);
   padding:       var(--ch-space-3_5) var(--ch-space-4);
   border-radius: var(--ch-radius-lg);
-  border:        1px solid var(--ch-color-border-strong);
-  box-shadow:    var(--ch-shadow-lg);
+  border:        2px solid var(--ch-color-border-strong);
+  box-shadow:    var(--ch-shadow-md);
   min-width:     280px;
   max-width:     420px;
   background:    var(--ch-color-surface);
@@ -120,7 +120,7 @@ const iconPath = computed(() => ICONS[props.toast.variant] ?? ICONS.info)
 
 /* Lift on hover — gives the user a clear signal that hovering paused the timer */
 .ch-toast:hover {
-  box-shadow: var(--ch-shadow-xl);
+  box-shadow: var(--ch-shadow-lg);
 }
 
 /* ─── Variant borders + icon colors ──────────────────────────────────────── */

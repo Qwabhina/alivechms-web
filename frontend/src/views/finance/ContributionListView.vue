@@ -6,9 +6,9 @@
 import { useRouter } from 'vue-router'
 import { contributionService, lookupService } from '@/services/finance.service'
 import type { FinanceLookupData } from '@/services/finance.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { Contribution, ContributionFilters, ContributionStats } from '@/types/finance'
-import { Plus, Trash2, Eye, TrendingUp, Wallet, BarChart2 } from 'lucide-vue-next'
+import { Plus, Trash2, Eye, TrendingUp, Wallet, BarChart2 } from '@lucide/vue'
 
 const router = useRouter()
 const toast = useToast()
@@ -51,7 +51,7 @@ const columns = [
   },
   { key: 'ContributionDate', label: 'Date', sortable: true, type: 'slot' as const },
   { key: 'PaymentMethodName', label: 'Method' },
-  { key: 'ReceiptNumber', label: 'Receipt' },
+  { key: 'PaymentReference', label: 'Reference' },
   { key: 'actions', label: '', type: 'slot' as const, exportable: false, align: 'right' as const },
 ]
 
@@ -168,17 +168,14 @@ onMounted(() => {
 
 <template>
   <div class="view">
-    <!-- ── Page Header ──────────────────────────────────────────────────────── -->
-    <div class="view-header">
-      <div>
-        <h1 class="view-title">Contributions</h1>
-        <p class="view-subtitle">Track and manage church finances.</p>
-      </div>
-      <ChButton variant="primary" @click="router.push('/finance/contributions/create')">
-        <template #icon><Plus :size="18" /></template>
-        Record Contribution
-      </ChButton>
-    </div>
+    <ChPageHeader title="Contributions" subtitle="Track and manage church finances.">
+      <template #actions>
+        <ChButton variant="primary" @click="router.push('/finance/contributions/create')">
+          <template #icon><Plus :size="18" /></template>
+          Record Contribution
+        </ChButton>
+      </template>
+    </ChPageHeader>
 
     <!-- ── Stats Row ────────────────────────────────────────────────────────── -->
     <div class="stats-row">
@@ -347,28 +344,7 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--ch-space-6);
   max-width: 1200px;
-}
-
-/* ─── Header ──────────────────────────────────────────────────────────────── */
-.view-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--ch-space-4);
-}
-
-.view-title {
-  font-size: var(--ch-text-2xl);
-  font-weight: var(--ch-font-bold);
-  font-family: var(--ch-font-display);
-  color: var(--ch-color-text);
-  margin: 0;
-}
-
-.view-subtitle {
-  font-size: var(--ch-text-sm);
-  color: var(--ch-color-text-muted);
-  margin: var(--ch-space-1) 0 0;
+  margin: 0 auto;
 }
 
 /* ─── Stats row ───────────────────────────────────────────────────────────── */

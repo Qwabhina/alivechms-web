@@ -7,9 +7,10 @@ import { useRouter } from 'vue-router'
 import { contributionService, lookupService } from '@/services/finance.service'
 import type { FinanceLookupData } from '@/services/finance.service'
 import { memberService } from '@/services/member.service'
-import { useToast } from '@/design-system'
+import { useToast, ChPageHeader } from '@/design-system'
 import type { ContributionCreate } from '@/types/finance'
-import { ArrowLeft, DollarSign } from 'lucide-vue-next'
+import { ArrowLeft, DollarSign } from '@lucide/vue'
+import { SelectOption } from '@/design-system/components/forms/ChSelect.vue'
 
 const router = useRouter()
 const toast = useToast()
@@ -30,23 +31,24 @@ const form = reactive<ContributionCreate>({
   member_id: 0,
   contribution_type_id: 0,
   amount: 0,
-  contribution_date: new Date().toISOString().slice(0, 10),
+  date: new Date().toISOString().slice(0, 10),
   payment_method_id: undefined,
   fiscal_year_id: undefined,
-  receipt_number: '',
-  notes: '',
+  description: '',
+  branch_id: undefined,
 })
 
 /** Date picker binding — kept in sync with form.contribution_date */
 const contributionDate = ref<Date>(new Date())
 
 watch(contributionDate, (d) => {
-  form.contribution_date = d ? d.toISOString().slice(0, 10) : ''
+  form.date = d ? d.toISOString().slice(0, 10) : ''
 })
 
 // ── Submit ────────────────────────────────────────────────────────────────────
 
 async function handleSubmit() {
+  // Validate required fields
   if (!form.member_id || !form.contribution_type_id || !form.amount) {
     toast.warning('Please fill in all required fields.')
     return
@@ -54,17 +56,16 @@ async function handleSubmit() {
 
   isSubmitting.value = true
   try {
-    const payload: ContributionCreate = {
+    await contributionService.create({
       member_id: form.member_id,
       contribution_type_id: form.contribution_type_id,
       amount: Number(form.amount),
-      contribution_date: form.contribution_date,
-      payment_method_id: form.payment_method_id || undefined,
-      fiscal_year_id: form.fiscal_year_id || undefined,
-      receipt_number: form.receipt_number || undefined,
-      notes: form.notes || undefined,
-    }
-    await contributionService.create(payload)
+      date: form.date,
+      payment_method_id: form.payment_method_id,
+      fiscal_year_id: form.fiscal_year_id,
+      description: form.description || undefined,
+      branch_id: form.branch_id,
+    })
     toast.success('Contribution recorded successfully.')
     router.push('/finance/contributions')
   } catch (err: unknown) {
@@ -88,14 +89,15 @@ onMounted(async () => {
       memberService.getAll(1, 100),
     ])
 
-    lookupData.value = lookupRes.data.data as FinanceLookupData
+    lookupData.value = lookupRes?.data?.data as FinanceLookupData
 
     // Pre-select the active fiscal year
     const currentFY = lookupData.value?.fiscal_years?.find((fy) => fy.Status === 'Active')
     if (currentFY) form.fiscal_year_id = currentFY.id
 
     // Populate member select options
-    memberOptions.value = membersRes.data.data.map((m) => ({
+    const mems = membersRes?.data?.data ?? []
+    memberOptions.value = mems.map((m) => ({
       value: m.MbrID,
       label: `${m.MbrFirstName} ${m.MbrFamilyName}`,
     }))
@@ -109,14 +111,14 @@ onMounted(async () => {
 
 <template>
   <div class="view">
-    <!-- ── Header ──────────────────────────────────────────────────────────── -->
-    <div class="view-header">
-      <ChButton variant="ghost" size="sm" @click="router.push('/finance/contributions')">
-        <template #icon><ArrowLeft :size="16" /></template>
-        Contributions
-      </ChButton>
-      <h1 class="view-title">Record Contribution</h1>
-    </div>
+    <ChPageHeader title="Record Contribution">
+      <template #leading>
+        <ChButton variant="ghost" size="sm" @click="router.push('/finance/contributions')">
+          <template #icon><ArrowLeft :size="16" /></template>
+          Contributions
+        </ChButton>
+      </template>
+    </ChPageHeader>
 
     <!-- ── Loading ────────────────────────────────────────────────────────── -->
     <div v-if="isLoading" class="loading-wrap">
@@ -141,7 +143,7 @@ onMounted(async () => {
               <ChSelect
                 id="member-select"
                 v-model="(form as any).member_id"
-                :options="memberOptions"
+                :options="(memberOptions as SelectOption[])"
                 placeholder="Select a member…"
                 :searchable="true"
                 empty-message="No members found."
@@ -157,7 +159,7 @@ onMounted(async () => {
                   (lookupData?.contribution_types ?? []).map((t) => ({
                     value: t.id,
                     label: t.name,
-                  }))
+                  })) as SelectOption[]
                 "
                 placeholder="Select type…"
               />
@@ -220,41 +222,30 @@ onMounted(async () => {
               />
             </ChFormField>
 
-            <!-- Receipt Number -->
+            <!-- Branch -->
+            <ChFormField label="Branch" input-id="branch-select">
+              <ChSelect
+                id="branch-select"
+                v-model="form.branch_id"
+                :options="lookupData?.branches?.map((b) => ({ value: b.id, label: b.name })) ?? []"
+                placeholder="Select branch (optional)"
+              />
+            </ChFormField>
+
+            <!-- Description -->
             <ChFormField
-              label="Receipt Number"
-              input-id="receipt-input"
-              hint="Optional — leave blank to auto-generate."
+              label="Description / Notes"
+              input-id="description-input"
               class="form-grid__full"
             >
-              <ChInput
-                id="receipt-input"
-                v-model="form.receipt_number"
-                placeholder="e.g. RCP-2024-001"
+              <ChTextarea
+                id="description-input"
+                v-model="form.description"
+                placeholder="Additional information about this contribution..."
+                :rows="3"
               />
             </ChFormField>
           </div>
-        </div>
-
-        <ChDivider />
-
-        <!-- ── Section: Notes ─────────────────────────────────────────────── -->
-        <div class="form-section">
-          <h2 class="form-section__title">Notes</h2>
-
-          <ChFormField
-            label="Additional Notes"
-            input-id="notes-input"
-            hint="Any context about this contribution (e.g. special occasion, pledge reference)."
-          >
-            <ChTextarea
-              id="notes-input"
-              v-model="form.notes"
-              placeholder="Add any relevant notes here…"
-              :rows="3"
-              resize="vertical"
-            />
-          </ChFormField>
         </div>
 
         <!-- ── Footer Actions ─────────────────────────────────────────────── -->
@@ -278,7 +269,8 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: var(--ch-space-5);
-  max-width: 720px;
+  max-width: 860px;
+  margin: 0 auto;
 }
 
 /* ─── Header ──────────────────────────────────────────────────────────────── */

@@ -1,6 +1,7 @@
 # Ignore Composer dependencies
 /vendor/
 /cache/
+/public/
 
 # Ignore environment configuration
 .env
@@ -35,3 +36,5 @@ xampp-control.ini
 /uploads/**/*
 !/uploads/**/.gitkeep
 /core/cache
+/public
+public/index.html
