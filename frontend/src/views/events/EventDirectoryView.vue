@@ -22,7 +22,7 @@ import {
   MoreVertical,
   Trash2,
   Download,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

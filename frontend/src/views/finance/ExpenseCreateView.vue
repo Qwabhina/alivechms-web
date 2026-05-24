@@ -10,7 +10,7 @@ import { lookupService } from '@/services/finance.service'
 import type { FinanceLookupData } from '@/services/finance.service'
 import { useToast } from '@/design-system'
 import type { ExpenseCreateInput, ExpenseCategory } from '@/types/finance'
-import { ArrowLeft, DollarSign } from 'lucide-vue-next'
+import { ArrowLeft, DollarSign } from '@lucide/vue'
 
 const router = useRouter()
 const toast = useToast()

@@ -5,7 +5,7 @@ import { familyService } from '@/services/family.service'
 import { memberService } from '@/services/member.service'
 import { useToast, confirm } from '@/design-system'
 import type { FamilyDetail, FamilyMember } from '@/types'
-import { ArrowLeft, Edit, Trash2, UserPlus, Crown, Home, User, Check, MoreVertical } from 'lucide-vue-next'
+import { ArrowLeft, Edit, Trash2, UserPlus, Crown, Home, User, Check, MoreVertical } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()

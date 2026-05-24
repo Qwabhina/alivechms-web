@@ -3,7 +3,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { memberService } from '@/services/member.service'
 import { useToast } from '@/design-system'
 import type { Member } from '@/types/member'
-import { ArrowLeft, Pencil, Trash2, Phone, Mail, MapPin } from 'lucide-vue-next'
+import { ArrowLeft, Pencil, Trash2, Phone, Mail, MapPin } from '@lucide/vue'
 import { normalizeProfileImage } from '@/utils/image'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

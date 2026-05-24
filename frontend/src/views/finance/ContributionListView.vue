@@ -8,7 +8,7 @@ import { contributionService, lookupService } from '@/services/finance.service'
 import type { FinanceLookupData } from '@/services/finance.service'
 import { useToast, ChPageHeader } from '@/design-system'
 import type { Contribution, ContributionFilters, ContributionStats } from '@/types/finance'
-import { Plus, Trash2, Eye, TrendingUp, Wallet, BarChart2 } from 'lucide-vue-next'
+import { Plus, Trash2, Eye, TrendingUp, Wallet, BarChart2 } from '@lucide/vue'
 
 const router = useRouter()
 const toast = useToast()

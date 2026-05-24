@@ -33,7 +33,6 @@ declare module 'vue' {
     ChEmptyState: typeof import('./components/data/ChEmptyState.vue')['default']
     ChFileUpload: typeof import('./components/forms/ChFileUpload.vue')['default']
     ChFormField: typeof import('./components/forms/ChFormField.vue')['default']
-    ChIcon: typeof import('./components/core/ChIcon.vue')['default']
     ChInput: typeof import('./components/core/ChInput.vue')['default']
     ChModal: typeof import('./components/forms/ChModal.vue')['default']
     ChPageHeader: typeof import('./components/core/ChPageHeader.vue')['default']

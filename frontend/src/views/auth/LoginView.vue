@@ -10,7 +10,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { usePublicSettingsStore } from '@/stores/publicSettings.store'
-import { LogIn, Eye, EyeOff, Church, User, Lock, ShieldCheck } from 'lucide-vue-next'
+import { LogIn, Eye, EyeOff, Church, User, Lock, ShieldCheck } from '@lucide/vue'
 
 const router = useRouter()
 const route = useRoute()

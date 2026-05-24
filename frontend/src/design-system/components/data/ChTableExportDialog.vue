@@ -30,7 +30,7 @@
  * />
  */
 
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import type {
   ExportFormat,
   PaperSize,
@@ -164,30 +164,32 @@ const emit = defineEmits<{
 
 /** Currently selected export format */
 const selectedFormat = ref<ExportFormat>('csv')
+  /**
+   * Which column keys are selected for export.
+   * Initialized to ALL columns selected by default.
+   */
+  const selectedColumns = ref<Set<string>>(new Set())
+    
+    /** Whether to export the current page or all data */
+    const scope = ref<'page' | 'all'>('all')
+    
+    /** The output filename (without extension) */
+    const filename = ref('')
+    
+    /** Optional document title for PDF and Print */
+    const title = ref('')
+    
+    /** Optional subtitle line (e.g. church name or date range) */
+    const subtitle = ref('')
+    
+    /** Paper size for PDF and Print */
+    const paperSize = ref<PaperSize>('a4')
+      
+      /** Page orientation for PDF and Print */
+      const orientation = ref<Orientation>('portrait')
 
-/**
- * Which column keys are selected for export.
- * Initialized to ALL columns selected by default.
- */
-const selectedColumns = ref<Set<string>>(new Set())
-
-/** Whether to export the current page or all data */
-const scope = ref<'page' | 'all'>('all')
-
-/** The output filename (without extension) */
-const filename = ref('')
-
-/** Optional document title for PDF and Print */
-const title = ref('')
-
-/** Optional subtitle line (e.g. church name or date range) */
-const subtitle = ref('')
-
-/** Paper size for PDF and Print */
-const paperSize = ref<PaperSize>('a4')
-
-/** Page orientation for PDF and Print */
-const orientation = ref<Orientation>('portrait')
+        /** Reference to the dialog panel element */
+        const dialogPanelRef = ref<HTMLElement | null>(null)
 
 // ─── Initialization ───────────────────────────────────────────────────────────
 
@@ -197,11 +199,9 @@ const orientation = ref<Orientation>('portrait')
  */
 watch(
   () => props.open,
-  (isOpen) => {
+  async (isOpen) => {
     if (isOpen) {
-      // Select all columns by default
       selectedColumns.value = new Set(props.columns.map((c) => c.key))
-      // Pre-fill title from table title prop
       title.value = props.tableTitle ?? ''
       filename.value = props.tableTitle
         ? props.tableTitle.toLowerCase().replace(/\s+/g, '-')
@@ -211,6 +211,11 @@ watch(
       selectedFormat.value = 'csv'
       paperSize.value = 'a4'
       orientation.value = 'portrait'
+
+      // Move focus into the dialog panel so Escape keydown events are captured.
+      // nextTick waits for Vue to render the panel before we try to focus it.
+      await nextTick()
+      dialogPanelRef.value?.focus()
     }
   },
 )
@@ -312,16 +317,18 @@ function onBackdropClick(e: MouseEvent) {
   <Teleport to="body">
     <Transition name="ch-dialog-fade">
       <div
-        v-if="open"
-        class="ch-export-backdrop"
-        @click="onBackdropClick"
-        aria-modal="true"
-        role="dialog"
-        aria-labelledby="export-dialog-title"
-      >
+  v-if="open"
+  class="ch-export-backdrop"
+  @click="onBackdropClick"
+  @keydown.esc="close"
+  aria-modal="true"
+  role="dialog"
+  aria-labelledby="export-dialog-title"
+  tabindex="-1"
+>
         <!-- Dialog panel -->
         <Transition name="ch-dialog-scale">
-          <div v-if="open" class="ch-export-dialog">
+          <div v-if="open" ref="dialogPanelRef" class="ch-export-dialog" tabindex="-1">
             <!-- ── Header ── -->
             <div class="ch-export-dialog__header">
               <div>

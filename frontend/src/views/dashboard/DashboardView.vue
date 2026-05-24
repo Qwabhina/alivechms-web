@@ -11,7 +11,7 @@ import { useRouter } from 'vue-router'
 import { dashboardService } from '@/services/dashboard.service'
 import { useToast, ChPageHeader } from '@/design-system'
 import type { DashboardOverview } from '@/types/operations'
-import { Users, Wallet, TrendingUp, CalendarDays, ArrowRight, DollarSign, LayoutDashboardIcon } from 'lucide-vue-next'
+import { Users, Wallet, TrendingUp, CalendarDays, ArrowRight, DollarSign, LayoutDashboardIcon } from '@lucide/vue'
 import { normalizeProfileImage } from '@/utils/image'
 
 // ── Router & Toast ────────────────────────────────────────────────────────────

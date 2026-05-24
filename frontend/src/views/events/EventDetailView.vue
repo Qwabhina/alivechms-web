@@ -385,7 +385,7 @@ onMounted(loadEvent)
           </div>
           <div v-else class="resources-list">
             <div v-for="resource in resources" :key="resource.ResourceID" class="resource-item">
-              <ChIcon :name="resource.ResourceType === 'link' ? 'link' : 'file'" />
+              <!-- <ChIcon :name="resource.ResourceType === 'link' ? 'link' : 'file'" /> -->
               <span class="resource-name">{{ resource.ResourceName }}</span>
               <ChButton variant="ghost" size="sm" left-icon="download" @click="downloadResource(resource)">Download</ChButton>
             </div>

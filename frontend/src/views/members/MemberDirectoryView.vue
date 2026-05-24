@@ -24,7 +24,7 @@ import {
   MapPin,
   MoreVertical,
   Check,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { normalizeProfileImage } from '@/utils/image'
 
 // ─── Types ────────────────────────────────────────────────────────────────────

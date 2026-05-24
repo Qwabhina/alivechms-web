@@ -26,7 +26,7 @@ import {
   Check,
   Home,
   Crown,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

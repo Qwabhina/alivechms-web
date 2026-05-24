@@ -20,7 +20,7 @@ import {
   Settings,
   UserCog,
   Shield,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),

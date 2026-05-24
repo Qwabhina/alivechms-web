@@ -9,7 +9,7 @@ import type { FinanceLookupData } from '@/services/finance.service'
 import { memberService } from '@/services/member.service'
 import { useToast, ChPageHeader } from '@/design-system'
 import type { ContributionCreate } from '@/types/finance'
-import { ArrowLeft, DollarSign } from 'lucide-vue-next'
+import { ArrowLeft, DollarSign } from '@lucide/vue'
 import { SelectOption } from '@/design-system/components/forms/ChSelect.vue'
 
 const router = useRouter()

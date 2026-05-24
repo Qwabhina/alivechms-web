@@ -48,7 +48,7 @@ import {
   SearchIcon,
   BellIcon,
   ChevronDown
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 /** Shape of the user object shown in the topbar right area */
 export interface TopbarUser {

@@ -6,7 +6,7 @@
  */
 
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { X } from 'lucide-vue-next'
+import { X } from '@lucide/vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

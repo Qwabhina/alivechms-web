@@ -1,6 +1,6 @@
 {
-  "name": "frontend",
-  "version": "0.0.0",
+  "name": "alivechms-frontend",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,10 +15,10 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
-    "@lucide/vue": "^1.11.0",
+    "@lucide/vue": "^1.16.0",
     "axios": "^1.7.0",
     "chart.js": "^4.5.1",
-    "exceljs": "^4.4.0",
+    "exceljs": "^3.4.0",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
     "pinia": "^3.0.4",

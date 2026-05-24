@@ -102,7 +102,6 @@ export { default as ChPopover } from './components/core/ChPopover.vue'
 export { default as ChDropdown } from './components/core/ChDropdown.vue'
 export { default as ChDropdownItem } from './components/core/ChDropdownItem.vue'
 export { default as ChDropdownDivider } from './components/core/ChDropdownDivider.vue'
-export { default as ChIcon } from './components/core/ChIcon.vue'
 
 // Core component types
 export type { TooltipPlacement } from './components/core/ChTooltip.vue'
@@ -111,7 +110,6 @@ export type {
   DropdownItem as ChDropdownItemType,
   DropdownItemVariant,
 } from './components/core/ChDropdown.vue'
-export type { IconSize, IconColor, IconName } from './components/core/ChIcon.vue'
 
 // ─── Composables ────────────────────
 /**

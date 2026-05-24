@@ -30,7 +30,7 @@ import {
   X,
   Grid3X3,
   List,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 // Router
 const router = useRouter()

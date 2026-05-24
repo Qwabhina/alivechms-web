@@ -9,7 +9,7 @@ import type { FinanceLookupData } from '@/services/finance.service'
 import { memberService } from '@/services/member.service'
 import { useToast } from '@/design-system'
 import type { Contribution, ContributionUpdate } from '@/types/finance'
-import { ArrowLeft, Save } from 'lucide-vue-next'
+import { ArrowLeft, Save } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()

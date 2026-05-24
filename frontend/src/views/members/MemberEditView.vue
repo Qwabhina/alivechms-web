@@ -3,7 +3,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { memberService } from '@/services/member.service'
 import { useToast, ChPageHeader } from '@/design-system'
 import type { MemberLookupData, MemberUpdate } from '@/types/member'
-import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, Save, Plus, Trash2 } from '@lucide/vue'
 import { normalizeProfileImage } from '@/utils/image'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

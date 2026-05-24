@@ -8,7 +8,7 @@ import { contributionService, lookupService } from '@/services/finance.service'
 import type { FinanceLookupData } from '@/services/finance.service'
 import { useToast, confirm } from '@/design-system'
 import type { Contribution } from '@/types/finance'
-import { ArrowLeft, Edit, Trash2, DollarSign, Printer } from 'lucide-vue-next'
+import { ArrowLeft, Edit, Trash2, DollarSign, Printer } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -6,7 +6,7 @@
 import { settingsService } from '@/services/settings.service'
 import { useToast, ChPageHeader } from '@/design-system'
 import type { Setting } from '@/types/settings'
-import { Settings, Save } from 'lucide-vue-next'
+import { Settings, Save } from '@lucide/vue'
 import { useTheme } from '@/composables/useTheme'
 import { computed } from 'vue'
 

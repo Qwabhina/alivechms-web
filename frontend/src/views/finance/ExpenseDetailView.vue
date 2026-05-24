@@ -9,7 +9,7 @@ import { lookupService } from '@/services/finance.service'
 import type { FinanceLookupData } from '@/services/finance.service'
 import { useToast, confirm } from '@/design-system'
 import type { ExpenseDetail } from '@/types/finance'
-import { ArrowLeft, Edit, Trash2, DollarSign, Receipt, CheckCircle, XCircle, Clock } from 'lucide-vue-next'
+import { ArrowLeft, Edit, Trash2, DollarSign, Receipt, CheckCircle, XCircle, Clock } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()
